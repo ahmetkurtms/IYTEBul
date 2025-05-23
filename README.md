@@ -1,2 +1,2 @@
 # IYTEBul
-CENG318 Term Project
+CENG318 term project
