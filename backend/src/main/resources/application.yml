@@ -1,0 +1,26 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/iytelost
+    username: postgres
+    password: turalk17
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  liquibase:
+    change-log: classpath:/db/changelog/changelog-master.xml
+    enabled: false
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: kilahe0609@gmail.com
+    password: kzpg binw nrlf dpdw
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+server:
+  port: 8080
