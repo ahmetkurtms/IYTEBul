@@ -18,6 +18,7 @@ interface UserProfile {
   createdAt: string
   studentId?: string
   bio?: string
+  nickname?: string
 }
 
 export default function ProfilePage() {
@@ -32,29 +33,7 @@ export default function ProfilePage() {
   const router = useRouter()
 
   const fetchProfile = async () => {
-    // Backend olmadığı için mock data kullanıyoruz
     try {
-      // Simüle edilmiş profil verisi
-      const mockProfile: UserProfile = {
-        id: 1,
-        name: "İsimsiz Kullanıcı",
-        email: "user@std.iyte.edu.tr",
-        department: "Bilgisayar Mühendisliği",
-        profilePhotoUrl: "/assets/default_avatar.png",
-        phoneNumber: "",
-        createdAt: "2023-09-01T00:00:00Z",
-        studentId: "290201027",
-        bio: ""
-      }
-
-      // 500ms bekle (API çağrısını simüle et)
-      await new Promise(resolve => setTimeout(resolve, 500))
-
-      setProfile(mockProfile)
-      setEditedProfile(mockProfile)
-
-      // Backend entegrasyonu için hazır kod (şimdilik yorum satırında):
-      /*
       const token = localStorage.getItem("token")
       if (!token) {
         router.push("/auth")
@@ -74,8 +53,9 @@ export default function ProfilePage() {
       } else if (response.status === 401) {
         localStorage.removeItem("token")
         router.push("/auth")
+      } else {
+        throw new Error(`Failed to fetch profile: ${response.status}`)
       }
-      */
 
     } catch (error) {
       console.error("Profil yüklenirken hata:", error)
@@ -95,18 +75,45 @@ export default function ProfilePage() {
     setIsSaving(true)
     setError("")
 
-    // Backend olmadığı için simüle ediyoruz
     try {
-      console.log(`Simulating ${field} update:`, editedProfile[field as keyof UserProfile])
+      const token = localStorage.getItem("token")
+      if (!token) {
+        router.push("/auth")
+        return
+      }
 
-      // 500ms bekle (API çağrısını simüle et)
-      await new Promise(resolve => setTimeout(resolve, 500))
+      const updateData: any = {}
+      if (field === "nickname") {
+        updateData.nickname = editedProfile.nickname
+      } else if (field === "phoneNumber") {
+        updateData.phoneNumber = editedProfile.phoneNumber
+      } else if (field === "bio") {
+        updateData.bio = editedProfile.bio
+      } else if (field === "studentId") {
+        updateData.studentId = editedProfile.studentId
+      }
 
-      // Local state'i güncelle (backend olmadığı için)
-      setProfile(editedProfile)
-      setEditingField(null)
-      
-      console.log(`${field} updated successfully (simulated)`)
+      const response = await fetch("http://localhost:8080/api/v1/users/profile", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(updateData),
+      })
+
+      if (response.ok) {
+        const updatedProfile = await response.json()
+        setProfile(updatedProfile)
+        setEditedProfile(updatedProfile)
+        setEditingField(null)
+        console.log(`${field} updated successfully`)
+      } else if (response.status === 401) {
+        localStorage.removeItem("token")
+        router.push("/auth")
+      } else {
+        throw new Error(`Failed to update ${field}: ${response.status}`)
+      }
 
     } catch (error) {
       console.error("Profil güncellenirken hata:", error)
@@ -145,50 +152,50 @@ export default function ProfilePage() {
     setError("")
 
     try {
-      // Dosyayı base64'e çevir (preview için)
-      const reader = new FileReader()
-      reader.onload = async (event) => {
-        const imageDataUrl = event.target?.result as string
-        
-        console.log("Simulating profile photo update:", file.name)
-        
-        // 1 saniye bekle (API çağrısını simüle et)
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        
-        // Local state'i güncelle (backend olmadığı için)
-        const updatedProfile = { ...profile!, profilePhotoUrl: imageDataUrl }
-        setProfile(updatedProfile)
-        setEditedProfile(updatedProfile)
-        
-        console.log("Profile photo updated successfully (simulated)")
+      const token = localStorage.getItem("token")
+      if (!token) {
+        setError("No authentication token found. Please login again.")
+        router.push("/auth")
+        return
       }
-      reader.readAsDataURL(file)
 
-      // Backend entegrasyonu için hazır kod (şimdilik yorum satırında):
-      /*
+      console.log("Uploading file:", file.name, "Size:", file.size, "Type:", file.type)
+
       const formData = new FormData()
       formData.append('profilePhoto', file)
 
       const response = await fetch("http://localhost:8080/api/v1/users/profile/photo", {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          Authorization: `Bearer ${token}`,
         },
         body: formData,
       })
+
+      console.log("Response status:", response.status)
 
       if (response.ok) {
         const updatedProfile = await response.json()
         setProfile(updatedProfile)
         setEditedProfile(updatedProfile)
+        console.log("Profile photo updated successfully")
+      } else if (response.status === 401) {
+        setError("Authentication failed. Please login again.")
+        localStorage.removeItem("token")
+        router.push("/auth")
       } else {
-        throw new Error(`Photo upload failed: ${response.status}`)
+        const errorText = await response.text()
+        console.error("Upload failed:", response.status, errorText)
+        setError(`Photo upload failed: ${response.status} - ${errorText || 'Unknown error'}`)
       }
-      */
 
     } catch (error) {
       console.error("Profile photo update error:", error)
-      setError(error instanceof Error ? error.message : "Failed to update profile photo")
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        setError("Cannot connect to server. Please make sure the backend is running on http://localhost:8080")
+      } else {
+        setError(error instanceof Error ? error.message : "Failed to update profile photo")
+      }
     } finally {
       setIsSaving(false)
       // Input'u temizle
@@ -226,7 +233,7 @@ export default function ProfilePage() {
             {/* User Name in Header */}
             <div className="absolute bottom-1 left-44">
               <h1 className="text-3xl font-bold text-white">
-                {profile?.name || "İsimsiz Kullanıcı"}
+                {profile?.nickname || profile?.name || "İsimsiz Kullanıcı"}
               </h1>
             </div>
           </div>
@@ -342,20 +349,20 @@ export default function ProfilePage() {
                       <label className="block text-sm font-medium text-gray-900 mb-2">
                         Nickname
                       </label>
-                      {editingField === "name" ? (
+                      {editingField === "nickname" ? (
                         <div className="flex items-center space-x-2">
                           <input
                             type="text"
-                            value={editedProfile?.name || ""}
+                            value={editedProfile?.nickname || ""}
                             onChange={(e) =>
-                              setEditedProfile({ ...editedProfile!, name: e.target.value })
+                              setEditedProfile({ ...editedProfile!, nickname: e.target.value })
                             }
                             className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9a0e20] focus:border-transparent bg-white text-gray-900"
                             placeholder="Enter your nickname"
                             autoFocus
                           />
                           <button
-                            onClick={() => handleFieldSave("name")}
+                            onClick={() => handleFieldSave("nickname")}
                             disabled={isSaving}
                             className="p-2 text-green-600 hover:text-green-700 disabled:opacity-50"
                           >
@@ -371,10 +378,10 @@ export default function ProfilePage() {
                       ) : (
                         <div className="relative">
                           <p className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-md bg-gray-50 text-gray-900">
-                            {profile?.name || "No nickname set"}
+                            {profile?.nickname || "No nickname set"}
                           </p>
                           <button
-                            onClick={() => setEditingField("name")}
+                            onClick={() => setEditingField("nickname")}
                             className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-[#9a0e20] transition-colors"
                           >
                             <FaEdit className="w-4 h-4" />
@@ -398,9 +405,49 @@ export default function ProfilePage() {
                       <label className="block text-sm font-medium text-gray-900 mb-2">
                         Student ID
                       </label>
-                      <p className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-600">
-                        {profile?.studentId || "Not provided"}
-                      </p>
+                      {editingField === "studentId" ? (
+                        <div className="space-y-2">
+                          <input
+                            type="text"
+                            value={editedProfile?.studentId || ""}
+                            onChange={(e) => {
+                              const value = e.target.value.replace(/\D/g, '').slice(0, 11)
+                              setEditedProfile({ ...editedProfile!, studentId: value })
+                            }}
+                            className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9a0e20] focus:border-transparent bg-white text-gray-900"
+                            placeholder="Enter your student ID"
+                            maxLength={11}
+                            autoFocus
+                          />
+                          <div className="flex justify-end space-x-2">
+                            <button
+                              onClick={() => handleFieldSave("studentId")}
+                              disabled={isSaving}
+                              className="p-2 text-green-600 hover:text-green-700 disabled:opacity-50"
+                            >
+                              <FaCheck className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={handleFieldCancel}
+                              className="p-2 text-red-600 hover:text-red-700"
+                            >
+                              <FaTimes className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="relative">
+                          <p className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-md bg-gray-50 text-gray-900">
+                            {profile?.studentId || "Not provided"}
+                          </p>
+                          <button
+                            onClick={() => setEditingField("studentId")}
+                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-[#9a0e20] transition-colors"
+                          >
+                            <FaEdit className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                     {/* Phone */}

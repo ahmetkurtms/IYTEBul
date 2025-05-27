@@ -93,12 +93,43 @@ public class ItemController {
         @RequestParam(required = false) String sortOrder,
         @RequestParam(required = false) String type,
         @RequestParam(required = false) String category,
-        @RequestParam(required = false) String location
+        @RequestParam(required = false) String location,
+        @RequestParam(required = false) String search,
+        @RequestParam(required = false) String dateStart,
+        @RequestParam(required = false) String dateEnd
     ) {
         try {
             List<String> categories = (category != null && !category.isEmpty()) ? java.util.Arrays.asList(category.split(",")) : null;
             List<String> locations = (location != null && !location.isEmpty()) ? java.util.Arrays.asList(location.split(",")) : null;
-            List<Item> items = itemService.filterItems(type, categories, locations);
+            List<Item> items = itemService.filterItems(type, categories, locations, search, sortOrder);
+            
+            // Apply date filtering in controller if dates are provided
+            if ((dateStart != null && !dateStart.trim().isEmpty()) || (dateEnd != null && !dateEnd.trim().isEmpty())) {
+                items = items.stream().filter(item -> {
+                    boolean passesDateFilter = true;
+                    
+                    if (dateStart != null && !dateStart.trim().isEmpty()) {
+                        try {
+                            java.time.LocalDateTime startDateTime = java.time.LocalDate.parse(dateStart.trim()).atStartOfDay();
+                            passesDateFilter = passesDateFilter && item.getDateShared().isAfter(startDateTime.minusSeconds(1));
+                        } catch (Exception e) {
+                            // If parsing fails, ignore start date filter
+                        }
+                    }
+                    
+                    if (dateEnd != null && !dateEnd.trim().isEmpty()) {
+                        try {
+                            java.time.LocalDateTime endDateTime = java.time.LocalDate.parse(dateEnd.trim()).atTime(23, 59, 59);
+                            passesDateFilter = passesDateFilter && item.getDateShared().isBefore(endDateTime.plusSeconds(1));
+                        } catch (Exception e) {
+                            // If parsing fails, ignore end date filter
+                        }
+                    }
+                    
+                    return passesDateFilter;
+                }).collect(java.util.stream.Collectors.toList());
+            }
+            
             List<Map<String, Object>> response = items.stream()
                 .map(item -> {
                     Map<String, Object> post = new HashMap<>();
@@ -111,6 +142,10 @@ public class ItemController {
                     post.put("createdAt", item.getDateShared().toString());
                     post.put("userName", item.getUser().getNickname());
                     post.put("userEmail", item.getUser().getUniMail());
+                    // Add user profile photo
+                    if (item.getUser().getProfilePhotoUrl() != null) {
+                        post.put("userProfilePhoto", item.getUser().getProfilePhotoUrl());
+                    }
                     if (item.getImage() != null) {
                         post.put("imageBase64", item.getImage());
                         post.put("imageContentType", "image/jpeg");

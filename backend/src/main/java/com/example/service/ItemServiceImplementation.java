@@ -97,7 +97,7 @@ public class ItemServiceImplementation implements ItemService {
     }
 
     @Override
-    public List<Item> filterItems(String type, List<String> categories, List<String> locations) throws Exception {
+    public List<Item> filterItems(String type, List<String> categories, List<String> locations, String search, String sortOrder) throws Exception {
         com.example.models.ItemType itemType = null;
         if (type != null && !type.isEmpty() && !type.equalsIgnoreCase("all")) {
             String enumType = type.substring(0, 1).toUpperCase() + type.substring(1).toLowerCase();
@@ -111,6 +111,8 @@ public class ItemServiceImplementation implements ItemService {
             }
         }
         List<String> locationNames = (locations != null && !locations.isEmpty()) ? locations : null;
-        return itemRepository.filterItems(itemType, categoryEnums, locationNames);
+        String searchQuery = (search != null && !search.trim().isEmpty()) ? search.trim() : null;
+        String sortOrderParam = (sortOrder != null && !sortOrder.trim().isEmpty()) ? sortOrder.trim() : "desc";
+        return itemRepository.filterItems(itemType, categoryEnums, locationNames, searchQuery, sortOrderParam);
     }
 }

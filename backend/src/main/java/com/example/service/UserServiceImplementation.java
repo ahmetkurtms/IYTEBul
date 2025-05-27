@@ -1,8 +1,11 @@
 package com.example.service;
 
+import com.example.config.JwtProvider;
 import com.example.models.Role;
 import com.example.models.User;
 import com.example.repository.UserRepository;
+import com.example.request.UpdateProfileRequest;
+import com.example.response.UserProfileResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -91,6 +94,22 @@ public class UserServiceImplementation implements UserService {
             oldUser.setRole(user.getRole());
         }
 
+        // Update new profile fields
+        if(user.getPhoneNumber()!=null) {
+            oldUser.setPhoneNumber(user.getPhoneNumber());
+        }
+        if(user.getBio()!=null) {
+            oldUser.setBio(user.getBio());
+        }
+        if(user.getProfilePhotoUrl()!=null) {
+            oldUser.setProfilePhotoUrl(user.getProfilePhotoUrl());
+        }
+        if(user.getStudentId()!=null) {
+            oldUser.setStudentId(user.getStudentId());
+        }
+        if(user.getDepartment()!=null) {
+            oldUser.setDepartment(user.getDepartment());
+        }
 
         User updatedUser = userRepository.save(oldUser);
         return updatedUser;
@@ -103,9 +122,60 @@ public class UserServiceImplementation implements UserService {
     }
 
     @Override
-    public User findUserByJwt() {
-        // TODO: Implement JWT token extraction and user lookup
-        // For now, return null as this is a placeholder implementation
-        return null;
+    public User findUserByJwt(String jwt) throws Exception {
+        try {
+            String email = JwtProvider.getEmailFromJwtToken(jwt);
+            User user = userRepository.findUserByUniMail(email);
+            if (user == null) {
+                throw new Exception("User not found with email: " + email);
+            }
+            return user;
+        } catch (Exception e) {
+            log.error("Error finding user by JWT: ", e);
+            throw new Exception("Invalid JWT token or user not found: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public UserProfileResponse getUserProfile(String jwt) throws Exception {
+        User user = findUserByJwt(jwt);
+        
+        UserProfileResponse response = new UserProfileResponse();
+        response.setId(user.getUser_id());
+        response.setName(user.getName());
+        response.setEmail(user.getUniMail());
+        response.setDepartment(user.getDepartment() != null ? user.getDepartment() : "Bilgisayar Mühendisliği");
+        response.setProfilePhotoUrl(user.getProfilePhotoUrl() != null ? user.getProfilePhotoUrl() : "/assets/default_avatar.png");
+        response.setPhoneNumber(user.getPhoneNumber());
+        response.setCreatedAt(user.getCreated_at());
+        response.setStudentId(user.getStudentId());
+        response.setBio(user.getBio());
+        response.setNickname(user.getNickname());
+        
+        return response;
+    }
+
+    @Override
+    public UserProfileResponse updateUserProfile(String jwt, UpdateProfileRequest request) throws Exception {
+        User user = findUserByJwt(jwt);
+        
+        // Update only the fields that are provided in the request
+        if (request.getNickname() != null) {
+            user.setNickname(request.getNickname());
+        }
+        if (request.getPhoneNumber() != null) {
+            user.setPhoneNumber(request.getPhoneNumber());
+        }
+        if (request.getBio() != null) {
+            user.setBio(request.getBio());
+        }
+        if (request.getStudentId() != null) {
+            user.setStudentId(request.getStudentId());
+        }
+        
+        User updatedUser = userRepository.save(user);
+        
+        // Return updated profile
+        return getUserProfile(jwt);
     }
 }

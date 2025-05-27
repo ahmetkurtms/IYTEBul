@@ -2,14 +2,18 @@ package com.example.controller;
 
 import com.example.models.User;
 import com.example.repository.UserRepository;
+import com.example.request.UpdateProfileRequest;
+import com.example.response.UserProfileResponse;
 import com.example.service.UserService;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 
 @RestController
@@ -70,16 +74,86 @@ public class UserController {
 
     }
 
-    @GetMapping("/api/users/profile")
-    public User getUserFromToken(@RequestHeader("Authorization") String jwt){
-        //String email =
-        //System.out.println("jwt -----" + jwt);
-        return null;
+    @GetMapping("/api/v1/users/profile")
+    public ResponseEntity<UserProfileResponse> getUserProfile(@RequestHeader("Authorization") String jwt){
+        try {
+            UserProfileResponse profile = userService.getUserProfile(jwt);
+            return ResponseEntity.ok(profile);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(null);
+        }
     }
 
+    @PutMapping("/api/v1/users/profile")
+    public ResponseEntity<UserProfileResponse> updateUserProfile(
+            @RequestHeader("Authorization") String jwt,
+            @RequestBody UpdateProfileRequest request) {
+        try {
+            UserProfileResponse updatedProfile = userService.updateUserProfile(jwt, request);
+            return ResponseEntity.ok(updatedProfile);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
+        }
+    }
 
-
-
-
+    @PostMapping("/api/v1/users/profile/photo")
+    public ResponseEntity<UserProfileResponse> updateProfilePhoto(
+            @RequestHeader("Authorization") String jwt,
+            @RequestParam("profilePhoto") MultipartFile file) {
+        try {
+            System.out.println("Profile photo upload request received");
+            System.out.println("File name: " + (file != null ? file.getOriginalFilename() : "null"));
+            System.out.println("File size: " + (file != null ? file.getSize() : "null"));
+            System.out.println("Content type: " + (file != null ? file.getContentType() : "null"));
+            
+            // File validation
+            if (file == null || file.isEmpty()) {
+                System.out.println("Error: File is empty or null");
+                return ResponseEntity.badRequest().body(null);
+            }
+            
+            // Check file size (5MB limit)
+            if (file.getSize() > 5 * 1024 * 1024) {
+                System.out.println("Error: File size too large: " + file.getSize());
+                return ResponseEntity.badRequest().body(null);
+            }
+            
+            // Check file type
+            String contentType = file.getContentType();
+            if (contentType == null || !contentType.startsWith("image/")) {
+                System.out.println("Error: Invalid content type: " + contentType);
+                return ResponseEntity.badRequest().body(null);
+            }
+            
+            System.out.println("File validation passed, processing...");
+            
+            // Convert to base64 and save
+            byte[] fileBytes = file.getBytes();
+            String base64Image = "data:" + contentType + ";base64," + Base64.getEncoder().encodeToString(fileBytes);
+            
+            System.out.println("Base64 conversion completed, finding user...");
+            
+            User user = userService.findUserByJwt(jwt);
+            if (user == null) {
+                System.out.println("Error: User not found");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(null);
+            }
+            
+            System.out.println("User found: " + user.getUniMail() + ", updating profile photo...");
+            
+            user.setProfilePhotoUrl(base64Image);
+            userRepository.save(user);
+            
+            System.out.println("Profile photo updated successfully");
+            
+            UserProfileResponse updatedProfile = userService.getUserProfile(jwt);
+            return ResponseEntity.ok(updatedProfile);
+            
+        } catch (Exception e) {
+            System.err.println("Error updating profile photo: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
+    }
 
 }

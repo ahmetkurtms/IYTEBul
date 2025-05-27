@@ -36,4 +36,16 @@ public class User {
     private Boolean isVerified = false;
     private String verificationCode;
 
+    // Profile fields
+    private String phoneNumber;
+    
+    @Column(columnDefinition = "TEXT")
+    private String bio;
+    
+    @Column(columnDefinition = "TEXT")
+    private String profilePhotoUrl;
+    
+    private String studentId;
+    private String department;
+
 }

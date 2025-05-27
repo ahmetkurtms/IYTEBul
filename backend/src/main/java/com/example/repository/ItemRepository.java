@@ -19,10 +19,14 @@ public interface ItemRepository extends JpaRepository<Item, Long> {
     @Query("select i from Item i where i.type=:type")
     List<Item> findItemByType(com.example.models.ItemType type);
 
-    @Query("SELECT i FROM Item i WHERE (:type IS NULL OR i.type = :type) AND (:categories IS NULL OR i.category IN :categories) AND (:locations IS NULL OR i.location.nameEn IN :locations)")
+    @Query("SELECT i FROM Item i WHERE (:type IS NULL OR i.type = :type) AND (:categories IS NULL OR i.category IN :categories) AND (:locations IS NULL OR i.location.nameEn IN :locations) AND (:search IS NULL OR :search = '' OR LOWER(i.title) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(i.description) LIKE LOWER(CONCAT('%', :search, '%'))) ORDER BY " +
+           "CASE WHEN :sortOrder = 'asc' THEN i.dateShared END ASC, " +
+           "CASE WHEN :sortOrder = 'desc' THEN i.dateShared END DESC")
     List<Item> filterItems(
         @Nullable com.example.models.ItemType type,
         @Nullable List<com.example.models.Category> categories,
-        @Nullable List<String> locations
+        @Nullable List<String> locations,
+        @Nullable String search,
+        @Nullable String sortOrder
     );
 }

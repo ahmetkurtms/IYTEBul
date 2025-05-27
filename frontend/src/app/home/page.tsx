@@ -25,6 +25,7 @@ interface Post {
   userEmail: string;
   imageBase64?: string;
   imageContentType?: string;
+  userProfilePhoto?: string;
 }
 
 export default function Home() {
@@ -52,6 +53,70 @@ export default function Home() {
   const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
   const [sortSelectedOnOpen, setSortSelectedOnOpen] = useState(false);
 
+  // Function to highlight search terms in text
+  const highlightText = (text: string, searchTerm: string) => {
+    if (!searchTerm.trim() || !text) return text;
+    
+    try {
+      const escapedSearchTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(escapedSearchTerm, 'gi');
+      
+      // Find all matches with their positions
+      const matches: { start: number; end: number; text: string }[] = [];
+      let match;
+      
+      while ((match = regex.exec(text)) !== null) {
+        matches.push({
+          start: match.index,
+          end: match.index + match[0].length,
+          text: match[0]
+        });
+        if (regex.lastIndex === match.index) {
+          regex.lastIndex++;
+        }
+      }
+      
+      if (matches.length === 0) return text;
+      
+      const result = [];
+      let lastIndex = 0;
+      
+      matches.forEach((match, index) => {
+        // Add text before the match
+        if (match.start > lastIndex) {
+          result.push(
+            <span key={`before-${index}`}>
+              {text.substring(lastIndex, match.start)}
+            </span>
+          );
+        }
+        
+        // Add the highlighted match
+        result.push(
+          <span key={`highlight-${index}`} className="bg-yellow-200 text-yellow-900 font-semibold px-1 rounded">
+            {match.text}
+          </span>
+        );
+        
+        lastIndex = match.end;
+      });
+      
+      // Add remaining text after the last match
+      if (lastIndex < text.length) {
+        result.push(
+          <span key="after">
+            {text.substring(lastIndex)}
+          </span>
+        );
+      }
+      
+      return <>{result}</>;
+    } catch (error) {
+      // If anything goes wrong, just return the original text
+      return text;
+    }
+  };
+
   // Get today's date in yyyy-mm-dd format (local time)
   const now = new Date();
   const year = now.getFullYear();
@@ -73,6 +138,10 @@ export default function Home() {
         if (postType !== 'all') params.append('type', postType.toUpperCase());
         if (selectedCategories.length > 0) params.append('category', selectedCategories.join(','));
         if (selectedLocations.length > 0) params.append('location', selectedLocations.join(','));
+        if (searchQuery.trim()) params.append('search', searchQuery.trim());
+        if (dateStart.trim()) params.append('dateStart', dateStart.trim());
+        if (dateEnd.trim()) params.append('dateEnd', dateEnd.trim());
+        
         const response = await fetch(
           `http://localhost:8080/api/v1/posts?${params.toString()}`,
           {
@@ -85,6 +154,7 @@ export default function Home() {
         if (response.ok) {
           try {
             const data = JSON.parse(responseText);
+            // Posts now include userProfilePhoto from backend
             setPosts(data);
           } catch (parseError) {
             setError('Error parsing response from server');
@@ -110,7 +180,7 @@ export default function Home() {
     };
 
     fetchPosts();
-  }, [router, sortOrder, postType, selectedCategories, selectedLocations]);
+  }, [router, sortOrder, postType, selectedCategories, selectedLocations, searchQuery, dateStart, dateEnd]);
 
   // Fetch locations from backend (like Create Post)
   useEffect(() => {
@@ -315,9 +385,9 @@ export default function Home() {
                                 } else {
                                   ordered = filtered;
                                 }
-                                return ordered.map((cat) => (
+                                return ordered.map((cat, index) => (
                                   <div
-                                    key={`category-${cat}`}
+                                    key={`category-${cat || index}`}
                                     className={`px-2 py-1 cursor-pointer hover:bg-gray-100 rounded text-gray-800 flex items-center justify-between ${selectedCategories.includes(cat) ? 'font-semibold text-[#9a0e20]' : ''}`}
                                     onClick={() => {
                                       setSelectedCategories(selectedCategories.includes(cat)
@@ -335,7 +405,9 @@ export default function Home() {
                             <div className="font-semibold text-gray-700 text-sm mb-1 mt-2">Locations</div>
                             <div className="max-h-32 overflow-y-auto">
                               {(() => {
-                                const filtered = locations.filter(loc => loc.nameEn.toLowerCase().includes(filterSearch.toLowerCase()));
+                                const filtered = locations
+                                  .filter(loc => loc && loc.nameEn) // Filter out invalid locations
+                                  .filter(loc => loc.nameEn.toLowerCase().includes(filterSearch.toLowerCase()));
                                 let ordered;
                                 if (sortSelectedOnOpen) {
                                   const selected = filtered.filter(loc => selectedLocations.includes(loc.nameEn));
@@ -344,9 +416,9 @@ export default function Home() {
                                 } else {
                                   ordered = filtered;
                                 }
-                                return ordered.map((loc) => (
+                                return ordered.map((loc, index) => (
                                   <div
-                                    key={`location-${loc.id}`}
+                                    key={`location-${loc.id || loc.nameEn || index}`}
                                     className={`px-2 py-1 cursor-pointer hover:bg-gray-100 rounded text-gray-800 flex items-center justify-between ${selectedLocations.includes(loc.nameEn) ? 'font-semibold text-[#9a0e20]' : ''}`}
                                     onClick={() => {
                                       setSelectedLocations(selectedLocations.includes(loc.nameEn)
@@ -433,11 +505,11 @@ export default function Home() {
                   {/* Post İçeriği */}
                   <div className="p-4">
                     <div className="flex items-center space-x-3 mb-4">
-                      <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden">
+                      <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden border border-black">
                         <img
-                          src="/assets/default_avatar.png"
+                          src={post.userProfilePhoto || "/assets/default_avatar.png"}
                           alt={`${post.userName} profil fotoğrafı`}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-cover rounded-full"
                         />
                       </div>
                       <div>
@@ -451,7 +523,7 @@ export default function Home() {
                       </span>
                     </div>
                     
-                    <h3 className="text-xl font-semibold text-gray-800 mb-2">{post.title}</h3>
+                    <h3 className="text-xl font-semibold text-gray-800 mb-2">{highlightText(post.title, searchQuery)}</h3>
                     
                     {post.imageBase64 ? (
                       <div className="mb-4 flex justify-center items-center bg-white rounded-lg border border-black" style={{padding: '4px'}}>
@@ -480,7 +552,7 @@ export default function Home() {
                       </div>
                     )}
                     
-                    <p className="text-gray-600 mb-4">{post.description}</p>
+                    <p className="text-gray-600 mb-4">{highlightText(post.description, searchQuery)}</p>
                     
                     <div className="flex flex-wrap gap-2 mb-4">
                       <span className="bg-gray-100 text-gray-700 text-sm px-3 py-1 rounded-full">

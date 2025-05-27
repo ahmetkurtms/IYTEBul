@@ -14,5 +14,5 @@ public interface ItemService {
 
     List<Item> findItemByType(String type) throws Exception;
 
-    List<Item> filterItems(String type, List<String> categories, List<String> locations) throws Exception;
+    List<Item> filterItems(String type, List<String> categories, List<String> locations, String search, String sortOrder) throws Exception;
 }
