@@ -1,13 +1,14 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/iytelost
+    url: jdbc:postgresql://localhost:5432/iytebul
     username: postgres
-    password: turalk17
+    password: 123
     driver-class-name: org.postgresql.Driver
 
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: update
+    show-sql: true
   liquibase:
     change-log: classpath:/db/changelog/changelog-master.xml
     enabled: false
