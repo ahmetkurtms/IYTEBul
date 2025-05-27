@@ -149,11 +149,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-100 via-gray-50 to-slate-200">
       {/* Hamburger Menu Icon */}
-      <button className="fixed top-4 left-4 z-50 p-2 rounded-lg bg-transparent hover:bg-white/10 transition-colors focus:outline-none" aria-label="Open menu">
-        <FiMenu className="h-6 w-6 text-white" />
-      </button>
       <Navbar />
-
       <main className="container mx-auto px-4 py-8">
         <div className="flex flex-col space-y-6">
           {/* Üst Bar - Filtreler ve Butonlar */}
@@ -321,7 +317,7 @@ export default function Home() {
                                 }
                                 return ordered.map((cat) => (
                                   <div
-                                    key={cat}
+                                    key={`category-${cat}`}
                                     className={`px-2 py-1 cursor-pointer hover:bg-gray-100 rounded text-gray-800 flex items-center justify-between ${selectedCategories.includes(cat) ? 'font-semibold text-[#9a0e20]' : ''}`}
                                     onClick={() => {
                                       setSelectedCategories(selectedCategories.includes(cat)
@@ -350,7 +346,7 @@ export default function Home() {
                                 }
                                 return ordered.map((loc) => (
                                   <div
-                                    key={loc.id}
+                                    key={`location-${loc.id}`}
                                     className={`px-2 py-1 cursor-pointer hover:bg-gray-100 rounded text-gray-800 flex items-center justify-between ${selectedLocations.includes(loc.nameEn) ? 'font-semibold text-[#9a0e20]' : ''}`}
                                     onClick={() => {
                                       setSelectedLocations(selectedLocations.includes(loc.nameEn)
@@ -433,7 +429,7 @@ export default function Home() {
               : "flex flex-col space-y-6 max-w-2xl mx-auto"
             }>
               {posts.map((post) => (
-                <div key={post.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+                <div key={`post-${post.id}`} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
                   {/* Post İçeriği */}
                   <div className="p-4">
                     <div className="flex items-center space-x-3 mb-4">
