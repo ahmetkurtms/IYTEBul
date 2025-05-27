@@ -1,16 +1,16 @@
 "use client"
 
 import * as React from "react"
-import * as CollapsiblePrimitive from "@radix-ui/react-collapsible"
-import { Menu } from "lucide-react"
-
+import { Home, MessageSquare, User, X } from "lucide-react"
+import { useRouter, usePathname } from "next/navigation"
+import Image from "next/image"
 import { cn } from "@/lib/utils"
 
 const SidebarContext = React.createContext<{
   open: boolean
   setOpen: React.Dispatch<React.SetStateAction<boolean>>
 }>({
-  open: true,
+  open: false,
   setOpen: () => {},
 })
 
@@ -19,13 +19,12 @@ interface SidebarProviderProps {
   defaultOpen?: boolean
 }
 
-function SidebarProvider({ children, defaultOpen = true }: SidebarProviderProps) {
+export function SidebarProvider({ children, defaultOpen = false }: SidebarProviderProps) {
   const [open, setOpen] = React.useState(defaultOpen)
-
   return <SidebarContext.Provider value={{ open, setOpen }}>{children}</SidebarContext.Provider>
 }
 
-function useSidebar() {
+export function useSidebar() {
   const context = React.useContext(SidebarContext)
   if (!context) {
     throw new Error("useSidebar must be used within a SidebarProvider")
@@ -33,261 +32,92 @@ function useSidebar() {
   return context
 }
 
-interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
-  side?: "left" | "right"
-}
+interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {}
 
-function Sidebar({ className, side = "left", ...props }: SidebarProps) {
-  const { open } = useSidebar()
-
-  return (
-    <div
-      data-state={open ? "open" : "closed"}
-      className={cn(
-        "fixed inset-y-0 z-30 flex flex-col border-r bg-background transition-all duration-300 data-[state=closed]:w-[60px] data-[state=open]:w-[280px]",
-        side === "right" ? "right-0 border-l border-r-0" : "left-0",
-        className,
-      )}
-      {...props}
-    />
-  )
-}
-
-function SidebarTrigger({ className, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) {
+export function Sidebar({ className, ...props }: SidebarProps) {
   const { open, setOpen } = useSidebar()
-
   return (
-    <button
-      onClick={() => setOpen(!open)}
-      className={cn(
-        "inline-flex h-9 w-9 items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
-        className,
+    <>
+      {/* Overlay */}
+      {open && (
+        <div
+          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 transition-opacity"
+          onClick={() => setOpen(false)}
+        />
       )}
-      {...props}
-    >
-      <Menu className="h-5 w-5" />
-      <span className="sr-only">Toggle Sidebar</span>
-    </button>
-  )
-}
-
-function SidebarContent({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("flex-1 overflow-auto", className)} {...props} />
-}
-
-function SidebarHeader({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("flex h-14 items-center border-b px-4", className)} {...props} />
-}
-
-function SidebarFooter({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("flex h-14 items-center border-t px-4", className)} {...props} />
-}
-
-function SidebarGroup({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("space-y-1 p-2", className)} {...props} />
-}
-
-function SidebarGroupLabel({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  const { open } = useSidebar()
-
-  if (!open) {
-    return null
-  }
-
-  return <div className={cn("px-2 py-1 text-xs font-medium text-muted-foreground", className)} {...props} />
-}
-
-function SidebarGroupContent({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("space-y-1", className)} {...props} />
-}
-
-function SidebarItem({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("", className)} {...props} />
-}
-
-function SidebarItemButton({ className, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) {
-  const { open } = useSidebar()
-
-  return (
-    <button
-      className={cn(
-        "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
-        open ? "justify-start" : "justify-center",
-        className,
-      )}
-      {...props}
-    />
-  )
-}
-
-function SidebarItemIcon({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("h-5 w-5 shrink-0", className)} {...props} />
-}
-
-function SidebarItemLabel({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  const { open } = useSidebar()
-
-  if (!open) {
-    return null
-  }
-
-  return <div className={cn("flex-1", className)} {...props} />
-}
-
-const SidebarMenu = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => <div ref={ref} className={cn("", className)} {...props} />,
-)
-SidebarMenu.displayName = "SidebarMenu"
-
-const SidebarMenuTrigger = React.forwardRef<HTMLButtonElement, React.ButtonHTMLAttributes<HTMLButtonElement>>(
-  ({ className, ...props }, ref) => {
-    const { open } = useSidebar()
-
-    return (
-      <button
-        ref={ref}
+      <aside
         className={cn(
-          "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
-          open ? "justify-start" : "justify-center",
-          className,
+          "fixed top-0 left-0 z-50 h-full w-[260px] max-w-full bg-white shadow-2xl rounded-r-2xl flex flex-col transition-transform duration-300 border-r border-gray-200",
+          open ? "translate-x-0" : "-translate-x-full",
+          className
         )}
         {...props}
-      />
-    )
-  },
-)
-SidebarMenuTrigger.displayName = "SidebarMenuTrigger"
+      >
+        {/* Header: Logo & Close */}
+        <div className="flex items-center justify-between h-16 px-4 border-b border-gray-100 bg-gradient-to-r from-[#9a0e20] to-[#7a0b19] rounded-tr-2xl">
+          <div className="flex items-center gap-2 select-none">
+            <Image src="/assets/iyte_logo_tr.png" alt="IYTEBul" width={36} height={36} className="rounded bg-white/80 p-1" />
+            <span className="text-lg font-bold text-white tracking-wide">IYTEBul</span>
+          </div>
+          <button
+            onClick={() => setOpen(false)}
+            className="p-2 rounded-lg hover:bg-white/20 transition-colors text-white"
+            aria-label="Close sidebar"
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+        {/* Navigation */}
+        <nav className="flex-1 py-6 px-2 flex flex-col gap-1">
+          <SidebarNavItem
+            icon={Home}
+            label="Home"
+            href="/home"
+          />
+          <SidebarNavItem
+            icon={MessageSquare}
+            label="Messages"
+            href="/messages"
+          />
+          <SidebarNavItem
+            icon={User}
+            label="Profile"
+            href="/profile"
+          />
+        </nav>
+        {/* Optional Footer */}
+        {/* <div className="p-4 border-t border-gray-100">Footer</div> */}
+      </aside>
+    </>
+  )
+}
 
-const SidebarMenuContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => {
-    const { open } = useSidebar()
+interface SidebarNavItemProps {
+  icon: React.ElementType
+  label: string
+  href: string
+}
 
-    if (!open) {
-      return null
-    }
-
-    return <div ref={ref} className={cn("pl-4 pt-1 data-[state=closed]:hidden", className)} {...props} />
-  },
-)
-SidebarMenuContent.displayName = "SidebarMenuContent"
-
-const SidebarMenuItem = CollapsiblePrimitive.Root
-
-const SidebarMenuButton = React.forwardRef<
-  React.ElementRef<typeof CollapsiblePrimitive.Trigger>,
-  React.ComponentPropsWithoutRef<typeof CollapsiblePrimitive.Trigger>
->(({ className, children, ...props }, ref) => {
-  const { open } = useSidebar()
-
+function SidebarNavItem({ icon: Icon, label, href }: SidebarNavItemProps) {
+  const router = useRouter()
+  const pathname = usePathname()
+  const { setOpen } = useSidebar()
+  const isActive = pathname === href
   return (
-    <CollapsiblePrimitive.Trigger
-      ref={ref}
+    <button
+      onClick={() => {
+        router.push(href)
+        setOpen(false)
+      }}
       className={cn(
-        "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
-        open ? "justify-start" : "justify-center",
-        className,
+        "flex items-center gap-3 w-full px-3 py-2 rounded-lg font-medium text-base transition-colors",
+        isActive
+          ? "bg-[#f8d7da] text-[#9a0e20] shadow-sm"
+          : "text-gray-700 hover:bg-[#f8d7da]/60 hover:text-[#9a0e20]"
       )}
-      {...props}
     >
-      {children}
-    </CollapsiblePrimitive.Trigger>
+      <Icon className={cn("w-5 h-5", isActive ? "text-[#9a0e20]" : "text-gray-500")}/>
+      <span>{label}</span>
+    </button>
   )
-})
-SidebarMenuButton.displayName = "SidebarMenuButton"
-
-const SidebarMenuSub = React.forwardRef<
-  React.ElementRef<typeof CollapsiblePrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof CollapsiblePrimitive.Content>
->(({ className, ...props }, ref) => {
-  const { open } = useSidebar()
-
-  if (!open) {
-    return null
-  }
-
-  return <CollapsiblePrimitive.Content ref={ref} className={cn("pl-4 pt-1", className)} {...props} />
-})
-SidebarMenuSub.displayName = "SidebarMenuSub"
-
-const SidebarMenuSubItem = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => <div ref={ref} className={cn("", className)} {...props} />,
-)
-\
-SidebarMenuSubItem.displayName = "S  => (
-  <div ref=
-{
-  ref
-}
-className={cn("", className)}
-{
-  ...props
-}
-;/>
-))
-SidebarMenuSubItem.displayName = "SidebarMenuSubItem"
-
-const SidebarMenuSubButton = React.forwardRef<
-  HTMLButtonElement,
-  React.ButtonHTMLAttributes<HTMLButtonElement> & {
-    isActive?: boolean
-  }
->(({ className, isActive, ...props }, ref) => (
-  <button
-    ref={ref}
-    className={cn(
-      "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
-      isActive && "bg-accent text-accent-foreground",
-      className,
-    )}
-    {...props}
-  />
-))
-SidebarMenuSubButton.displayName = "SidebarMenuSubButton"
-
-function SidebarRail({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  const { open } = useSidebar()
-
-  if (open) {
-    return null
-  }
-
-  return <div className={cn("absolute inset-y-0 left-full h-full w-[1px] bg-border", className)} {...props} />
-}
-
-function SidebarInset({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  const { open } = useSidebar()
-
-  return (
-    <div
-      className={cn("flex flex-col transition-all duration-300", open ? "ml-[280px]" : "ml-[60px]", className)}
-      {...props}
-    />
-  )
-}
-
-export {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarHeader,
-  SidebarInset,
-  SidebarItem,
-  SidebarItemButton,
-  SidebarItemIcon,
-  SidebarItemLabel,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuContent,
-  SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
-  SidebarMenuTrigger,
-  SidebarProvider,
-  SidebarRail,
-  SidebarTrigger,
-  useSidebar,
 }
