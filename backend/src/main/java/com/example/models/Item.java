@@ -31,6 +31,8 @@ public class Item {
 
     @Enumerated(EnumType.STRING)
     private ItemType type;
+    
+    @Column(columnDefinition = "TEXT")
     private String image;
 
     @ManyToOne
