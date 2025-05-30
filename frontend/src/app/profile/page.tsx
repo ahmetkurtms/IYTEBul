@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import Navbar from "@/components/Navbar"
-import { FaCamera, FaMapMarkerAlt, FaCalendarAlt, FaPhone, FaEnvelope, FaEdit, FaCheck, FaTimes } from "react-icons/fa"
+import { FaCamera, FaMapMarkerAlt, FaCalendarAlt, FaPhone, FaEnvelope, FaEdit, FaCheck, FaTimes, FaTrash, FaEye } from "react-icons/fa"
 
 
 
@@ -21,6 +21,18 @@ interface UserProfile {
   nickname?: string
 }
 
+interface UserPost {
+  id: number
+  title: string
+  description: string
+  type: string
+  category: string
+  location: string
+  createdAt: string
+  imageBase64?: string
+  imageContentType?: string
+}
+
 export default function ProfilePage() {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
@@ -29,6 +41,12 @@ export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState("posts")
   const [editingField, setEditingField] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
+  const [userPosts, setUserPosts] = useState<UserPost[]>([])
+  const [postsLoading, setPostsLoading] = useState(false)
+  const [selectedPost, setSelectedPost] = useState<UserPost | null>(null)
+  const [showModal, setShowModal] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [postToDelete, setPostToDelete] = useState<UserPost | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
 
@@ -65,9 +83,127 @@ export default function ProfilePage() {
     }
   }
 
+  const fetchUserPosts = async () => {
+    if (!profile?.id) return
+
+    setPostsLoading(true)
+    try {
+      const token = localStorage.getItem("token")
+      if (!token) {
+        router.push("/auth")
+        return
+      }
+
+      const response = await fetch(`http://localhost:8080/api/v1/items/user/id/${profile.id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (response.ok) {
+        const posts = await response.json()
+        // Transform the posts to match our interface
+        const transformedPosts: UserPost[] = posts.map((post: any) => ({
+          id: post.item_id,
+          title: post.title,
+          description: post.description,
+          type: post.type,
+          category: post.category,
+          location: post.location?.nameEn || "Unknown Location",
+          createdAt: post.dateShared,
+          imageBase64: post.image,
+        }))
+        setUserPosts(transformedPosts)
+      } else if (response.status === 401) {
+        localStorage.removeItem("token")
+        router.push("/auth")
+      } else {
+        console.error("Failed to fetch user posts:", response.status)
+        setUserPosts([])
+      }
+    } catch (error) {
+      console.error("Postlar yüklenirken hata:", error)
+      setUserPosts([])
+    } finally {
+      setPostsLoading(false)
+    }
+  }
+
+  const deletePost = async (postId: number) => {
+    if (!profile?.id) return
+
+    try {
+      const token = localStorage.getItem("token")
+      if (!token) {
+        router.push("/auth")
+        return
+      }
+
+      const response = await fetch(`http://localhost:8080/api/v1/items/${postId}/user/${profile.id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (response.ok) {
+        // Remove the post from the state
+        setUserPosts(userPosts.filter(post => post.id !== postId))
+        console.log("Post deleted successfully")
+      } else if (response.status === 401) {
+        localStorage.removeItem("token")
+        router.push("/auth")
+      } else {
+        console.error("Failed to delete post:", response.status)
+        setError("Post silinemedi")
+      }
+    } catch (error) {
+      console.error("Post silinirken hata:", error)
+      setError("Post silinirken bir hata oluştu")
+    }
+  }
+
+  const showDeleteConfirmation = (post: UserPost) => {
+    setPostToDelete(post)
+    setShowDeleteConfirm(true)
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!postToDelete) return
+
+    await deletePost(postToDelete.id)
+    setShowDeleteConfirm(false)
+    setPostToDelete(null)
+    // Close the main modal if it's open
+    if (showModal) {
+      closeModal()
+    }
+  }
+
+  const handleDeleteCancel = () => {
+    setShowDeleteConfirm(false)
+    setPostToDelete(null)
+  }
+
+  const openPostModal = (post: UserPost) => {
+    setSelectedPost(post)
+    setShowModal(true)
+  }
+
+  const closeModal = () => {
+    setShowModal(false)
+    setSelectedPost(null)
+  }
+
   useEffect(() => {
     fetchProfile()
   }, [router])
+
+  useEffect(() => {
+    if (profile?.id && activeTab === "posts") {
+      fetchUserPosts()
+    }
+  }, [profile?.id, activeTab])
 
   const handleFieldSave = async (field: string) => {
     if (!editedProfile) return
@@ -250,21 +386,6 @@ export default function ProfilePage() {
                     fill
                     className="object-cover rounded-full"
                   />
-                  {/* Edit Button - Only show in Settings tab */}
-                  {activeTab === "settings" && (
-                    <button
-                      onClick={handleProfilePhotoClick}
-                      disabled={isSaving}
-                      className="absolute top-2 right-2 w-8 h-8 bg-white rounded-full shadow-lg flex items-center justify-center text-gray-600 hover:text-[#9a0e20] hover:bg-gray-50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                      title="Change profile photo"
-                    >
-                      {isSaving ? (
-                        <div className="w-4 h-4 border-2 border-gray-300 border-t-[#9a0e20] rounded-full animate-spin"></div>
-                      ) : (
-                        <FaEdit className="w-3 h-3" />
-                      )}
-                    </button>
-                  )}
                   {/* Hidden File Input */}
                   <input
                     ref={fileInputRef}
@@ -274,6 +395,28 @@ export default function ProfilePage() {
                     className="hidden"
                   />
                 </div>
+                
+                {/* Edit Button - Outside the photo, positioned at top-right */}
+                {activeTab === "settings" && (
+                  <button
+                    onClick={handleProfilePhotoClick}
+                    disabled={isSaving}
+                    className="absolute -top-2 -right-2 w-10 h-10 bg-[#9a0e20] rounded-full shadow-lg flex items-center justify-center text-white hover:bg-[#7a0b19] hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed border-2 border-white"
+                    title="Change profile photo"
+                  >
+                    {isSaving ? (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    ) : (
+                      <svg 
+                        className="w-5 h-5" 
+                        fill="currentColor" 
+                        viewBox="0 0 24 24"
+                      >
+                        <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                      </svg>
+                    )}
+                  </button>
+                )}
               </div>
 
               {/* User Info */}
@@ -335,6 +478,154 @@ export default function ProfilePage() {
             </div>
 
             {/* Tab Content */}
+            {activeTab === "posts" && (
+              <div className="p-8 border-t border-gray-200">
+                <div className="mb-8 flex justify-between items-center">
+                  <div>
+                    <h2 className="text-2xl font-semibold text-gray-900">My Posts</h2>
+                    <p className="text-gray-600 mt-1">View and manage your posts</p>
+                  </div>
+                  <div className="text-sm text-gray-500">
+                    {userPosts.length} post{userPosts.length !== 1 ? 's' : ''} total
+                  </div>
+                </div>
+
+                {postsLoading ? (
+                  <div className="flex justify-center items-center py-12">
+                    <div className="text-center">
+                      <div className="w-8 h-8 border-2 border-[#9a0e20] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                      <p className="text-gray-600">Loading your posts...</p>
+                    </div>
+                  </div>
+                ) : userPosts.length === 0 ? (
+                  <div className="text-center py-12">
+                    <div className="w-24 h-24 mx-auto mb-6 bg-gray-100 rounded-full flex items-center justify-center">
+                      <FaCamera className="w-8 h-8 text-gray-400" />
+                    </div>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No posts yet</h3>
+                    <p className="text-gray-600 mb-6">You haven't shared any posts yet. Start sharing to help others find their lost items!</p>
+                    <button
+                      onClick={() => router.push('/share')}
+                      className="bg-[#9a0e20] text-white px-6 py-2 rounded-lg hover:bg-[#7a0b19] transition-colors"
+                    >
+                      Share Your First Post
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {userPosts.map((post) => (
+                      <div key={post.id} className="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow">
+                        {/* Post Image */}
+                        <div className="relative h-48 rounded-t-lg overflow-hidden bg-gray-100">
+                          {post.imageBase64 ? (
+                            <>
+                              <img
+                                src={post.imageBase64.startsWith('data:') ? post.imageBase64 : `data:image/jpeg;base64,${post.imageBase64}`}
+                                alt={post.title}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  // If image fails to load, hide it
+                                  e.currentTarget.style.display = 'none';
+                                  // Show the fallback placeholder
+                                  const parent = e.currentTarget.parentElement;
+                                  const fallback = parent?.querySelector('.fallback-placeholder') as HTMLElement;
+                                  if (fallback) {
+                                    fallback.style.display = 'flex';
+                                  }
+                                }}
+                              />
+                              {/* Fallback placeholder (hidden by default) */}
+                              <div className="fallback-placeholder absolute inset-0 w-full h-full flex items-center justify-center bg-gray-100" style={{ display: 'none' }}>
+                                <FaCamera className="w-12 h-12 text-gray-400" />
+                              </div>
+                            </>
+                          ) : (
+                            <img
+                              src={
+                                post.category === 'Electronics' ? '/assets/electronic.jpeg' :
+                                post.category === 'Clothing' ? '/assets/clothes.jpeg' :
+                                post.category === 'Cards' ? '/assets/wallet.jpeg' :
+                                post.category === 'Other' ? '/assets/others.jpeg' :
+                                post.category === 'Accessories' ? '/assets/accessories.jpeg' :
+                                '/assets/others.jpeg'
+                              }
+                              alt="Default category image"
+                              className="w-full h-full object-cover"
+                            />
+                          )}
+                          {/* Post Type Badge */}
+                          <div className={`absolute top-3 left-3 px-2 py-1 rounded-full text-xs font-medium ${
+                            post.type === 'Lost' 
+                              ? 'bg-red-100 text-red-800' 
+                              : 'bg-green-100 text-green-800'
+                          }`}>
+                            {post.type}
+                          </div>
+                        </div>
+                        
+                        {/* Post Content */}
+                        <div className="p-4">
+                          <div className="flex justify-between items-start mb-2">
+                            <h3 className="font-semibold text-gray-900 text-lg line-clamp-1">
+                              {post.title}
+                            </h3>
+                            <div className="flex space-x-1 ml-2">
+                              <button
+                                onClick={() => openPostModal(post)}
+                                className="p-1.5 text-gray-400 hover:text-[#9a0e20] transition-colors"
+                                title="View post"
+                              >
+                                <FaEye className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => showDeleteConfirmation(post)}
+                                className="p-1.5 text-gray-400 hover:text-red-600 transition-colors"
+                                title="Delete post"
+                              >
+                                <FaTrash className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                          
+                          <p className="text-gray-600 text-sm mb-3 line-clamp-2">
+                            {post.description}
+                          </p>
+                          
+                          {/* Post Meta Info */}
+                          <div className="space-y-2">
+                            <div className="flex items-center text-xs text-gray-500">
+                              <span className="font-medium mr-2">Category:</span>
+                              <span className="bg-gray-100 px-2 py-1 rounded">
+                                {post.category}
+                              </span>
+                            </div>
+                            
+                            <div className="flex items-center text-xs text-gray-500">
+                              <FaMapMarkerAlt className="w-3 h-3 mr-1" />
+                              <span>{post.location}</span>
+                            </div>
+                            
+                            <div className="flex items-center text-xs text-gray-500">
+                              <FaCalendarAlt className="w-3 h-3 mr-1" />
+                              <span>
+                                {new Date(post.createdAt).toLocaleDateString('en-US', {
+                                  year: 'numeric',
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {activeTab === "settings" && (
               <div className="p-8 border-t border-gray-200">
                 <div className="mb-8">
@@ -406,7 +697,7 @@ export default function ProfilePage() {
                         Student ID
                       </label>
                       {editingField === "studentId" ? (
-                        <div className="space-y-2">
+                        <div className="flex items-center space-x-2">
                           <input
                             type="text"
                             value={editedProfile?.studentId || ""}
@@ -419,21 +710,19 @@ export default function ProfilePage() {
                             maxLength={11}
                             autoFocus
                           />
-                          <div className="flex justify-end space-x-2">
-                            <button
-                              onClick={() => handleFieldSave("studentId")}
-                              disabled={isSaving}
-                              className="p-2 text-green-600 hover:text-green-700 disabled:opacity-50"
-                            >
-                              <FaCheck className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={handleFieldCancel}
-                              className="p-2 text-red-600 hover:text-red-700"
-                            >
-                              <FaTimes className="w-4 h-4" />
-                            </button>
-                          </div>
+                          <button
+                            onClick={() => handleFieldSave("studentId")}
+                            disabled={isSaving}
+                            className="p-2 text-green-600 hover:text-green-700 disabled:opacity-50"
+                          >
+                            <FaCheck className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={handleFieldCancel}
+                            className="p-2 text-red-600 hover:text-red-700"
+                          >
+                            <FaTimes className="w-4 h-4" />
+                          </button>
                         </div>
                       ) : (
                         <div className="relative">
@@ -456,8 +745,8 @@ export default function ProfilePage() {
                         Phone
                       </label>
                       {editingField === "phoneNumber" ? (
-                        <div className="space-y-2">
-                          <div className="flex">
+                        <div className="flex items-center space-x-2">
+                          <div className="flex flex-1">
                             <select className="px-3 py-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-[#9a0e20] focus:border-transparent bg-white text-gray-900 border-r-0">
                               <option value="+90">🇹🇷 +90</option>
                               <option value="+1">🇺🇸 +1</option>
@@ -489,21 +778,19 @@ export default function ProfilePage() {
                               autoFocus
                             />
                           </div>
-                          <div className="flex justify-end space-x-2">
-                            <button
-                              onClick={() => handleFieldSave("phoneNumber")}
-                              disabled={isSaving}
-                              className="p-2 text-green-600 hover:text-green-700 disabled:opacity-50"
-                            >
-                              <FaCheck className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={handleFieldCancel}
-                              className="p-2 text-red-600 hover:text-red-700"
-                            >
-                              <FaTimes className="w-4 h-4" />
-                            </button>
-                          </div>
+                          <button
+                            onClick={() => handleFieldSave("phoneNumber")}
+                            disabled={isSaving}
+                            className="p-2 text-green-600 hover:text-green-700 disabled:opacity-50"
+                          >
+                            <FaCheck className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={handleFieldCancel}
+                            className="p-2 text-red-600 hover:text-red-700"
+                          >
+                            <FaTimes className="w-4 h-4" />
+                          </button>
                         </div>
                       ) : (
                         <div className="relative">
@@ -620,6 +907,192 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
+
+      {/* Post Detail Modal */}
+      {showModal && selectedPost && (
+        <div 
+          className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={closeModal}
+        >
+          <div 
+            className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex justify-between items-center p-6 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-900">Post Details</h2>
+              <button
+                onClick={closeModal}
+                className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <FaTimes className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Left Side - Image */}
+                <div className="space-y-4">
+                  <div className="relative">
+                    {selectedPost.imageBase64 ? (
+                      <div className="relative w-full h-96 rounded-lg overflow-hidden bg-gray-100">
+                        <img
+                          src={selectedPost.imageBase64.startsWith('data:') ? selectedPost.imageBase64 : `data:image/jpeg;base64,${selectedPost.imageBase64}`}
+                          alt={selectedPost.title}
+                          className="w-full h-full object-contain"
+                        />
+                      </div>
+                    ) : (
+                      <div className="relative w-full h-96 rounded-lg overflow-hidden bg-gray-100">
+                        <img
+                          src={
+                            selectedPost.category === 'Electronics' ? '/assets/electronic.jpeg' :
+                            selectedPost.category === 'Clothing' ? '/assets/clothes.jpeg' :
+                            selectedPost.category === 'Cards' ? '/assets/wallet.jpeg' :
+                            selectedPost.category === 'Other' ? '/assets/others.jpeg' :
+                            selectedPost.category === 'Accessories' ? '/assets/accessories.jpeg' :
+                            '/assets/others.jpeg'
+                          }
+                          alt="Default category image"
+                          className="w-full h-full object-contain"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Right Side - Details */}
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                      {selectedPost.title}
+                    </h3>
+                    <div className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${
+                      selectedPost.type === 'Lost' 
+                        ? 'bg-red-100 text-red-800' 
+                        : 'bg-green-100 text-green-800'
+                    }`}>
+                      {selectedPost.type}
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="text-lg font-semibold text-gray-900 mb-2">Description</h4>
+                    <p className="text-gray-700 leading-relaxed">
+                      {selectedPost.description}
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4">
+                    <div className="flex items-center p-3 bg-gray-50 rounded-lg">
+                      <div className="w-8 h-8 bg-[#9a0e20] rounded-full flex items-center justify-center mr-3">
+                        <span className="text-white text-xs font-bold">C</span>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">Category</p>
+                        <p className="text-sm text-gray-600">{selectedPost.category}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center p-3 bg-gray-50 rounded-lg">
+                      <div className="w-8 h-8 bg-[#9a0e20] rounded-full flex items-center justify-center mr-3">
+                        <FaMapMarkerAlt className="text-white text-xs" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">Location</p>
+                        <p className="text-sm text-gray-600">{selectedPost.location}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center p-3 bg-gray-50 rounded-lg">
+                      <div className="w-8 h-8 bg-[#9a0e20] rounded-full flex items-center justify-center mr-3">
+                        <FaCalendarAlt className="text-white text-xs" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">Posted</p>
+                        <p className="text-sm text-gray-600">
+                          {new Date(selectedPost.createdAt).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex space-x-3 pt-4">
+                    <button
+                      onClick={() => showDeleteConfirmation(selectedPost)}
+                      className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center"
+                    >
+                      <FaTrash className="w-4 h-4 mr-2" />
+                      Delete Post
+                    </button>
+                    <button
+                      onClick={closeModal}
+                      className="flex-1 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && postToDelete && (
+        <div 
+          className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={handleDeleteCancel}
+        >
+          <div 
+            className="bg-white rounded-lg max-w-md w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex justify-between items-center p-6 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-900">Postu Sil</h2>
+              <button
+                onClick={handleDeleteCancel}
+                className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <FaTimes className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6">
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">"{postToDelete.title}"</h3>
+                <p className="text-gray-600">Bu postu silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.</p>
+              </div>
+
+              <div className="flex space-x-3">
+                <button
+                  onClick={handleDeleteCancel}
+                  className="flex-1 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+                >
+                  İptal
+                </button>
+                <button
+                  onClick={handleDeleteConfirm}
+                  className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+                >
+                  Sil
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

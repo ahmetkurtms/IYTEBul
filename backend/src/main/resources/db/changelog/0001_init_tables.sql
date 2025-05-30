@@ -1,6 +1,3 @@
-
-
-
 CREATE TYPE log_action AS ENUM (
     'LOG_IN', 'LOG_OUT',
     'CREATE', 'UPDATE', 'DELETE',
@@ -21,11 +18,18 @@ CREATE TABLE users(
        surname varchar(255) NOT NULL,
        nickname varchar(30) UNIQUE NOT NULL,
        uni_mail varchar(255) UNIQUE NOT NULL
-                CHECK (uni_mail LIKE '%@std.iyte.edu.tr' OR uni_mail LIKE '%@std.iyte.edu.tr'),
-       password varchar(40) NOT NULL,
+                CHECK (uni_mail LIKE '%@std.iyte.edu.tr'),
+       password varchar(255) NOT NULL,
        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
        banned_status BOOLEAN NOT NULL DEFAULT FALSE,
-       role varchar(255) NOT NULL
+       role varchar(255) NOT NULL,
+       is_verified BOOLEAN DEFAULT FALSE,
+       verification_code VARCHAR(10),
+       phone_number VARCHAR(20),
+       bio TEXT,
+       profile_photo_url TEXT,
+       student_id VARCHAR(20),
+       department VARCHAR(255)
 );
 
 CREATE TABLE Country (
