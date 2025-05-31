@@ -1,13 +1,15 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Navbar from '@/components/Navbar';
+import ConfirmationModal from '@/components/ConfirmationModal';
 import { formatDistanceToNow } from 'date-fns';
 import { enUS } from 'date-fns/locale';
 import { FiSearch, FiSend, FiMoreVertical, FiPhone, FiVideo, FiPaperclip, FiSmile } from 'react-icons/fi';
 import { BsCheck, BsCheckAll } from 'react-icons/bs';
 import Image from 'next/image';
+import { messageApi, MessageResponse, ConversationResponse, UserProfile } from '@/lib/messageApi';
 
 interface User {
   id: number;
@@ -43,173 +45,327 @@ export default function Messages() {
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [showOptionsMenu, setShowOptionsMenu] = useState(false);
   const optionsMenuRef = useRef<HTMLDivElement>(null);
+  const [showClearModal, setShowClearModal] = useState(false);
 
-  // Mock data for demonstration
+  // Fix hydration issues
   useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // Function to refresh conversations
+  const refreshConversations = async () => {
+    try {
+      console.log('Refreshing conversations...');
+      const conversationsData = await messageApi.getConversations();
+      
+      // Convert backend data to frontend format
+      const convertedConversations: Conversation[] = conversationsData.map(conv => ({
+        id: conv.conversationId,
+        user: {
+          id: conv.otherUserId,
+          nickname: conv.otherUserNickname,
+          name: conv.otherUserName,
+          profilePhotoUrl: conv.otherUserProfilePhoto,
+          isOnline: conv.otherUserIsOnline,
+          lastSeen: conv.otherUserLastSeen
+        },
+        lastMessage: conv.lastMessage ? {
+          id: conv.lastMessage.messageId,
+          senderId: conv.lastMessage.senderId,
+          receiverId: conv.lastMessage.receiverId,
+          content: conv.lastMessage.messageText,
+          timestamp: conv.lastMessage.sentAt,
+          isRead: conv.lastMessage.isRead,
+          isSent: true
+        } : undefined,
+        unreadCount: conv.unreadCount
+      }));
+
+      // Remove duplicates based on user.id
+      const uniqueConversations = convertedConversations.filter((conv, index, self) => 
+        index === self.findIndex(c => c.user.id === conv.user.id)
+      );
+      
+      console.log('Conversations refreshed:', uniqueConversations);
+      setConversations(uniqueConversations);
+    } catch (error) {
+      console.error('Error refreshing conversations:', error);
+    }
+  };
+
+  // Function to clear messages
+  const handleClearMessages = async () => {
+    if (!selectedConversation) return;
+    setShowOptionsMenu(false);
+    setShowClearModal(true);
+  };
+
+  // Function to confirm clearing messages
+  const confirmClearMessages = async () => {
+    if (!selectedConversation) return;
+    
+    try {
+      console.log('Clearing messages with user:', selectedConversation.user.id);
+      
+      // Call backend API to clear messages
+      await messageApi.clearMessages(selectedConversation.user.id);
+      
+      // Clear messages in local state
+      setMessages([]);
+      
+      // Refresh conversations to update the conversation list
+      await refreshConversations();
+      
+      // Exit the chat by clearing selected conversation
+      setSelectedConversation(null);
+      
+      console.log('Messages cleared successfully and exited chat');
+      
+    } catch (error) {
+      console.error('Error clearing messages:', error);
+      alert('Failed to clear messages. Please try again.');
+    }
+  };
+
+  // Load conversations from backend
+  useEffect(() => {
+    if (!isMounted) return;
+    
     const token = localStorage.getItem('token');
     if (!token) {
       router.push('/auth');
       return;
     }
 
-    // Mock current user
-    setCurrentUser({
-      id: 1,
-      nickname: 'currentuser',
-      name: 'Current User',
-      profilePhotoUrl: undefined,
-      isOnline: true
-    });
+    const loadConversations = async () => {
+      try {
+        console.log('Loading conversations...');
+        setConnectionError(null);
+        
+        // Load current user and conversations in parallel
+        const [userProfile, conversationsData] = await Promise.all([
+          messageApi.getCurrentUser(),
+          messageApi.getConversations()
+        ]);
+        
+        console.log('User profile:', userProfile);
+        console.log('Conversations data:', conversationsData);
+        
+        // Set current user from API
+        const currentUserData = {
+          id: userProfile.userId,
+          nickname: userProfile.nickname,
+          name: userProfile.name,
+          profilePhotoUrl: userProfile.profilePhotoUrl,
+          isOnline: true
+        };
+        setCurrentUser(currentUserData);
+        console.log('Current user set:', currentUserData);
+        
+        // Convert backend data to frontend format
+        const convertedConversations: Conversation[] = conversationsData.map(conv => ({
+          id: conv.conversationId,
+          user: {
+            id: conv.otherUserId,
+            nickname: conv.otherUserNickname,
+            name: conv.otherUserName,
+            profilePhotoUrl: conv.otherUserProfilePhoto,
+            isOnline: conv.otherUserIsOnline,
+            lastSeen: conv.otherUserLastSeen
+          },
+          lastMessage: conv.lastMessage ? {
+            id: conv.lastMessage.messageId,
+            senderId: conv.lastMessage.senderId,
+            receiverId: conv.lastMessage.receiverId,
+            content: conv.lastMessage.messageText,
+            timestamp: conv.lastMessage.sentAt,
+            isRead: conv.lastMessage.isRead,
+            isSent: true
+          } : undefined,
+          unreadCount: conv.unreadCount
+        }));
 
-    // Mock conversations
-    const mockConversations: Conversation[] = [
-      {
-        id: 1,
-        user: {
-          id: 2,
-          nickname: 'kedimedi',
-          name: 'Ahmet Yılmaz',
-          profilePhotoUrl: undefined,
-          isOnline: true,
-          lastSeen: new Date().toISOString()
-        },
-        lastMessage: {
-          id: 1,
-          senderId: 2,
-          receiverId: 1,
-          content: 'I lost my blue jacket, have you seen it?',
-          timestamp: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
-          isRead: false,
-          isSent: true
-        },
-        unreadCount: 2
-      },
-      {
-        id: 2,
-        user: {
-          id: 3,
-          nickname: 'student123',
-          name: 'Elif Demir',
-          profilePhotoUrl: undefined,
-          isOnline: false,
-          lastSeen: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
-        },
-        lastMessage: {
-          id: 2,
-          senderId: 1,
-          receiverId: 3,
-          content: 'Thank you, I will come tomorrow',
-          timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-          isRead: true,
-          isSent: true
-        },
-        unreadCount: 0
-      },
-      {
-        id: 3,
-        user: {
-          id: 4,
-          nickname: 'techguy',
-          name: 'Mehmet Kaya',
-          profilePhotoUrl: undefined,
-          isOnline: true,
-          lastSeen: new Date().toISOString()
-        },
-        lastMessage: {
-          id: 3,
-          senderId: 4,
-          receiverId: 1,
-          content: 'I found a laptop bag, is it yours?',
-          timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-          isRead: true,
-          isSent: true
-        },
-        unreadCount: 0
+        console.log('Converted conversations:', convertedConversations);
+        
+        // Remove duplicates based on user.id
+        const uniqueConversations = convertedConversations.filter((conv, index, self) => 
+          index === self.findIndex(c => c.user.id === conv.user.id)
+        );
+        
+        console.log('Unique conversations after deduplication:', uniqueConversations);
+
+        setConversations(uniqueConversations);
+        
+        // Check if we need to start a conversation with a specific user
+        const startWithUserId = searchParams.get('startWith');
+        console.log('StartWith parameter:', startWithUserId);
+        
+        if (startWithUserId) {
+          const targetUserId = parseInt(startWithUserId);
+          console.log('Target user ID:', targetUserId);
+          
+          const existingConversation = uniqueConversations.find(
+            conv => conv.user.id === targetUserId
+          );
+          
+          if (existingConversation) {
+            console.log('Found existing conversation:', existingConversation);
+            // Select existing conversation
+            setSelectedConversation(existingConversation);
+          } else {
+            console.log('Creating new conversation for user:', targetUserId);
+            // Fetch user info and create a new conversation placeholder
+            try {
+              const targetUser = await messageApi.getUserById(targetUserId);
+              console.log('Target user details:', targetUser);
+              
+              const newConversation: Conversation = {
+                id: 0, // Use 0 for new conversations
+                user: {
+                  id: targetUserId,
+                  nickname: targetUser.nickname,
+                  name: targetUser.name,
+                  profilePhotoUrl: targetUser.profilePhotoUrl,
+                  isOnline: false,
+                  lastSeen: new Date().toISOString()
+                },
+                lastMessage: undefined,
+                unreadCount: 0
+              };
+              setSelectedConversation(newConversation);
+              // Also add to conversations list, but prevent duplicates
+              setConversations(prev => {
+                const exists = prev.some(c => c.user.id === newConversation.user.id);
+                if (exists) return prev;
+                return [newConversation, ...prev];
+              });
+              console.log('New conversation created and selected');
+            } catch (error) {
+              console.error('Error fetching user info:', error);
+              // Fallback to basic conversation
+              const newConversation: Conversation = {
+                id: 0, // Use 0 for new conversations
+                user: {
+                  id: targetUserId,
+                  nickname: 'Unknown User',
+                  name: 'Unknown User',
+                  profilePhotoUrl: undefined,
+                  isOnline: false,
+                  lastSeen: new Date().toISOString()
+                },
+                lastMessage: undefined,
+                unreadCount: 0
+              };
+              setSelectedConversation(newConversation);
+              console.log('Fallback conversation created');
+            }
+          }
+          
+          // Clear the URL parameter
+          router.replace('/messages', { scroll: false });
+        }
+        
+      } catch (error) {
+        console.error('Error loading conversations:', error);
+        
+        // Check if it's a network error (backend not running)
+        if (error instanceof TypeError && error.message.includes('fetch')) {
+          setConnectionError('Backend server is not running. Please start the backend.');
+        } else if (error instanceof Error && error.message.includes('token')) {
+          setConnectionError('Authentication error. Please login again.');
+          localStorage.removeItem('token');
+          router.push('/auth');
+        } else {
+          setConnectionError(`Connection error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+      } finally {
+        setLoading(false);
       }
-    ];
+    };
 
-    setConversations(mockConversations);
-    setLoading(false);
-  }, [router]);
+    loadConversations();
+  }, [router, searchParams, isMounted]);
 
-  // Mock messages for selected conversation
+  // Load messages when conversation is selected
   useEffect(() => {
     if (selectedConversation) {
-      const mockMessages: Message[] = [
-        {
-          id: 1,
-          senderId: selectedConversation.user.id,
-          receiverId: 1,
-          content: 'Hello! I saw your lost item post.',
-          timestamp: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
-          isRead: true,
-          isSent: true
-        },
-        {
-          id: 2,
-          senderId: 1,
-          receiverId: selectedConversation.user.id,
-          content: 'Hello! Which item are we talking about?',
-          timestamp: new Date(Date.now() - 55 * 60 * 1000).toISOString(),
-          isRead: true,
-          isSent: true
-        },
-        {
-          id: 3,
-          senderId: selectedConversation.user.id,
-          receiverId: 1,
-          content: 'I lost my blue jacket, have you seen it?',
-          timestamp: new Date(Date.now() - 50 * 60 * 1000).toISOString(),
-          isRead: true,
-          isSent: true
-        },
-        {
-          id: 4,
-          senderId: 1,
-          receiverId: selectedConversation.user.id,
-          content: 'Which building did you lose it in? I will keep an eye out.',
-          timestamp: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
-          isRead: true,
-          isSent: true
-        },
-        {
-          id: 5,
-          senderId: selectedConversation.user.id,
-          receiverId: 1,
-          content: 'In the Computer Engineering building, I might have left it somewhere on the 3rd floor.',
-          timestamp: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
-          isRead: false,
-          isSent: true
+      const loadMessages = async () => {
+        try {
+          const messagesData = await messageApi.getMessagesWithUser(selectedConversation.user.id);
+          
+          // Convert backend data to frontend format
+          const convertedMessages: Message[] = messagesData.map(msg => ({
+            id: msg.messageId,
+            senderId: msg.senderId,
+            receiverId: msg.receiverId,
+            content: msg.messageText,
+            timestamp: msg.sentAt,
+            isRead: msg.isRead,
+            isSent: true
+          }));
+
+          setMessages(convertedMessages);
+          console.log('Messages loaded:', convertedMessages);
+          console.log('Current user ID for comparison:', currentUser?.id);
+        } catch (error) {
+          console.error('Error loading messages:', error);
         }
-      ];
-      setMessages(mockMessages);
+      };
+
+      loadMessages();
     }
-  }, [selectedConversation]);
+  }, [selectedConversation, currentUser]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSendMessage = () => {
-    if (!newMessage.trim() || !selectedConversation) return;
+  const handleSendMessage = async () => {
+    if (!newMessage.trim() || !selectedConversation || !currentUser) return;
 
-    const message: Message = {
-      id: Date.now(),
-      senderId: 1,
-      receiverId: selectedConversation.user.id,
-      content: newMessage.trim(),
-      timestamp: new Date().toISOString(),
-      isRead: false,
-      isSent: true
-    };
+    try {
+      // Send message to backend
+      await messageApi.sendMessage(selectedConversation.user.id, newMessage.trim());
 
-    setMessages(prev => [...prev, message]);
-    setNewMessage('');
+      // Add message to local state immediately for better UX
+      const message: Message = {
+        id: Date.now(),
+        senderId: currentUser.id,
+        receiverId: selectedConversation.user.id,
+        content: newMessage.trim(),
+        timestamp: new Date().toISOString(),
+        isRead: false,
+        isSent: true
+      };
+
+      console.log('Sending message:', message);
+      console.log('Current user ID:', currentUser.id);
+
+      setMessages(prev => [...prev, message]);
+      setNewMessage('');
+
+      // Update the conversation's last message locally first for immediate feedback
+      setConversations(prev => prev.map(conv => 
+        conv.user.id === selectedConversation.user.id
+          ? { ...conv, lastMessage: message }
+          : conv
+      ));
+
+      // Refresh conversations from backend to get accurate data
+      await refreshConversations();
+
+    } catch (error) {
+      console.error('Error sending message:', error);
+      alert('Failed to send message. Please try again.');
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -220,7 +376,6 @@ export default function Messages() {
   };
 
   const filteredConversations = conversations.filter(conv =>
-    conv.user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     conv.user.nickname.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -235,14 +390,41 @@ export default function Messages() {
     return () => document.removeEventListener('mousedown', handleClick);
   }, [showOptionsMenu]);
 
-  if (loading) {
+  if (loading || !isMounted) {
     return (
       <div className="min-h-screen bg-gray-50">
         <Navbar />
         <div className="flex items-center justify-center h-96">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#9a0e20] mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading messages...</p>
+            {connectionError ? (
+              <>
+                <div className="w-24 h-24 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <span className="text-red-500 text-4xl">⚠️</span>
+                </div>
+                <h3 className="text-xl font-semibold text-red-600 mb-2">Connection Error</h3>
+                <p className="text-gray-600 mb-4">{connectionError}</p>
+                <div className="space-y-2">
+                  <p className="text-sm text-gray-500">To fix this issue:</p>
+                  <ol className="text-sm text-gray-600 text-left max-w-md mx-auto space-y-1">
+                    <li>1. Open terminal in backend folder</li>
+                    <li>2. Run: <code className="bg-gray-100 px-2 py-1 rounded">./gradlew bootRun</code></li>
+                    <li>3. Wait for "Started Application" message</li>
+                    <li>4. Refresh this page</li>
+                  </ol>
+                </div>
+                <button 
+                  onClick={() => window.location.reload()}
+                  className="mt-4 px-4 py-2 bg-[#9a0e20] text-white rounded-lg hover:bg-[#7a0b19] transition-colors"
+                >
+                  Retry Connection
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#9a0e20] mx-auto mb-4"></div>
+                <p className="text-gray-600">Loading messages...</p>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -275,10 +457,10 @@ export default function Messages() {
           <div className="flex-1 overflow-y-auto">
             {filteredConversations.map((conversation) => (
               <div
-                key={conversation.id}
+                key={`conv-${conversation.user.id}`}
                 onClick={() => setSelectedConversation(conversation)}
                 className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${
-                  selectedConversation?.id === conversation.id ? 'bg-[#f8d7da]' : ''
+                  selectedConversation?.user.id === conversation.user.id ? 'bg-[#f8d7da]' : ''
                 }`}
               >
                 <div className="flex items-center space-x-3">
@@ -287,14 +469,14 @@ export default function Messages() {
                       {conversation.user.profilePhotoUrl ? (
                         <Image
                           src={conversation.user.profilePhotoUrl}
-                          alt={conversation.user.name}
+                          alt={conversation.user.nickname}
                           width={48}
                           height={48}
                           className="w-full h-full object-cover"
                         />
                       ) : (
                         <span className="text-gray-600 font-semibold">
-                          {conversation.user.name.charAt(0).toUpperCase()}
+                          {conversation.user.nickname.charAt(0).toUpperCase()}
                         </span>
                       )}
                     </div>
@@ -306,7 +488,7 @@ export default function Messages() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
                       <h3 className="font-semibold text-gray-900 truncate">
-                        {conversation.user.name}
+                        {conversation.user.nickname}
                       </h3>
                       <span className="text-xs text-gray-500">
                         {conversation.lastMessage && formatDistanceToNow(
@@ -344,14 +526,14 @@ export default function Messages() {
                       {selectedConversation.user.profilePhotoUrl ? (
                         <Image
                           src={selectedConversation.user.profilePhotoUrl}
-                          alt={selectedConversation.user.name}
+                          alt={selectedConversation.user.nickname}
                           width={40}
                           height={40}
                           className="w-full h-full object-cover"
                         />
                       ) : (
                         <span className="text-gray-600 font-semibold">
-                          {selectedConversation.user.name.charAt(0).toUpperCase()}
+                          {selectedConversation.user.nickname.charAt(0).toUpperCase()}
                         </span>
                       )}
                     </div>
@@ -361,7 +543,7 @@ export default function Messages() {
                   </div>
                   <div>
                     <h2 className="font-semibold text-gray-900">
-                      {selectedConversation.user.name}
+                      {selectedConversation.user.nickname}
                     </h2>
                     <p className="text-sm text-gray-500">
                       {selectedConversation.user.isOnline ? 'Online' : 
@@ -383,11 +565,7 @@ export default function Messages() {
                     {showOptionsMenu && (
                       <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10">
                         <button
-                          onClick={() => {
-                            // Handle clear messages
-                            setMessages([]);
-                            setShowOptionsMenu(false);
-                          }}
+                          onClick={handleClearMessages}
                           className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 transition-colors flex items-center space-x-2"
                         >
                           <span>🗑️</span>
@@ -396,7 +574,7 @@ export default function Messages() {
                         <button
                           onClick={() => {
                             // Handle block user
-                            alert(`${selectedConversation?.user.name} has been blocked`);
+                            alert(`${selectedConversation?.user.nickname} has been blocked`);
                             setShowOptionsMenu(false);
                           }}
                           className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center space-x-2"
@@ -408,7 +586,7 @@ export default function Messages() {
                         <button
                           onClick={() => {
                             // Handle report user
-                            alert(`${selectedConversation?.user.name} has been reported`);
+                            alert(`${selectedConversation?.user.nickname} has been reported`);
                             setShowOptionsMenu(false);
                           }}
                           className="w-full px-4 py-2 text-left text-sm text-orange-600 hover:bg-orange-50 transition-colors flex items-center space-x-2"
@@ -424,41 +602,46 @@ export default function Messages() {
 
               {/* Messages */}
               <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
-                {messages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={`flex ${message.senderId === 1 ? 'justify-end' : 'justify-start'}`}
-                  >
+                {messages.map((message) => {
+                  const isCurrentUser = message.senderId === currentUser?.id;
+                  console.log(`Message ${message.id}: senderId=${message.senderId}, currentUserId=${currentUser?.id}, isCurrentUser=${isCurrentUser}`);
+                  
+                  return (
                     <div
-                      className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                        message.senderId === 1
-                          ? 'bg-[#9a0e20] text-white'
-                          : 'bg-white text-gray-900 border border-gray-200'
-                      }`}
+                      key={`msg-${message.id}-${message.timestamp}`}
+                      className={`flex ${isCurrentUser ? 'justify-end' : 'justify-start'}`}
                     >
-                      <p className="text-sm">{message.content}</p>
-                      <div className={`flex items-center justify-end mt-1 space-x-1 ${
-                        message.senderId === 1 ? 'text-white/70' : 'text-gray-500'
-                      }`}>
-                        <span className="text-xs">
-                          {new Date(message.timestamp).toLocaleTimeString('tr-TR', {
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </span>
-                        {message.senderId === 1 && (
-                          <div className="text-xs">
-                            {message.isRead ? (
-                              <BsCheckAll className="w-4 h-4 text-blue-300" />
-                            ) : (
-                              <BsCheck className="w-4 h-4" />
-                            )}
-                          </div>
-                        )}
+                      <div
+                        className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg shadow-sm ${
+                          isCurrentUser
+                            ? 'bg-[#9a0e20] text-white rounded-br-none'
+                            : 'bg-white text-gray-900 border border-gray-200 rounded-bl-none'
+                        }`}
+                      >
+                        <p className="text-sm">{message.content}</p>
+                        <div className={`flex items-center justify-end mt-1 space-x-1 ${
+                          isCurrentUser ? 'text-white/70' : 'text-gray-500'
+                        }`}>
+                          <span className="text-xs">
+                            {new Date(message.timestamp).toLocaleTimeString('tr-TR', {
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </span>
+                          {isCurrentUser && (
+                            <div className="text-xs">
+                              {message.isRead ? (
+                                <BsCheckAll className="w-4 h-4 text-blue-300" />
+                              ) : (
+                                <BsCheck className="w-4 h-4" />
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
                 <div ref={messagesEndRef} />
               </div>
 
@@ -510,6 +693,18 @@ export default function Messages() {
           )}
         </div>
       </div>
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showClearModal}
+        onClose={() => setShowClearModal(false)}
+        onConfirm={confirmClearMessages}
+        title="Clear Messages"
+        message={`Are you sure you want to clear all messages with ${selectedConversation?.user.nickname}? This action cannot be undone and messages will be removed from your view.`}
+        confirmText="Clear Messages"
+        cancelText="Cancel"
+        type="danger"
+      />
     </div>
   );
-} 
+}

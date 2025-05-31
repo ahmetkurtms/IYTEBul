@@ -23,6 +23,7 @@ interface Post {
   createdAt: string;
   userName: string;
   userEmail: string;
+  userId: number;
   imageBase64?: string;
   imageContentType?: string;
   userProfilePhoto?: string;
@@ -52,6 +53,18 @@ export default function Home() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
   const [sortSelectedOnOpen, setSortSelectedOnOpen] = useState(false);
+
+  // Handle sending message to post owner
+  const handleSendMessage = async (userId: number, userName: string) => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      router.push('/auth');
+      return;
+    }
+
+    // Redirect to messages page with the user ID as a parameter
+    router.push(`/messages?startWith=${userId}`);
+  };
 
   // Function to highlight search terms in text
   const highlightText = (text: string, searchTerm: string) => {
@@ -561,7 +574,7 @@ export default function Home() {
 
                     <div className="mt-4 flex justify-end">
                       <button
-                        onClick={() => {/* TODO: Mesajlaşma fonksiyonu eklenecek */}}
+                        onClick={() => handleSendMessage(post.userId, post.userName)}
                         className="flex items-center space-x-2 bg-[#9a0e20] text-white px-4 py-2 rounded-lg hover:bg-[#7a0b19] transition-colors"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">

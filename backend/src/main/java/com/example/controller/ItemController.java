@@ -142,6 +142,7 @@ public class ItemController {
                     post.put("createdAt", item.getDateShared().toString());
                     post.put("userName", item.getUser().getNickname());
                     post.put("userEmail", item.getUser().getUniMail());
+                    post.put("userId", item.getUser().getUser_id());
                     // Add user profile photo
                     if (item.getUser().getProfilePhotoUrl() != null) {
                         post.put("userProfilePhoto", item.getUser().getProfilePhotoUrl());

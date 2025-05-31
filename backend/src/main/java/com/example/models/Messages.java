@@ -15,10 +15,27 @@ public class Messages {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long message_id;
-    private Long sender_ID;
-    private  Long receiver_ID;
-    private String message_text;
-    private  LocalDateTime sent_at;
-
+    private Long messageId;
+    
+    @ManyToOne
+    @JoinColumn(name = "sender_id", referencedColumnName = "users_id", nullable = false)
+    private User sender;
+    
+    @ManyToOne
+    @JoinColumn(name = "receiver_id", referencedColumnName = "users_id", nullable = false)
+    private User receiver;
+    
+    @Column(columnDefinition = "TEXT")
+    private String messageText;
+    
+    @Column(name = "sent_at")
+    private LocalDateTime sentAt;
+    
+    @Column(name = "is_read")
+    private Boolean isRead = false;
+    
+    @PrePersist
+    protected void onCreate() {
+        sentAt = LocalDateTime.now();
+    }
 }
