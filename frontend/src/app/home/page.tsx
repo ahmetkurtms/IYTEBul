@@ -12,6 +12,7 @@ import Navbar from '@/components/Navbar';
 import { formatDistanceToNow } from 'date-fns';
 import { enUS } from 'date-fns/locale';
 import { FiMenu, FiSearch, FiFilter, FiCalendar, FiGrid, FiList } from 'react-icons/fi';
+import { FaSort } from "react-icons/fa6";
 
 interface Post {
   id: number;
@@ -53,6 +54,8 @@ export default function Home() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
   const [sortSelectedOnOpen, setSortSelectedOnOpen] = useState(false);
+  const [sortPopoverOpen, setSortPopoverOpen] = useState(false); // Sort popover'ı kapatma
+  const sortRef = useRef<HTMLDivElement>(null);
 
   // Handle sending message to post owner
   const handleSendMessage = async (userId: number, userName: string) => {
@@ -229,6 +232,17 @@ export default function Home() {
     return () => document.removeEventListener('mousedown', handleClick);
   }, [filterPopoverOpen]);
 
+  // Sort popover'ı kapatma
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (sortPopoverOpen && sortRef.current && !sortRef.current.contains(e.target as Node)) {
+        setSortPopoverOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [sortPopoverOpen]);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-100 via-gray-50 to-slate-200">
       {/* Hamburger Menu Icon */}
@@ -245,7 +259,7 @@ export default function Home() {
                   <button
                     onClick={() => setPostType('all')}
                     className={`px-4 py-2 rounded-lg text-sm font-medium ${
-                      postType === 'all' ? 'bg-[#9a0e20] text-white' : 'text-gray-700 hover:bg-gray-200'
+                      postType === 'all' ? 'bg-[#9a0e20] text-white' : 'text-gray-700 hover:bg-gray-200 cursor-pointer'
                     }`}
                   >
                     All
@@ -253,7 +267,7 @@ export default function Home() {
                   <button
                     onClick={() => setPostType('lost')}
                     className={`px-4 py-2 rounded-lg text-sm font-medium ${
-                      postType === 'lost' ? 'bg-[#9a0e20] text-white' : 'text-gray-700 hover:bg-gray-200'
+                      postType === 'lost' ? 'bg-[#9a0e20] text-white' : 'text-gray-700 hover:bg-gray-200 cursor-pointer'
                     }`}
                   >
                     Lost
@@ -261,7 +275,7 @@ export default function Home() {
                   <button
                     onClick={() => setPostType('found')}
                     className={`px-4 py-2 rounded-lg text-sm font-medium ${
-                      postType === 'found' ? 'bg-[#9a0e20] text-white' : 'text-gray-700 hover:bg-gray-200'
+                      postType === 'found' ? 'bg-[#9a0e20] text-white' : 'text-gray-700 hover:bg-gray-200 cursor-pointer'
                     }`}
                   >
                     Found
@@ -285,28 +299,22 @@ export default function Home() {
                     {/* Calendar Icon and Popover */}
                     <div className="relative flex items-center">
                       <FiCalendar
-                        className="text-2xl text-gray-600 ml-3 cursor-pointer hover:text-gray-800 transition-colors"
+                        className={`text-2xl ml-3 cursor-pointer hover:text-gray-800 transition-colors ${((dateStart && dateStart.trim()) || (dateEnd && dateEnd.trim())) ? 'text-[#9a0e20]' : 'text-gray-600'}`} // Date range için renk değişimi
                         onClick={() => setDatePopoverOpen(v => !v)}
                       />
-                      {datePopoverOpen && (
+                      {datePopoverOpen && ( // Date range'ten sort by date kaldırıldı
                         <div ref={calendarRef} className="absolute right-0 top-full mt-2 z-50 w-64 bg-white rounded-xl shadow-xl border border-gray-100 p-4 animate-fade-in">
-                          <div className="font-semibold text-gray-900 mb-2">Sort by Date</div>
-                          <div className="flex flex-col gap-1 mb-4">
-                            <button
-                              className={`flex items-center gap-2 px-2 py-1 rounded hover:bg-gray-100 ${sortOrder === 'desc' ? 'font-bold text-[#9a0e20]' : 'text-gray-700'}`}
-                              onClick={() => setSortOrder('desc')}
-                            >
-                              {sortOrder === 'desc' ? <span>✓</span> : <span className="inline-block w-4" />} Newest to oldest
-                            </button>
-                            <button
-                              className={`flex items-center gap-2 px-2 py-1 rounded hover:bg-gray-100 ${sortOrder === 'asc' ? 'font-bold text-[#9a0e20]' : 'text-gray-700'}`}
-                              onClick={() => setSortOrder('asc')}
-                            >
-                              {sortOrder === 'asc' ? <span>✓</span> : <span className="inline-block w-4" />} Oldest to newest
-                            </button>
+                          <div className="flex justify-between items-center mb-2">
+                            <div className="font-semibold text-gray-900">Date Range</div>
+                            {((dateStart && dateStart.trim()) || (dateEnd && dateEnd.trim())) && (
+                              <button
+                                onClick={() => { setDateStart(''); setDateEnd(''); }}
+                                className="text-sm text-[#9a0e20] hover:text-[#801d21] font-medium cursor-pointer"
+                              >
+                                Clear all
+                              </button>
+                            )}
                           </div>
-                          <hr className="my-2" />
-                          <div className="font-semibold text-gray-900 mb-2">Date Range</div>
                           <div className="flex flex-col gap-2 mb-4">
                             <div>
                               <label className="block text-xs text-gray-500 mb-1">Start</label>
@@ -333,7 +341,7 @@ export default function Home() {
                             </div>
                           </div>
                           <button
-                            className="w-full bg-[#9a0e20] text-white rounded-lg py-2 font-semibold hover:bg-[#801d21] transition-colors"
+                            className="w-full bg-[#9a0e20] text-white rounded-lg py-2 font-semibold hover:bg-[#801d21] transition-colors cursor-pointer"
                             onClick={() => setDatePopoverOpen(false)}
                           >
                             Apply
@@ -452,13 +460,41 @@ export default function Home() {
                     </div>
                   </div>
                 </div>
-
+                {/* SORT BY DATE BUTONU - DAHA SONRA POZİSYONU DEĞİŞEBİLİR! */}
+                <div className="relative">
+                  <button
+                    className="flex items-center px-2 py-2 bg-white border border-gray-200 rounded-lg shadow-sm text-gray-800 font-medium hover:bg-gray-50 transition-colors cursor-pointer"
+                    onClick={() => setSortPopoverOpen(v => !v)}
+                  >
+                    <FaSort className={`mr-2 text-lg ${((dateStart && dateStart.trim()) || (dateEnd && dateEnd.trim())) ? 'text-[#9a0e20]' : ''}`} />
+                    Sort by Date
+                  </button>
+                  {sortPopoverOpen && (
+                    <div ref={sortRef} className="absolute right-0 top-full mt-2 z-50 w-56 bg-white rounded-xl shadow-xl border border-gray-100 p-4 animate-fade-in">
+                      <div className="font-semibold text-gray-900 mb-2">Sort by Date</div>
+                      <div className="flex flex-col gap-1 mb-2">
+                        <button
+                          className={`flex items-center gap-2 px-2 py-1 rounded hover:bg-gray-100 ${sortOrder === 'desc' ? 'font-bold text-[#9a0e20]' : 'text-gray-700 cursor-pointer'}`}
+                          onClick={() => { setSortOrder('desc'); setSortPopoverOpen(false); }}
+                        >
+                          {sortOrder === 'desc' ? <span>✓</span> : <span className="inline-block w-4" />} Newest to oldest
+                        </button>
+                        <button
+                          className={`flex items-center gap-2 px-2 py-1 rounded hover:bg-gray-100 ${sortOrder === 'asc' ? 'font-bold text-[#9a0e20]' : 'text-gray-700 cursor-pointer'}`}
+                          onClick={() => { setSortOrder('asc'); setSortPopoverOpen(false); }}
+                        >
+                          {sortOrder === 'asc' ? <span>✓</span> : <span className="inline-block w-4" />} Oldest to newest
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
                 {/* Görünüm Seçenekleri */}
                 <div className="flex items-center bg-gray-50 rounded-lg p-1">
                   <button
                     onClick={() => setViewMode('double')}
                     className={`p-2 rounded-lg ${
-                      viewMode === 'double' ? 'bg-[#9a0e20] text-white' : 'text-gray-700 hover:bg-gray-200'
+                      viewMode === 'double' ? 'bg-[#9a0e20] text-white' : 'text-gray-700 hover:bg-gray-200 cursor-pointer'
                     }`}
                     title="İkili Görünüm"
                   >
@@ -467,7 +503,7 @@ export default function Home() {
                   <button
                     onClick={() => setViewMode('single')}
                     className={`p-2 rounded-lg ${
-                      viewMode === 'single' ? 'bg-[#9a0e20] text-white' : 'text-gray-700 hover:bg-gray-200'
+                      viewMode === 'single' ? 'bg-[#9a0e20] text-white' : 'text-gray-700 hover:bg-gray-200 cursor-pointer'
                     }`}
                     title="Tekli Görünüm"
                   >
@@ -478,7 +514,7 @@ export default function Home() {
                 {/* Yeni İlan Butonu */}
                 <button
                   onClick={() => router.push('/posts/create')}
-                  className="bg-[#9a0e20] text-white px-4 py-2 rounded-lg hover:bg-[#7a0b19] transition-colors flex items-center space-x-2 text-sm font-medium"
+                  className="bg-[#9a0e20] text-white px-4 py-2 rounded-lg hover:bg-[#7a0b19] transition-colors flex items-center space-x-2 text-sm font-medium cursor-pointer"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
