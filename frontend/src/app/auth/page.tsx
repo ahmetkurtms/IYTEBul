@@ -298,7 +298,7 @@ export default function Auth() {
                   {isLogin && (
                     <button
                       type="button"
-                      className="w-full text-xs text-[#9a0e20] hover:underline mb-2 text-right"
+                      className="w-full text-xs text-[#9a0e20] hover:underline mb-2 text-right cursor-pointer"
                       onClick={() => router.push('/auth/forgot-password')}
                     >
                       Forgot password?
@@ -338,7 +338,7 @@ export default function Auth() {
                   className={`w-full py-2 rounded-lg transition-colors text-lg font-semibold tracking-wide shadow-md
                     ${isSubmitting || !isValid
                       ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                      : 'bg-[#9a0e20] text-white hover:bg-[#7a0b19]'}
+                      : 'bg-[#9a0e20] text-white hover:bg-[#7a0b19] cursor-pointer'}
                   `}
                 >
                   {isSubmitting ? 'Processing...' : (isLogin ? 'Login' : 'Sign Up')}
