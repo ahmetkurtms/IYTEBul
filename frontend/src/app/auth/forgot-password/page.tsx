@@ -116,16 +116,21 @@ export default function ForgotPassword() {
       <div className="absolute inset-0 bg-black/75 z-0"></div>
       {/* Logo above the card */}
       <div className="flex flex-col items-center -mt-20 z-10">
-        <Image
-          src="/assets/iyte_logo_tr.png"
-          alt="IYTE Logo"
-          width={120}
-          height={120}
-          className="object-contain"
-          style={{ background: 'transparent', borderRadius: 0 }}
-        />
+        <div className="rounded-full p-1">
+          <Image
+            src="/assets/iyte_logo_tr.png"
+            alt="IYTE Logo"
+            width={200}
+            height={200}
+            priority
+            className="object-contain"
+          />
+        </div>
+        <h2 className="mt-6 text-center text-4xl font-extrabold text-white">
+          IYTEBul
+        </h2>
       </div>
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8 relative z-10 flex flex-col items-center mt-4">
+      <div className="mt-8 bg-white/90 backdrop-blur-md py-8 px-8 shadow-2xl rounded-2xl min-h-[100px] w-full max-w-xl flex flex-col justify-center items-center relative z-10">
         {step === 'email' && (
           <>
             <h2 className="text-2xl font-bold text-black text-center mb-6">Forgot Password</h2>
@@ -134,7 +139,6 @@ export default function ForgotPassword() {
                 Email
               </label>
               <div className="flex items-center border rounded-lg p-2 bg-white">
-                <svg className="w-5 h-5 text-gray-400 mr-2" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M16 12H8m8 0a4 4 0 11-8 0 4 4 0 018 0zm8 4v1a3 3 0 01-3 3H7a3 3 0 01-3-3v-1a9 9 0 0118 0z" /></svg>
                 <input
                   id="email"
                   type="email"
@@ -148,17 +152,17 @@ export default function ForgotPassword() {
               <button
                 type="submit"
                 disabled={!email.endsWith('@std.iyte.edu.tr') || email.trim() === ''}
-                className={`w-full bg-[#9a0e20] text-white py-2 rounded-lg font-semibold transition-colors
+                className={`w-full py-2 rounded-lg transition-colors text-lg font-semibold tracking-wide shadow-md
                   ${(!email.endsWith('@std.iyte.edu.tr') || email.trim() === '')
                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    : 'hover:bg-[#7a0b19]'}
+                    : 'bg-[#9a0e20] text-white hover:bg-[#7a0b19] cursor-pointer'}
                 `}
               >
                 Send Verification Code
               </button>
               <button
                 type="button"
-                className="w-full text-sm text-gray-600 hover:text-[#9a0e20] mt-2 underline"
+                className="w-full text-sm text-gray-600 hover:text-[#9a0e20] mt-2 underline cursor-pointer"
                 onClick={() => router.push('/auth')}
               >
                 Back to Login
@@ -177,29 +181,29 @@ export default function ForgotPassword() {
                 value={code}
                 onChange={e => setCode(e.target.value)}
                 placeholder="Enter verification code"
-                className="w-full p-2 border rounded-lg text-base text-gray-700"
+                className="w-full p-2 border rounded-lg bg-white text-gray-800 text-base transition-all duration-300 focus:ring-2 focus:ring-[#9a0e20] focus:border-[#9a0e20] hover:border-[#9a0e20]"
               />
               <button
                 type="submit"
                 disabled={code.length !== 6}
-                className={`w-full bg-[#9a0e20] text-white py-2 rounded-lg font-semibold transition-colors
+                className={`w-full py-2 rounded-lg transition-colors text-lg font-semibold tracking-wide shadow-md
                   ${code.length !== 6
                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    : 'hover:bg-[#7a0b19]'}
+                    : 'bg-[#9a0e20] text-white hover:bg-[#7a0b19] cursor-pointer'}
                 `}
               >
                 Verify Code
               </button>
               <button
                 type="button"
-                className="w-full bg-gray-200 text-gray-800 py-2 rounded-lg font-semibold hover:bg-gray-300 transition-colors"
+                className="w-full py-2 rounded-lg transition-colors text-lg font-semibold tracking-wide shadow-md bg-[#9a0e20] text-white hover:bg-[#7a0b19] cursor-pointer"
                 onClick={handleSendAgain}
               >
                 Send Again
               </button>
               <button
                 type="button"
-                className="w-full text-sm text-gray-600 hover:text-[#9a0e20] mt-2 underline"
+                className="w-full text-sm text-gray-600 hover:text-[#9a0e20] mt-2 underline cursor-pointer"
                 onClick={() => router.push('/auth')}
               >
                 Back to Login
@@ -217,18 +221,18 @@ export default function ForgotPassword() {
                 value={newPassword}
                 onChange={e => setNewPassword(e.target.value)}
                 placeholder="New Password"
-                className="w-full p-2 border rounded-lg text-base text-gray-700"
+                className="w-full p-2 border rounded-lg bg-white text-gray-800 text-base transition-all duration-300 focus:ring-2 focus:ring-[#9a0e20] focus:border-[#9a0e20] hover:border-[#9a0e20]"
               />
               <input
                 type="password"
                 value={confirmPassword}
                 onChange={e => setConfirmPassword(e.target.value)}
                 placeholder="Confirm New Password"
-                className="w-full p-2 border rounded-lg text-base text-gray-700"
+                className="w-full p-2 border rounded-lg bg-white text-gray-800 text-base transition-all duration-300 focus:ring-2 focus:ring-[#9a0e20] focus:border-[#9a0e20] hover:border-[#9a0e20]"
               />
               <button
                 type="submit"
-                className="w-full bg-[#9a0e20] text-white py-2 rounded-lg font-semibold hover:bg-[#7a0b19] transition-colors"
+                className="w-full py-2 rounded-lg transition-colors text-lg font-semibold tracking-wide shadow-md bg-[#9a0e20] text-white hover:bg-[#7a0b19] cursor-pointer"
               >
                 Reset Password
               </button>
