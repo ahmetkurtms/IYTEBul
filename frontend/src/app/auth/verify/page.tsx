@@ -140,13 +140,13 @@ export default function VerifyRegistration() {
               </div>
               <button
                 type="submit"
-                className="w-full bg-[#9a0e20] text-white py-2 rounded-lg font-semibold hover:bg-[#7a0b19] transition-colors"
+                className="w-full bg-[#9a0e20] text-white py-2 rounded-lg font-semibold hover:bg-[#7a0b19] transition-colors cursor-pointer"
               >
                 Send Verification Code
               </button>
               <button
                 type="button"
-                className="w-full text-sm text-gray-600 hover:text-[#9a0e20] mt-2 underline"
+                className="w-full text-sm text-gray-600 hover:text-[#9a0e20] mt-2 underline cursor-pointer"
                 onClick={() => router.push('/auth')}
               >
                 Back to Login
@@ -169,20 +169,20 @@ export default function VerifyRegistration() {
               />
               <button
                 type="submit"
-                className="w-full bg-[#9a0e20] text-white py-2 rounded-lg font-semibold hover:bg-[#7a0b19] transition-colors"
+                className="w-full bg-[#9a0e20] text-white py-2 rounded-lg font-semibold hover:bg-[#7a0b19] transition-colors cursor-pointer"
               >
                 Verify Code
               </button>
               <button
                 type="button"
-                className="w-full bg-gray-200 text-gray-800 py-2 rounded-lg font-semibold hover:bg-gray-300 transition-colors"
+                className="w-full bg-gray-200 text-gray-800 py-2 rounded-lg font-semibold hover:bg-gray-300 transition-colors cursor-pointer"
                 onClick={handleSendAgain}
               >
                 Send Again
               </button>
               <button
                 type="button"
-                className="w-full text-sm text-gray-600 hover:text-[#9a0e20] mt-2 underline"
+                className="w-full text-sm text-gray-600 hover:text-[#9a0e20] mt-2 underline cursor-pointer"
                 onClick={() => router.push('/auth')}
               >
                 Back to Login

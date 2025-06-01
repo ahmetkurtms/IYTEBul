@@ -181,7 +181,6 @@ export default function ProfilePage() {
         localStorage.removeItem("token")
         router.push("/auth")
       } else {
-        console.error("Failed to fetch user posts:", response.status)
         setUserPosts([])
       }
     } catch (error) {
@@ -569,7 +568,7 @@ export default function ProfilePage() {
                     <p className="text-gray-600 mb-6">You haven't shared any posts yet. Start sharing to help others find their lost items!</p>
                     <button
                       onClick={() => router.push('/posts/create')}
-                      className="bg-[#9a0e20] text-white px-6 py-2 rounded-lg hover:bg-[#7a0b19] transition-colors"
+                      className="bg-[#9a0e20] text-white px-6 py-2 rounded-lg hover:bg-[#7a0b19] transition-colors cursor-pointer"
                     >
                       Share Your First Post
                     </button>

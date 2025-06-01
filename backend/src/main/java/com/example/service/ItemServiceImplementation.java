@@ -63,10 +63,10 @@ public class ItemServiceImplementation implements ItemService {
     }
 
     @Override
-    public List<Item> findItemByUserId(Long userId) throws  Exception{
+    public List<Item> findItemByUserId(Long userId) throws Exception {
         List<Item> items = itemRepository.findItemByUserId(userId);
-        if (items == null || items.isEmpty()) {
-            throw new Exception("No items found for userId: " + userId);
+        if (items == null) {
+            return java.util.Collections.emptyList();
         }
         return items;
     }

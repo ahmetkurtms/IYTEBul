@@ -177,13 +177,13 @@ export default function Navbar() {
               <div className="flex space-x-3">
                 <button
                   onClick={() => setShowLogoutModal(false)}
-                  className="flex-1 px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors"
+                  className="flex-1 px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={confirmLogout}
-                  className="flex-1 px-4 py-2 text-white bg-[#9a0e20] rounded-lg hover:bg-[#7a0b19] transition-colors"
+                  className="flex-1 px-4 py-2 text-white bg-[#9a0e20] rounded-lg hover:bg-[#7a0b19] transition-colors cursor-pointer"
                 >
                   Logout
                 </button>
