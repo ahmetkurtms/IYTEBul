@@ -6,6 +6,8 @@ import Navbar from '@/components/ui/Navbar';
 import Image from 'next/image';
 import Select from 'react-select';
 import customSelectStyles from '@/lib/customSelectStyles';
+import ReactCrop, { Crop, PixelCrop } from 'react-image-crop';
+import 'react-image-crop/dist/ReactCrop.css';
 
 export default function CreatePost() {
   const router = useRouter();
@@ -25,6 +27,20 @@ export default function CreatePost() {
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const dropRef = useRef<HTMLDivElement>(null);
   const [isDragActive, setIsDragActive] = useState(false);
+  
+  // Crop states
+  const [showCropModal, setShowCropModal] = useState(false);
+  const [originalImage, setOriginalImage] = useState<string | null>(null);
+  const [crop, setCrop] = useState<Crop>({
+    unit: '%',
+    width: 100,
+    height: 75,
+    x: 0,
+    y: 12.5
+  });
+  const [completedCrop, setCompletedCrop] = useState<PixelCrop | null>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -119,14 +135,77 @@ export default function CreatePost() {
     fetchData();
   }, [router]);
 
+  // Generate cropped image
+  const generateCroppedImage = (image: HTMLImageElement, crop: PixelCrop): Promise<string> => {
+    const canvas = canvasRef.current;
+    if (!canvas || !crop.width || !crop.height) {
+      return Promise.reject('Canvas or crop dimensions not available');
+    }
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      return Promise.reject('Canvas context not available');
+    }
+
+    // Set canvas size to 4:3 aspect ratio
+    const aspectRatio = 4 / 3;
+    const targetWidth = 400;
+    const targetHeight = targetWidth / aspectRatio;
+    
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+
+    const scaleX = image.naturalWidth / image.width;
+    const scaleY = image.naturalHeight / image.height;
+
+    ctx.drawImage(
+      image,
+      crop.x * scaleX,
+      crop.y * scaleY,
+      crop.width * scaleX,
+      crop.height * scaleY,
+      0,
+      0,
+      targetWidth,
+      targetHeight
+    );
+
+    return new Promise((resolve) => {
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(blob);
+        }
+      }, 'image/jpeg', 0.9);
+    });
+  };
+
+  // Handle crop completion
+  const handleCropComplete = async () => {
+    if (completedCrop && imgRef.current && canvasRef.current) {
+      try {
+        const croppedImageDataUrl = await generateCroppedImage(imgRef.current, completedCrop);
+        setImagePreview(croppedImageDataUrl);
+        setImageBase64(croppedImageDataUrl.split(',')[1]);
+        setShowCropModal(false);
+      } catch (error) {
+        console.error('Error generating cropped image:', error);
+        setError('Failed to crop image. Please try again.');
+      }
+    }
+  };
+
+  // Handle image selection
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setImage(file);
       const reader = new FileReader();
       reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-        setImageBase64((reader.result as string).split(',')[1]);
+        const result = reader.result as string;
+        setOriginalImage(result);
+        setShowCropModal(true);
       };
       reader.readAsDataURL(file);
     }
@@ -295,13 +374,22 @@ export default function CreatePost() {
                       />
                       <button
                         type="button"
-                        onClick={e => { e.stopPropagation(); setImage(null); setImagePreview(null); }}
+                        onClick={e => { e.stopPropagation(); setImage(null); setImagePreview(null); setOriginalImage(null); }}
                         className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                           <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
                         </svg>
                       </button>
+                      {originalImage && (
+                        <button
+                          type="button"
+                          onClick={e => { e.stopPropagation(); setShowCropModal(true); }}
+                          className="absolute bottom-2 right-2 bg-gray-700 text-white text-xs px-3 py-1 rounded-full hover:bg-gray-800 transition-colors"
+                        >
+                          Edit Crop
+                        </button>
+                      )}
                     </div>
                   ) : (
                     <>
@@ -399,6 +487,109 @@ export default function CreatePost() {
           </form>
         </div>
       </main>
+
+      {/* Hidden canvas for image processing */}
+      <canvas ref={canvasRef} style={{ display: 'none' }} />
+
+      {/* Crop Modal */}
+      {showCropModal && originalImage && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-2">
+          <div className="bg-white rounded-lg max-w-3xl w-full max-h-[85vh] overflow-hidden">
+            <div className="flex justify-between items-center p-3 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900">Crop Photo</h2>
+              <button
+                onClick={() => setShowCropModal(false)}
+                className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="p-4">
+              <div className="text-center mb-3">
+                <p className="text-xs text-gray-600">Drag to adjust the crop area. The image will be cropped to 4:3 ratio.</p>
+              </div>
+
+              <div className="flex justify-center mb-4">
+                <div className="max-w-full max-h-[350px] overflow-hidden">
+                  <ReactCrop
+                    crop={crop}
+                    onChange={(newCrop) => setCrop(newCrop)}
+                    onComplete={(pixelCrop) => setCompletedCrop(pixelCrop)}
+                    aspect={4 / 3}
+                    minWidth={100}
+                    minHeight={75}
+                    keepSelection={true}
+                    style={{ maxHeight: '350px' }}
+                  >
+                    <img
+                      ref={imgRef}
+                      src={originalImage}
+                      alt="Crop preview"
+                      style={{ 
+                        maxWidth: '100%', 
+                        maxHeight: '350px',
+                        objectFit: 'contain'
+                      }}
+                      onLoad={() => {
+                        // Set initial crop when image loads
+                        const { naturalWidth, naturalHeight } = imgRef.current!;
+                        const aspectRatio = 4 / 3;
+                        
+                        let cropWidth, cropHeight, cropX, cropY;
+                        
+                        if (naturalWidth / naturalHeight > aspectRatio) {
+                          // Image is wider, fit to height
+                          cropHeight = naturalHeight;
+                          cropWidth = cropHeight * aspectRatio;
+                          cropX = (naturalWidth - cropWidth) / 2;
+                          cropY = 0;
+                        } else {
+                          // Image is taller, fit to width
+                          cropWidth = naturalWidth;
+                          cropHeight = cropWidth / aspectRatio;
+                          cropX = 0;
+                          cropY = (naturalHeight - cropHeight) / 2;
+                        }
+                        
+                        const { width: displayWidth, height: displayHeight } = imgRef.current!;
+                        const scaleX = displayWidth / naturalWidth;
+                        const scaleY = displayHeight / naturalHeight;
+                        
+                        setCrop({
+                          unit: 'px',
+                          x: cropX * scaleX,
+                          y: cropY * scaleY,
+                          width: cropWidth * scaleX,
+                          height: cropHeight * scaleY
+                        });
+                      }}
+                    />
+                  </ReactCrop>
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={() => setShowCropModal(false)}
+                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors text-sm"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCropComplete}
+                  disabled={!completedCrop}
+                  className="px-4 py-2 text-white bg-[#9a0e20] rounded-lg hover:bg-[#7a0b19] transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                >
+                  Apply Crop
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 } 
