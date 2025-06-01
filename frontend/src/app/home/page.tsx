@@ -20,6 +20,7 @@ import { MdOutlineAdd } from "react-icons/md";
 
 import { MdOutlineGridView } from "react-icons/md";
 import { BsCheckCircle, BsXCircle } from 'react-icons/bs';
+import { messageApi } from '@/lib/messageApi';
 
 // Custom 4x4 grid icon component (16 squares)
 const QuadGridIcon = ({ className = "h-6 w-6" }: { className?: string }) => (
@@ -127,9 +128,18 @@ export default function Home() {
 
   // Handle sending message text (for now just show alert, later integrate with backend)
   const handleSendMessageText = async (userId: number, userName: string, message: string) => {
-    console.log(`Sending message to ${userName} (ID: ${userId}): ${message}`);
-    alert(`Message sent to ${userName}: "${message}"`);
-    // TODO: Integrate with backend to actually send the message
+    try {
+      await messageApi.sendMessage({
+        receiverId: userId,
+        messageText: message,
+        imageBase64List: []
+      });
+      showNotification('success', `Message sent to ${userName}`);
+      // İsteğe bağlı: mesajlar sayfasına yönlendir
+      // router.push(`/messages?startWith=${userId}`);
+    } catch (error) {
+      showNotification('error', 'Failed to send message');
+    }
   };
 
   // Handle reporting a post
