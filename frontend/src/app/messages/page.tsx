@@ -6,7 +6,7 @@ import Navbar from '@/components/ui/Navbar';
 import ConfirmationModal from '@/components/ConfirmationModal';
 import { formatDistanceToNow } from 'date-fns';
 import { enUS } from 'date-fns/locale';
-import { FiSearch, FiSend, FiMoreVertical, FiPaperclip, FiSmile, FiMessageCircle, FiX, FiImage, FiChevronUp, FiChevronDown } from 'react-icons/fi';
+import { FiSearch, FiSend, FiMoreVertical, FiPaperclip, FiSmile, FiMessageCircle, FiX, FiImage, FiChevronUp, FiChevronDown, FiCamera } from 'react-icons/fi';
 import { BsCheck, BsCheckAll } from 'react-icons/bs';
 import Image from 'next/image';
 import { messageApi, MessageResponse, ConversationResponse, UserProfile } from '@/lib/messageApi';
@@ -157,7 +157,8 @@ export default function Messages() {
           content: conv.lastMessage.messageText,
           timestamp: conv.lastMessage.sentAt,
           isRead: conv.lastMessage.isRead,
-          isSent: true
+          isSent: true,
+          imageBase64List: conv.lastMessage.imageBase64List || []
         } : undefined,
         unreadCount: conv.unreadCount
       }));
@@ -261,7 +262,8 @@ export default function Messages() {
             content: conv.lastMessage.messageText,
             timestamp: conv.lastMessage.sentAt,
             isRead: conv.lastMessage.isRead,
-            isSent: true
+            isSent: true,
+            imageBase64List: conv.lastMessage.imageBase64List || []
           } : undefined,
           unreadCount: conv.unreadCount
         }));
@@ -728,7 +730,12 @@ export default function Messages() {
                       </div>
                       <div className="flex items-center justify-between">
                         <p className="text-sm text-gray-600 truncate">
-                          {conversation.lastMessage?.content}
+                          {conversation.lastMessage?.content
+                            ? conversation.lastMessage.content
+                            : (conversation.lastMessage?.imageBase64List && conversation.lastMessage.imageBase64List.length > 0
+                                ? (<span className="flex items-center gap-1 text-gray-600"><FiCamera className="inline-block" /> Photo</span>)
+                                : null)
+                          }
                         </p>
                         {conversation.unreadCount > 0 && (
                           <span className="bg-[#9a0e20] text-white text-xs rounded-full px-2 py-0.5 min-w-[20px] text-center shadow">
@@ -940,10 +947,10 @@ export default function Messages() {
                       }`}
                     >
                       <div
-                        className={`relative max-w-xs lg:max-w-md px-4 py-2 shadow transition-all duration-300 ${
+                        className={`relative max-w-xs lg:max-w-md px-2 py-1 shadow transition-all duration-300 ${
                           isCurrentUser
-                            ? 'bg-[#A6292A] text-white self-end rounded-tl-2xl rounded-tr-2xl rounded-bl-2xl rounded-br-md'
-                            : 'bg-[#f1f0f0] text-gray-900 self-start rounded-tl-2xl rounded-tr-2xl rounded-br-2xl rounded-bl-md'
+                            ? 'bg-[#A6292A] text-white self-end rounded-tl-lg rounded-tr-2xl rounded-bl-lg rounded-br-md'
+                            : 'bg-[#f1f0f0] text-gray-900 self-start rounded-tl-2xl rounded-tr-lg rounded-br-lg rounded-bl-2xl'
                         } ${
                           isCurrentSearchResult ? 'ring-4 ring-[#A6292A]/40 ring-offset-2 scale-105' : 
                           isHighlighted ? 'ring-4 ring-[#A6292A]/30 ring-offset-2' : ''
@@ -988,7 +995,7 @@ export default function Messages() {
                               ))}
                             </div>
                           )}
-                          <div className="absolute right-2 bottom-2 flex items-center gap-1 text-xs text-gray-400">
+                          <div className="absolute right-[-4px] bottom-[-2px] flex items-center gap-1 text-xs text-gray-400">
                             <span>
                               {new Date(message.timestamp).toLocaleTimeString('tr-TR', {
                                 hour: '2-digit',
