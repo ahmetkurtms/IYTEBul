@@ -6,7 +6,7 @@ import Navbar from '@/components/Navbar';
 import ConfirmationModal from '@/components/ConfirmationModal';
 import { formatDistanceToNow } from 'date-fns';
 import { enUS } from 'date-fns/locale';
-import { FiSearch, FiSend, FiMoreVertical, FiPhone, FiVideo, FiPaperclip, FiSmile } from 'react-icons/fi';
+import { FiSearch, FiSend, FiMoreVertical, FiPaperclip, FiSmile, FiMessageCircle, FiX } from 'react-icons/fi';
 import { BsCheck, BsCheckAll } from 'react-icons/bs';
 import Image from 'next/image';
 import { messageApi, MessageResponse, ConversationResponse, UserProfile } from '@/lib/messageApi';
@@ -53,6 +53,8 @@ export default function Messages() {
   const [showOptionsMenu, setShowOptionsMenu] = useState(false);
   const optionsMenuRef = useRef<HTMLDivElement>(null);
   const [showClearModal, setShowClearModal] = useState(false);
+  const [messageSearchQuery, setMessageSearchQuery] = useState('');
+  const [showMessageSearch, setShowMessageSearch] = useState(false);
 
   // Fix hydration issues
   useEffect(() => {
@@ -379,6 +381,11 @@ export default function Messages() {
     conv.user.nickname.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // Filter messages based on search query
+  const filteredMessages = messages.filter(message =>
+    message.content.toLowerCase().includes(messageSearchQuery.toLowerCase())
+  );
+
   // Close options menu on outside click
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -394,36 +401,49 @@ export default function Messages() {
     return (
       <div className="min-h-screen bg-gray-50">
         <Navbar />
-        <div className="flex items-center justify-center h-96">
+        <div className="flex items-center justify-center h-[calc(100vh-80px)]">
           <div className="text-center">
             {connectionError ? (
-              <>
-                <div className="w-24 h-24 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-red-500 text-4xl">⚠️</span>
+              <div className="max-w-md mx-auto">
+                <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <span className="text-red-400 text-3xl">⚠️</span>
                 </div>
-                <h3 className="text-xl font-semibold text-red-600 mb-2">Connection Error</h3>
-                <p className="text-gray-600 mb-4">{connectionError}</p>
-                <div className="space-y-2">
-                  <p className="text-sm text-gray-500">To fix this issue:</p>
-                  <ol className="text-sm text-gray-600 text-left max-w-md mx-auto space-y-1">
-                    <li>1. Open terminal in backend folder</li>
-                    <li>2. Run: <code className="bg-gray-100 px-2 py-1 rounded">./gradlew bootRun</code></li>
-                    <li>3. Wait for "Started Application" message</li>
-                    <li>4. Refresh this page</li>
+                <h3 className="text-2xl font-semibold text-red-500 mb-4">Connection Error</h3>
+                <p className="text-gray-600 mb-6 leading-relaxed">{connectionError}</p>
+                <div className="bg-gray-50 rounded-lg p-6 mb-6">
+                  <p className="text-sm font-medium text-gray-700 mb-3">To fix this issue:</p>
+                  <ol className="text-sm text-gray-600 text-left space-y-2">
+                    <li className="flex items-start">
+                      <span className="bg-gray-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs mr-3 mt-0.5">1</span>
+                      Open terminal in backend folder
+                    </li>
+                    <li className="flex items-start">
+                      <span className="bg-gray-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs mr-3 mt-0.5">2</span>
+                      Run: <code className="bg-gray-200 px-2 py-1 rounded ml-1">./gradlew bootRun</code>
+                    </li>
+                    <li className="flex items-start">
+                      <span className="bg-gray-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs mr-3 mt-0.5">3</span>
+                      Wait for "Started Application" message
+                    </li>
+                    <li className="flex items-start">
+                      <span className="bg-gray-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs mr-3 mt-0.5">4</span>
+                      Refresh this page
+                    </li>
                   </ol>
                 </div>
                 <button 
                   onClick={() => window.location.reload()}
-                  className="mt-4 px-4 py-2 bg-[#9a0e20] text-white rounded-lg hover:bg-[#7a0b19] transition-colors"
+                  className="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium"
                 >
                   Retry Connection
                 </button>
-              </>
+              </div>
             ) : (
-              <>
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#9a0e20] mx-auto mb-4"></div>
-                <p className="text-gray-600">Loading messages...</p>
-              </>
+              <div>
+                <div className="animate-spin rounded-full h-16 w-16 border-4 border-gray-400 border-t-transparent mx-auto mb-6"></div>
+                <h3 className="text-xl font-medium text-gray-800 mb-2">Loading Messages</h3>
+                <p className="text-gray-500">Please wait while we load your conversations...</p>
+              </div>
             )}
           </div>
         </div>
@@ -435,238 +455,354 @@ export default function Messages() {
     <div className="min-h-screen bg-gray-50">
       <Navbar />
       
-      <div className="flex h-[calc(100vh-80px)]">
-        {/* Conversations List */}
-        <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
-          {/* Header */}
-          <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-[#9a0e20] to-[#7a0b19]">
-            <h1 className="text-xl font-bold text-white mb-3">Messages</h1>
+      <div className="flex h-[calc(100vh-80px)] max-w-7xl mx-auto">
+        {/* Conversations Sidebar */}
+        <div className="w-80 bg-white border-r border-gray-100 flex flex-col">
+          {/* Sidebar Header */}
+          <div className="p-6 border-b border-gray-100 bg-white">
+            <div className="flex items-center justify-between mb-4">
+              <h1 className="text-xl font-medium text-gray-800">Messages</h1>
+              <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
+                <FiMessageCircle className="w-4 h-4 text-gray-500" />
+              </div>
+            </div>
             <div className="relative">
-              <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <input
                 type="text"
                 placeholder="Search conversations..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-3 rounded-lg border-0 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-200 focus:bg-white transition-all placeholder-gray-400 text-gray-700"
               />
             </div>
           </div>
 
-          {/* Conversations */}
+          {/* Conversations List */}
           <div className="flex-1 overflow-y-auto">
-            {filteredConversations.map((conversation) => (
-              <div
-                key={`conv-${conversation.user.id}`}
-                onClick={() => setSelectedConversation(conversation)}
-                className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${
-                  selectedConversation?.user.id === conversation.user.id ? 'bg-[#f8d7da]' : ''
-                }`}
-              >
-                <div className="flex items-center space-x-3">
-                  <div className="relative">
-                    <div className="w-12 h-12 rounded-full bg-gray-300 flex items-center justify-center overflow-hidden">
-                      {conversation.user.profilePhotoUrl ? (
-                        <Image
-                          src={conversation.user.profilePhotoUrl}
-                          alt={conversation.user.nickname}
-                          width={48}
-                          height={48}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <span className="text-gray-600 font-semibold">
-                          {conversation.user.nickname.charAt(0).toUpperCase()}
-                        </span>
-                      )}
-                    </div>
-                    {conversation.user.isOnline && (
-                      <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
-                    )}
+            {filteredConversations.length === 0 ? (
+              <div className="flex items-center justify-center h-64">
+                <div className="text-center">
+                  <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <FiMessageCircle className="w-8 h-8 text-gray-400" />
                   </div>
-                  
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-semibold text-gray-900 truncate">
-                        {conversation.user.nickname}
-                      </h3>
-                      <span className="text-xs text-gray-500">
-                        {conversation.lastMessage && formatDistanceToNow(
-                          new Date(conversation.lastMessage.timestamp),
-                          { addSuffix: true, locale: enUS }
+                  <h3 className="text-lg font-medium text-gray-700 mb-2">No conversations yet</h3>
+                  <p className="text-gray-400 text-sm">Start a new conversation to begin messaging</p>
+                </div>
+              </div>
+            ) : (
+              filteredConversations.map((conversation) => (
+                <div
+                  key={`conv-${conversation.user.id}`}
+                  onClick={() => setSelectedConversation(conversation)}
+                  className={`group p-4 border-b border-gray-50 cursor-pointer transition-all duration-200 hover:bg-gray-50 ${
+                    selectedConversation?.user.id === conversation.user.id 
+                      ? 'bg-gray-50 border-r-4 border-r-gray-400' 
+                      : ''
+                  }`}
+                >
+                  <div className="flex items-center space-x-4">
+                    {/* Avatar */}
+                    <div className="relative flex-shrink-0">
+                      <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden">
+                        {conversation.user.profilePhotoUrl ? (
+                          <Image
+                            src={conversation.user.profilePhotoUrl}
+                            alt={conversation.user.nickname}
+                            width={48}
+                            height={48}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <span className="text-gray-500 font-medium text-base">
+                            {conversation.user.nickname.charAt(0).toUpperCase()}
+                          </span>
                         )}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm text-gray-600 truncate">
-                        {conversation.lastMessage?.content}
-                      </p>
-                      {conversation.unreadCount > 0 && (
-                        <span className="bg-[#9a0e20] text-white text-xs rounded-full px-2 py-1 min-w-[20px] text-center">
-                          {conversation.unreadCount}
-                        </span>
+                      </div>
+                      {conversation.user.isOnline && (
+                        <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-white"></div>
                       )}
+                    </div>
+                    
+                    {/* Conversation Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-1">
+                        <h3 className="font-medium text-gray-800 truncate text-base">
+                          {conversation.user.nickname}
+                        </h3>
+                        <div className="flex items-center space-x-2">
+                          {conversation.lastMessage && (
+                            <span className="text-xs text-gray-400 font-normal">
+                              {formatDistanceToNow(
+                                new Date(conversation.lastMessage.timestamp),
+                                { addSuffix: false, locale: enUS }
+                              )}
+                            </span>
+                          )}
+                          {conversation.unreadCount > 0 && (
+                            <span className="bg-[#A6292A] text-white text-xs rounded-full px-2 py-1 min-w-[20px] h-5 flex items-center justify-center font-normal">
+                              {conversation.unreadCount > 99 ? '99+' : conversation.unreadCount}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center">
+                        <p className="text-sm text-gray-500 truncate flex-1">
+                          {conversation.lastMessage?.content || 'Start a conversation...'}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
 
         {/* Chat Area */}
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col bg-white">
           {selectedConversation ? (
             <>
               {/* Chat Header */}
-              <div className="p-4 border-b border-gray-200 bg-white flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="relative">
-                    <div className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center overflow-hidden">
-                      {selectedConversation.user.profilePhotoUrl ? (
-                        <Image
-                          src={selectedConversation.user.profilePhotoUrl}
-                          alt={selectedConversation.user.nickname}
-                          width={40}
-                          height={40}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <span className="text-gray-600 font-semibold">
-                          {selectedConversation.user.nickname.charAt(0).toUpperCase()}
-                        </span>
+              <div className="px-6 py-4 border-b border-gray-100 bg-white">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    {/* User Avatar */}
+                    <div className="relative">
+                      <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden">
+                        {selectedConversation.user.profilePhotoUrl ? (
+                          <Image
+                            src={selectedConversation.user.profilePhotoUrl}
+                            alt={selectedConversation.user.nickname}
+                            width={40}
+                            height={40}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <span className="text-gray-500 font-medium text-base">
+                            {selectedConversation.user.nickname.charAt(0).toUpperCase()}
+                          </span>
+                        )}
+                      </div>
+                      {selectedConversation.user.isOnline && (
+                        <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-white"></div>
                       )}
                     </div>
-                    {selectedConversation.user.isOnline && (
-                      <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
-                    )}
+                    
+                    {/* User Info */}
+                    <div>
+                      <h2 className="font-medium text-gray-800 text-base">
+                        {selectedConversation.user.nickname}
+                      </h2>
+                      <p className="text-sm font-normal">
+                        {selectedConversation.user.isOnline ? (
+                          <span className="text-green-500">● Online</span>
+                        ) : (
+                          <span className="text-gray-400">
+                            Last seen {formatDistanceToNow(new Date(selectedConversation.user.lastSeen || ''), { addSuffix: true, locale: enUS })}
+                          </span>
+                        )}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h2 className="font-semibold text-gray-900">
-                      {selectedConversation.user.nickname}
-                    </h2>
-                    <p className="text-sm text-gray-500">
-                      {selectedConversation.user.isOnline ? 'Online' : 
-                        `Last seen: ${formatDistanceToNow(new Date(selectedConversation.user.lastSeen || ''), { addSuffix: true, locale: enUS })}`
-                      }
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="relative" ref={optionsMenuRef}>
+                  
+                  {/* Action Buttons */}
+                  <div className="flex items-center space-x-2">
+                    {/* Message Search */}
                     <button 
-                      onClick={() => setShowOptionsMenu(!showOptionsMenu)}
-                      className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                      onClick={() => setShowMessageSearch(!showMessageSearch)}
+                      className={`p-2 rounded-lg transition-colors ${showMessageSearch ? 'bg-gray-100' : 'hover:bg-gray-50'}`}
                     >
-                      <FiMoreVertical className="w-5 h-5 text-gray-600" />
+                      <FiSearch className="w-5 h-5 text-gray-500" />
                     </button>
                     
-                    {/* Options Dropdown Menu */}
-                    {showOptionsMenu && (
-                      <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10">
-                        <button
-                          onClick={handleClearMessages}
-                          className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 transition-colors flex items-center space-x-2"
-                        >
-                          <span>🗑️</span>
-                          <span>Clear Messages</span>
-                        </button>
-                        <button
-                          onClick={() => {
-                            // Handle block user
-                            alert(`${selectedConversation?.user.nickname} has been blocked`);
-                            setShowOptionsMenu(false);
-                          }}
-                          className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center space-x-2"
-                        >
-                          <span>🚫</span>
-                          <span>Block User</span>
-                        </button>
-                        <hr className="my-1 border-gray-200" />
-                        <button
-                          onClick={() => {
-                            // Handle report user
-                            alert(`${selectedConversation?.user.nickname} has been reported`);
-                            setShowOptionsMenu(false);
-                          }}
-                          className="w-full px-4 py-2 text-left text-sm text-orange-600 hover:bg-orange-50 transition-colors flex items-center space-x-2"
-                        >
-                          <span>⚠️</span>
-                          <span>Report User</span>
-                        </button>
-                      </div>
-                    )}
+                    <div className="relative" ref={optionsMenuRef}>
+                      <button 
+                        onClick={() => setShowOptionsMenu(!showOptionsMenu)}
+                        className="p-2 rounded-lg hover:bg-gray-50 transition-colors"
+                      >
+                        <FiMoreVertical className="w-5 h-5 text-gray-500" />
+                      </button>
+                      
+                      {/* Options Dropdown Menu */}
+                      {showOptionsMenu && (
+                        <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-100 py-2 z-20">
+                          <button
+                            onClick={handleClearMessages}
+                            className="w-full px-4 py-2 text-left text-sm text-gray-600 hover:bg-gray-50 transition-colors flex items-center space-x-3"
+                          >
+                            <span className="text-base">🗑️</span>
+                            <span className="font-normal">Clear Messages</span>
+                          </button>
+                          <hr className="my-1 border-gray-100" />
+                          <button
+                            onClick={() => {
+                              alert(`${selectedConversation?.user.nickname} has been blocked`);
+                              setShowOptionsMenu(false);
+                            }}
+                            className="w-full px-4 py-2 text-left text-sm text-red-500 hover:bg-red-50 transition-colors flex items-center space-x-3"
+                          >
+                            <span className="text-base">🚫</span>
+                            <span className="font-normal">Block User</span>
+                          </button>
+                          <button
+                            onClick={() => {
+                              alert(`${selectedConversation?.user.nickname} has been reported`);
+                              setShowOptionsMenu(false);
+                            }}
+                            className="w-full px-4 py-2 text-left text-sm text-orange-500 hover:bg-orange-50 transition-colors flex items-center space-x-3"
+                          >
+                            <span className="text-base">⚠️</span>
+                            <span className="font-normal">Report User</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
+                
+                {/* Message Search Bar */}
+                {showMessageSearch && (
+                  <div className="mt-4 relative">
+                    <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <input
+                      type="text"
+                      placeholder="Search messages..."
+                      value={messageSearchQuery}
+                      onChange={(e) => setMessageSearchQuery(e.target.value)}
+                      className="w-full pl-10 pr-10 py-2 rounded-lg border-0 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-200 focus:bg-white transition-all placeholder-gray-400 text-gray-700 text-sm"
+                    />
+                    {messageSearchQuery && (
+                      <button
+                        onClick={() => setMessageSearchQuery('')}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-gray-100 transition-colors"
+                      >
+                        <FiX className="w-3 h-3 text-gray-400" />
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
 
-              {/* Messages */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
-                {messages.map((message) => {
-                  const isCurrentUser = message.senderId === currentUser?.id;
-                  console.log(`Message ${message.id}: senderId=${message.senderId}, currentUserId=${currentUser?.id}, isCurrentUser=${isCurrentUser}`);
-                  
-                  return (
-                    <div
-                      key={`msg-${message.id}-${message.timestamp}`}
-                      className={`flex ${isCurrentUser ? 'justify-end' : 'justify-start'}`}
-                    >
+              {/* Messages Area */}
+              <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50">
+                {(messageSearchQuery ? filteredMessages : messages).length === 0 ? (
+                  <div className="flex items-center justify-center h-full">
+                    <div className="text-center">
+                      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        {messageSearchQuery ? (
+                          <FiSearch className="w-8 h-8 text-gray-400" />
+                        ) : (
+                          <FiMessageCircle className="w-8 h-8 text-gray-400" />
+                        )}
+                      </div>
+                      <h3 className="text-lg font-medium text-gray-700 mb-2">
+                        {messageSearchQuery ? 'No messages found' : 'No messages yet'}
+                      </h3>
+                      <p className="text-gray-500">
+                        {messageSearchQuery 
+                          ? 'Try searching with different keywords'
+                          : 'Send a message to start the conversation'
+                        }
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  (messageSearchQuery ? filteredMessages : messages).map((message) => {
+                    const isCurrentUser = message.senderId === currentUser?.id;
+                    
+                    return (
                       <div
-                        className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg shadow-sm ${
-                          isCurrentUser
-                            ? 'bg-[#9a0e20] text-white rounded-br-none'
-                            : 'bg-white text-gray-900 border border-gray-200 rounded-bl-none'
-                        }`}
+                        key={`msg-${message.id}-${message.timestamp}`}
+                        className={`flex ${isCurrentUser ? 'justify-end' : 'justify-start'} mb-4`}
                       >
-                        <p className="text-sm">{message.content}</p>
-                        <div className={`flex items-center justify-end mt-1 space-x-1 ${
-                          isCurrentUser ? 'text-white/70' : 'text-gray-500'
-                        }`}>
-                          <span className="text-xs">
-                            {new Date(message.timestamp).toLocaleTimeString('tr-TR', {
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
-                          </span>
-                          {isCurrentUser && (
-                            <div className="text-xs">
-                              {message.isRead ? (
-                                <BsCheckAll className="w-4 h-4 text-blue-300" />
+                        <div className={`flex items-end space-x-2 max-w-xs lg:max-w-md ${isCurrentUser ? 'flex-row-reverse space-x-reverse' : ''}`}>
+                          {/* Avatar for other user */}
+                          {!isCurrentUser && (
+                            <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden flex-shrink-0">
+                              {selectedConversation.user.profilePhotoUrl ? (
+                                <Image
+                                  src={selectedConversation.user.profilePhotoUrl}
+                                  alt={selectedConversation.user.nickname}
+                                  width={28}
+                                  height={28}
+                                  className="w-full h-full object-cover"
+                                />
                               ) : (
-                                <BsCheck className="w-4 h-4" />
+                                <span className="text-gray-500 font-medium text-xs">
+                                  {selectedConversation.user.nickname.charAt(0).toUpperCase()}
+                                </span>
                               )}
                             </div>
                           )}
+                          
+                          {/* Message Bubble */}
+                          <div
+                            className={`px-4 py-3 rounded-2xl ${
+                              isCurrentUser
+                                ? 'bg-[#A6292A] text-white rounded-br-md'
+                                : 'bg-white text-gray-700 border border-gray-100 rounded-bl-md'
+                            }`}
+                          >
+                            <p className="text-sm leading-relaxed break-words">{message.content}</p>
+                            <div className={`flex items-center justify-end mt-2 space-x-1 ${
+                              isCurrentUser ? 'text-gray-300' : 'text-gray-400'
+                            }`}>
+                              <span className="text-xs font-normal">
+                                {new Date(message.timestamp).toLocaleTimeString('tr-TR', {
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </span>
+                              {isCurrentUser && (
+                                <div className="text-xs ml-1">
+                                  {message.isRead ? (
+                                    <BsCheckAll className="w-3 h-3 text-blue-300" />
+                                  ) : (
+                                    <BsCheck className="w-3 h-3" />
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })
+                )}
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* Message Input */}
-              <div className="p-4 border-t border-gray-200 bg-white">
-                <div className="flex items-center space-x-2">
-                  <button className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
-                    <FiPaperclip className="w-5 h-5 text-gray-600" />
+              {/* Message Input Area */}
+              <div className="p-6 border-t border-gray-100 bg-white">
+                <div className="flex items-end space-x-3">
+                  {/* Attachment Button */}
+                  <button className="p-2 rounded-full hover:bg-gray-50 transition-colors group flex-shrink-0">
+                    <FiPaperclip className="w-5 h-5 text-gray-400 group-hover:text-gray-600" />
                   </button>
-                  <div className="flex-1">
+                  
+                  {/* Input Field */}
+                  <div className="flex-1 relative">
                     <input
                       type="text"
                       value={newMessage}
                       onChange={(e) => setNewMessage(e.target.value)}
                       onKeyPress={handleKeyPress}
                       placeholder="Type your message..."
-                      className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#9a0e20] focus:border-transparent placeholder-gray-500 text-gray-900"
+                      className="w-full px-4 py-3 pr-12 rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-200 focus:border-transparent placeholder-gray-400 text-gray-700 resize-none transition-all"
                     />
+                    <button className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-gray-50 transition-colors">
+                      <FiSmile className="w-5 h-5 text-gray-400" />
+                    </button>
                   </div>
+                  
+                  {/* Send Button */}
                   <button
                     onClick={handleSendMessage}
                     disabled={!newMessage.trim()}
-                    className={`p-2 rounded-lg transition-colors ${
+                    className={`p-3 rounded-full transition-all duration-200 flex-shrink-0 ${
                       newMessage.trim()
-                        ? 'bg-[#9a0e20] text-white hover:bg-[#7a0b19]'
+                        ? 'bg-[#A6292A] text-white hover:bg-[#4a5a68] hover:scale-105 active:scale-95'
                         : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                     }`}
                   >
@@ -676,18 +812,35 @@ export default function Messages() {
               </div>
             </>
           ) : (
-            /* No conversation selected */
+            /* No conversation selected - Welcome Screen */
             <div className="flex-1 flex items-center justify-center bg-gray-50">
-              <div className="text-center">
-                <div className="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <FiSearch className="w-12 h-12 text-gray-400" />
+              <div className="text-center max-w-md mx-auto">
+                <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-8">
+                  <FiMessageCircle className="w-12 h-12 text-gray-400" />
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                  Start Messaging
+                <h3 className="text-xl font-medium text-gray-700 mb-4">
+                  Welcome to IYTEBul Messages
                 </h3>
-                <p className="text-gray-600">
-                  Select a conversation or start a new message
+                <p className="text-gray-500 mb-8 leading-relaxed">
+                  Select a conversation from the sidebar to start messaging, or begin a new conversation with your friends and classmates.
                 </p>
+                <div className="bg-white rounded-lg p-6 border border-gray-100">
+                  <h4 className="font-medium text-gray-700 mb-3">Quick Tips:</h4>
+                  <ul className="text-sm text-gray-500 space-y-2 text-left">
+                    <li className="flex items-center space-x-2">
+                      <span className="w-2 h-2 bg-gray-400 rounded-full"></span>
+                      <span>Use the search bar to find conversations quickly</span>
+                    </li>
+                    <li className="flex items-center space-x-2">
+                      <span className="w-2 h-2 bg-gray-400 rounded-full"></span>
+                      <span>Green dot indicates when users are online</span>
+                    </li>
+                    <li className="flex items-center space-x-2">
+                      <span className="w-2 h-2 bg-gray-400 rounded-full"></span>
+                      <span>Press Enter to send messages quickly</span>
+                    </li>
+                  </ul>
+                </div>
               </div>
             </div>
           )}

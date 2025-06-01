@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { useSidebar } from './ui/Sidebar';
 import { FiLogOut, FiUser, FiMenu } from 'react-icons/fi';
-import { MdOutlineNotificationsNone } from "react-icons/md";
+
 
 interface UserProfile {
   profilePhotoUrl?: string;
@@ -86,16 +86,8 @@ export default function Navbar() {
             </div>
 
             {/* Sağ Taraf Butonları */}
-            <div className='flex items-center space-x-4'>
-              {/* Bildirimler */}
-              <button
-                className='p-2 rounded-lg hover:bg-white/10 transition-colors relative cursor-pointer'
-                title='Bildirimler'
-              >
-                <MdOutlineNotificationsNone className='text-xl' />
-                <span className='absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full'></span>
-              </button>
-
+           
+            <div className="flex items-center space-x-2">
               {/* Çıkış Butonu */}
               <button
                 onClick={() => setShowLogoutModal(true)}
