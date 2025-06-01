@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import Navbar from "@/components/Navbar"
-import { FaCamera, FaMapMarkerAlt, FaCalendarAlt, FaPhone, FaEnvelope, FaEdit, FaCheck, FaTimes, FaTrash, FaEye } from "react-icons/fa"
+import { FaCamera, FaMapMarkerAlt, FaCalendarAlt, FaPhone, FaEnvelope, FaEdit, FaCheck, FaTimes, FaTrash, FaEye, FaIdCard } from "react-icons/fa"
 
 
 
@@ -423,10 +423,10 @@ export default function ProfilePage() {
               <div className="ml-40">
 
                 {/* Contact Info */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt">
                   <div className="flex items-center text-gray-600">
-                    <FaMapMarkerAlt className="w-4 h-4 mr-3" />
-                    <span>İzmir, Turkey</span>
+                    <FaIdCard className="w-4 h-4 mr-3" />
+                    <span>{profile?.studentId || "Student ID not provided"}</span>
                   </div>
                   
                   <div className="flex items-center text-gray-600">
