@@ -1,6 +1,7 @@
 import { formatDistanceToNow } from 'date-fns';
 import { enUS } from 'date-fns/locale';
-import { FiFlag } from 'react-icons/fi';
+import { FiFlag, FiMoreVertical } from 'react-icons/fi';
+import { useState, useRef, useEffect } from 'react';
 
 interface Post {
   id: number;
@@ -24,46 +25,133 @@ interface PostCardProps {
   onSendMessage: (userId: number, userName: string) => void;
   onReportPost: (postId: number, postTitle: string) => void;
   highlightText: (text: string, searchTerm: string) => React.ReactNode;
+  showMessageForm?: boolean;
+  onToggleMessageForm?: (postId: number) => void;
+  onSendMessageText?: (userId: number, userName: string, message: string) => void;
 }
 
-export default function PostCard({ post, searchQuery, onSendMessage, onReportPost, highlightText }: PostCardProps) {
+export default function PostCard({ 
+  post, 
+  searchQuery, 
+  onSendMessage, 
+  onReportPost, 
+  highlightText,
+  showMessageForm = false,
+  onToggleMessageForm,
+  onSendMessageText
+}: PostCardProps) {
+  const [showMenu, setShowMenu] = useState(false);
+  const [messageText, setMessageText] = useState('');
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowMenu(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  const handleReportClick = () => {
+    onReportPost(post.id, post.title);
+    setShowMenu(false);
+  };
+
+  const handleSendMessageClick = () => {
+    if (onToggleMessageForm) {
+      onToggleMessageForm(post.id);
+    } else {
+      onSendMessage(post.userId, post.userName);
+    }
+  };
+
+  const handleSendMessageText = () => {
+    if (messageText.trim() && onSendMessageText) {
+      onSendMessageText(post.userId, post.userName, messageText.trim());
+      setMessageText('');
+      if (onToggleMessageForm) {
+        onToggleMessageForm(post.id);
+      }
+    }
+  };
+
+  const handleCancelMessage = () => {
+    setMessageText('');
+    if (onToggleMessageForm) {
+      onToggleMessageForm(post.id);
+    }
+  };
+
+  // Limit title to 30 characters
+  const truncatedTitle = post.title && post.title.length > 31 ? post.title.substring(0, 31) : (post.title || 'Untitled');
+
   return (
-    <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+    <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow relative h-full flex flex-col">
+      {/* 3-Dot Menu - Only in top right corner */}
+      <div className="absolute top-1 right-1 z-10" ref={menuRef}>
+        <button
+          onClick={() => setShowMenu(!showMenu)}
+          className="p-1.5 bg-white/90 backdrop-blur-sm rounded-full shadow-sm hover:bg-white transition-colors"
+          title="More options"
+        >
+          <FiMoreVertical className="w-3 h-3 text-gray-600" />
+        </button>
+        
+        {showMenu && (
+          <div className="absolute top-full right-0 mt-1 bg-white rounded-lg shadow-lg border border-gray-200 py-1 min-w-[120px] z-20">
+            <button
+              onClick={handleReportClick}
+              className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
+            >
+              <FiFlag className="w-4 h-4" />
+              <span>Report</span>
+            </button>
+          </div>
+        )}
+      </div>
+
       {/* Post İçeriği */}
-      <div className="p-4 flex flex-col min-h-[500px]">
-        {/* User Info Section - Fixed Height */}
-        <div className="flex items-center space-x-3 mb-4 h-12">
-          <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden border border-black">
+      <div className="p-3 sm:p-4 flex flex-col h-full">
+        {/* User Info Section with Lost/Found badge below time */}
+        <div className="flex items-start space-x-2 sm:space-x-3 mb-3 sm:mb-4 min-h-[64px]">
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gray-200 overflow-hidden border border-black flex-shrink-0">
             <img
               src={post.userProfilePhoto || "/assets/default_avatar.png"}
               alt={`${post.userName} profil fotoğrafı`}
               className="w-full h-full object-cover rounded-full"
             />
           </div>
-          <div>
-            <p className="font-medium text-gray-800">{post.userName}</p>
-            <p className="text-sm text-gray-500">
+          <div className="flex-1 min-w-0">
+            <p className="font-medium text-gray-800 truncate text-sm sm:text-base">{post.userName}</p>
+            <p className="text-xs sm:text-sm text-gray-500 truncate">
               {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true, locale: enUS })}
             </p>
+            <span className={`inline-block mt-1 ${post.type.toUpperCase() === 'LOST' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'} text-xs font-medium px-2 py-1 rounded`}>
+              {post.type.toUpperCase() === 'LOST' ? 'Lost' : 'Found'}
+            </span>
           </div>
-          <span className={`ml-auto ${post.type.toUpperCase() === 'LOST' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'} text-xs font-medium px-2.5 py-0.5 rounded`}>
-            {post.type.toUpperCase() === 'LOST' ? 'Lost' : 'Found'}
-          </span>
         </div>
         
-        {/* Title Section - Fixed Height */}
-        <div className="mb-4 min-h-[40px]">
-          <h3 className="text-xl font-semibold text-gray-800">{highlightText(post.title, searchQuery)}</h3>
+        {/* Title Section - Limited to 30 characters */}
+        <div className="mb-2 sm:mb-3 min-h-[32px] sm:min-h-[40px]">
+          <h3 className="text-sm sm:text-lg lg:text-xl font-semibold text-gray-800" title={post.title || 'Untitled'}>
+            {highlightText(truncatedTitle, searchQuery)}
+          </h3>
         </div>
         
-        {/* Image Section - Fixed Height */}
-        <div className="mb-4 flex justify-center items-center bg-white rounded-lg border border-black" style={{ minHeight: '320px', height: '320px', padding: '4px' }}>
+        {/* Image Section - Instagram-like 4:3 aspect ratio with auto crop */}
+        <div className="mb-2 sm:mb-3 flex justify-center items-center bg-white rounded-lg border border-black overflow-hidden post-image">
           {post.imageBase64 ? (
             <img
               src={`data:${post.imageContentType};base64,${post.imageBase64}`}
               alt={post.title}
-              className="object-contain w-full h-full"
-              style={{ maxHeight: '312px', background: '#fff' }}
+              className="object-cover w-full h-full"
             />
           ) : (
             <img
@@ -76,50 +164,70 @@ export default function PostCard({ post, searchQuery, onSendMessage, onReportPos
                 '/assets/others.jpeg'
               }
               alt="Default category image"
-              className="object-contain w-full h-full"
-              style={{ maxHeight: '312px', background: '#fff' }}
+              className="object-cover w-full h-full"
             />
           )}
         </div>
         
-        {/* Description Section - Flexible Height with Min */}
-        <div className="mb-4 min-h-[60px] flex-grow flex items-center" style={{ minHeight: '60px' }}>
+        {/* Description Section - Responsive */}
+        <div className="mb-2 sm:mb-3 flex-grow min-h-[40px] sm:min-h-[60px]">
           {post.description && post.description.trim() !== '' ? (
-            <p className="text-gray-600 w-full">{highlightText(post.description, searchQuery)}</p>
+            <p className="text-gray-600 text-xs sm:text-sm line-clamp-3">{highlightText(post.description, searchQuery)}</p>
           ) : (
-            <div className="w-full" style={{ minHeight: '24px' }}></div>
+            <div className="w-full min-h-[20px]"></div>
           )}
         </div>
         
-        {/* Tags & Message Button Section - Same Row */}
-        <div className="flex items-center min-h-[40px] mb-4">
-          <div className="flex flex-wrap gap-2">
-            <span className="bg-gray-100 text-gray-700 text-sm px-3 py-1 rounded-full">
+        {/* Tags Section - Responsive Layout with prefixes */}
+        <div className="mb-3 sm:mb-4">
+          <div className="flex flex-wrap gap-1">
+            <span className="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded-full truncate max-w-[calc(50%-2px)]" title={`Category: ${post.category}`}>
               Category: {post.category}
             </span>
-            <span className="bg-gray-100 text-gray-700 text-sm px-3 py-1 rounded-full">
+            <span className="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded-full truncate max-w-[calc(50%-2px)]" title={`Location: ${post.location}`}>
               Location: {post.location}
             </span>
           </div>
-          <div className="ml-auto flex items-center space-x-2">
+        </div>
+
+        {/* Message Button Section - Always at Bottom */}
+        <div className="mt-auto">
+          {!showMessageForm ? (
             <button
-              onClick={() => onReportPost(post.id, post.title)}
-              className="flex items-center space-x-1 bg-gray-100 text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-200 transition-colors cursor-pointer"
-              title="Report this post"
+              onClick={handleSendMessageClick}
+              className="w-full bg-[#9a0e20] text-white px-3 py-2 rounded-lg hover:bg-[#7a0b19] transition-colors flex items-center justify-center space-x-2"
             >
-              <FiFlag className="h-4 w-4" />
-              <span className="text-sm">Report</span>
-            </button>
-            <button
-              onClick={() => onSendMessage(post.userId, post.userName)}
-              className="flex items-center space-x-2 bg-[#9a0e20] text-white px-4 py-2 rounded-lg hover:bg-[#7a0b19] transition-colors cursor-pointer"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 sm:h-4 sm:w-4" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clipRule="evenodd" />
               </svg>
-              <span>Send Message</span>
+              <span className="text-xs sm:text-sm">Send Message</span>
             </button>
-          </div>
+          ) : (
+            <div className="space-y-3">
+              <textarea
+                value={messageText}
+                onChange={(e) => setMessageText(e.target.value)}
+                placeholder={`Write a message to ${post.userName}...`}
+                rows={3}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:border-[#9a0e20] outline-none text-gray-900 placeholder-gray-500 resize-none text-sm"
+              />
+              <div className="flex space-x-2">
+                <button
+                  onClick={handleCancelMessage}
+                  className="flex-1 bg-gray-500 text-white px-3 py-2 rounded-lg hover:bg-gray-600 transition-colors text-sm"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSendMessageText}
+                  disabled={!messageText.trim()}
+                  className="flex-1 bg-[#9a0e20] text-white px-3 py-2 rounded-lg hover:bg-[#7a0b19] transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                >
+                  Send
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

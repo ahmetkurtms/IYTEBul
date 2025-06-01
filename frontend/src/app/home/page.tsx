@@ -11,7 +11,7 @@ import { useRouter } from 'next/navigation';
 import Navbar from '@/components/ui/Navbar';
 import { formatDistanceToNow } from 'date-fns';
 import { enUS } from 'date-fns/locale';
-import { FiMenu, FiSearch, FiFilter, FiCalendar, FiGrid, FiList } from 'react-icons/fi';
+import { FiMenu, FiSearch, FiFilter, FiCalendar, FiList } from 'react-icons/fi';
 import { FaSort } from "react-icons/fa6";
 import PostCard from '@/components/home/PostCard';
 import { MdOutlineViewAgenda } from "react-icons/md";
@@ -19,6 +19,29 @@ import { MdOutlineViewDay } from "react-icons/md";
 import { MdOutlineAdd } from "react-icons/md";
 
 import { MdOutlineGridView } from "react-icons/md";
+
+// Custom 4x4 grid icon component (16 squares)
+const QuadGridIcon = ({ className = "h-6 w-6" }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+    <rect x="2" y="2" width="4" height="4" rx="0.5" />
+    <rect x="8" y="2" width="4" height="4" rx="0.5" />
+    <rect x="14" y="2" width="4" height="4" rx="0.5" />
+    <rect x="20" y="2" width="2" height="4" rx="0.5" />
+    <rect x="2" y="8" width="4" height="4" rx="0.5" />
+    <rect x="8" y="8" width="4" height="4" rx="0.5" />
+    <rect x="14" y="8" width="4" height="4" rx="0.5" />
+    <rect x="20" y="8" width="2" height="4" rx="0.5" />
+    <rect x="2" y="14" width="4" height="4" rx="0.5" />
+    <rect x="8" y="14" width="4" height="4" rx="0.5" />
+    <rect x="14" y="14" width="4" height="4" rx="0.5" />
+    <rect x="20" y="14" width="2" height="4" rx="0.5" />
+    <rect x="2" y="20" width="4" height="2" rx="0.5" />
+    <rect x="8" y="20" width="4" height="2" rx="0.5" />
+    <rect x="14" y="20" width="4" height="2" rx="0.5" />
+    <rect x="20" y="20" width="2" height="2" rx="0.5" />
+  </svg>
+);
+
 interface Post {
   id: number;
   title: string;
@@ -70,6 +93,9 @@ export default function Home() {
   const [reportDescription, setReportDescription] = useState('');
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);
 
+  // Message form states
+  const [openMessageForms, setOpenMessageForms] = useState<Set<number>>(new Set());
+
   // Handle sending message to post owner
   const handleSendMessage = async (userId: number, userName: string) => {
     const token = localStorage.getItem('token');
@@ -80,6 +106,26 @@ export default function Home() {
 
     // Redirect to messages page with the user ID as a parameter
     router.push(`/messages?startWith=${userId}`);
+  };
+
+  // Handle toggling message form
+  const handleToggleMessageForm = (postId: number) => {
+    setOpenMessageForms(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(postId)) {
+        newSet.delete(postId);
+      } else {
+        newSet.add(postId);
+      }
+      return newSet;
+    });
+  };
+
+  // Handle sending message text (for now just show alert, later integrate with backend)
+  const handleSendMessageText = async (userId: number, userName: string, message: string) => {
+    console.log(`Sending message to ${userName} (ID: ${userId}): ${message}`);
+    alert(`Message sent to ${userName}: "${message}"`);
+    // TODO: Integrate with backend to actually send the message
   };
 
   // Handle reporting a post
@@ -669,7 +715,7 @@ export default function Home() {
                     }`}
                     title="Quad View"
                   >
-                    <FiGrid className="h-6 w-6" />
+                    <QuadGridIcon className="h-6 w-6" />
                   </button>
                   <button
                     onClick={() => setViewMode('double')}
@@ -734,6 +780,9 @@ export default function Home() {
                   onSendMessage={handleSendMessage}
                   onReportPost={handleReportPost}
                   highlightText={highlightText}
+                  showMessageForm={openMessageForms.has(post.id)}
+                  onToggleMessageForm={handleToggleMessageForm}
+                  onSendMessageText={handleSendMessageText}
                 />
               ))}
             </div>

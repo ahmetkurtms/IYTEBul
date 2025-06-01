@@ -265,11 +265,12 @@ export default function CreatePost() {
                 placeholder="Ex: Black Apple AirPods"
                 className="w-full p-3 border border-gray-300 rounded-lg focus:border-[#9a0e20] outline-none text-gray-900 placeholder-gray-500"
                 required
-                maxLength={100}
+                maxLength={30}
               />
-              {formData.title.length === 100 && (
-                <div className="text-xs text-red-600 mt-1">Title cannot be longer than 100 characters.</div>
+              {formData.title.length === 30 && (
+                <div className="text-xs text-red-600 mt-1">Title cannot be longer than 30 characters.</div>
               )}
+              <div className="text-xs text-gray-500 mt-1">{formData.title.length}/30 characters</div>
             </div>
 
             {/* Photo Upload */}
