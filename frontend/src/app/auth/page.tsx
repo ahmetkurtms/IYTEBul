@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Formik, Form, Field } from 'formik';
 import * as Yup from 'yup';
+import { FiEye, FiEyeOff } from 'react-icons/fi';
 
 // Form doğrulama şemaları, e-posta ve şifre için
 
@@ -45,6 +46,7 @@ const registerSchema = Yup.object().shape({
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
 
   // Yardımcı fonksiyon: İlk harfi büyük yap
@@ -327,14 +329,23 @@ export default function Auth() {
                   </div>
                 )}
 
-                <div>
+                <div className="relative">
                   <Field
                     name='password'
-                    type='password'
+                    type={showPassword ? 'text' : 'password'}
                     placeholder='Password'
-                    className='w-full p-2 border rounded-lg bg-white text-gray-800 text-base transition-all duration-300 focus:ring-2 focus:ring-[#9a0e20] focus:border-[#9a0e20] outline-none hover:border-[#9a0e20]'
+                    className='w-full p-2 pr-10 border rounded-lg bg-white text-gray-800 text-base transition-all duration-300 focus:ring-2 focus:ring-[#9a0e20] focus:border-[#9a0e20] outline-none hover:border-[#9a0e20]'
                     onChange={(e: React.ChangeEvent<any>) => { handleChange(e); setStatus(''); }}
                   />
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    className="absolute right-3 top-3 text-gray-500 hover:text-gray-800 focus:outline-none"
+                    onClick={() => setShowPassword(v => !v)}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <FiEye className="w-5 h-5" /> : <FiEyeOff className="w-5 h-5" />}
+                  </button>
                   <div className="h-5">
                     {errors.password && (touched.password || isSubmitting) && (
                       <div className='text-[#9a0e20] text-sm'>{errors.password}</div>

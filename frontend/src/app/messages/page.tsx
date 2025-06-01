@@ -1036,7 +1036,7 @@ export default function Messages() {
                     multiple
                     accept="image/*"
                     onChange={handleFileChange}
-                    aria-label="Fotoğraf seç"
+                    aria-label="Choose Photo"
                   />
                   {previews.length > 0 && (
                     <div className="flex flex-wrap gap-3 mb-2 px-4 pt-4">
@@ -1044,7 +1044,7 @@ export default function Messages() {
                         <div key={idx} className="relative group">
                           <img src={src} alt="preview" className="w-20 h-20 object-cover rounded-lg border" />
                           <button
-                            aria-label="Fotoğrafı kaldır"
+                            aria-label="Remove Photo"
                             className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow hover:bg-red-700"
                             onClick={() => removeFile(idx)}
                             tabIndex={0}

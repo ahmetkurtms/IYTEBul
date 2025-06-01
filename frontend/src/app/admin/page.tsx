@@ -860,7 +860,6 @@ export default function AdminPanel() {
                             )}
                           </div>
                           <p className="text-sm text-gray-600">{user.email}</p>
-                          <p className="text-sm text-gray-500">{user.department}</p>
                           <p className="text-xs text-gray-400">
                             Joined {formatDistanceToNow(new Date(user.createdAt), { addSuffix: true, locale: enUS })}
                             {user.lastLogin && (
@@ -1262,18 +1261,19 @@ export default function AdminPanel() {
             className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex justify-between items-center p-6 border-b border-gray-200">
+            <div className="flex justify-between items-center px-4 py-2 border-b border-gray-200">
+
               <h2 className="text-xl font-semibold text-gray-900">User Details</h2>
               <button
                 onClick={closeUserDetailsModal}
-                className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                className="p-2 text-2xl text-gray-400 hover:text-gray-600 transition-colors"
               >
                 ×
               </button>
             </div>
 
             <div className="p-6">
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                 {/* Profile Photo Section */}
                 <div className="lg:col-span-1">
                   <div className="text-center">
@@ -1316,13 +1316,12 @@ export default function AdminPanel() {
                 </div>
 
                 {/* User Information */}
-                <div className="lg:col-span-2 space-y-6">
+                <div className="lg:col-span-3 space-y-6">
                   <div>
                     <h3 className="text-2xl font-bold text-gray-900 mb-2">
                       {selectedUserForDetails.name} {selectedUserForDetails.surname || ''}
                     </h3>
                     <p className="text-lg text-gray-600 mb-1">@{selectedUserForDetails.nickname}</p>
-                    <p className="text-gray-500">{selectedUserForDetails.department || 'User'}</p>
                     {selectedUserForDetails.bio ? (
                       <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                         <p className="text-sm font-medium text-blue-800 mb-1">Bio:</p>
@@ -1337,12 +1336,12 @@ export default function AdminPanel() {
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="bg-gray-50 p-4 rounded-lg">
+                    <div className="bg-gray-50 p-5 rounded-lg">
                       <h4 className="font-semibold text-gray-900 mb-2">Contact Information</h4>
                       <div className="space-y-2 text-sm">
                         <div>
                           <span className="font-medium text-gray-700">Email:</span>
-                          <p className="text-gray-600 break-all">{selectedUserForDetails.email}</p>
+                          <p><span className="text-gray-600 truncate overflow-hidden whitespace-nowrap" title={selectedUserForDetails.email}>{selectedUserForDetails.email}</span></p>
                         </div>
                         <div>
                           <span className="font-medium text-gray-700">Phone:</span>
@@ -1355,7 +1354,7 @@ export default function AdminPanel() {
                       </div>
                     </div>
 
-                    <div className="bg-gray-50 p-4 rounded-lg">
+                    <div className="bg-gray-50 p-5 rounded-lg">
                       <h4 className="font-semibold text-gray-900 mb-2">Academic Information</h4>
                       <div className="space-y-2 text-sm">
                         {selectedUserForDetails.studentId && (
@@ -1372,8 +1371,10 @@ export default function AdminPanel() {
                         )}
                       </div>
                     </div>
+                  </div>
 
-                    <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="bg-gray-50 p-5 rounded-lg">
                       <h4 className="font-semibold text-gray-900 mb-2">Account Status</h4>
                       <div className="space-y-2 text-sm">
                         <div className="flex items-center justify-between">
@@ -1388,8 +1389,7 @@ export default function AdminPanel() {
                         </div>
                       </div>
                     </div>
-
-                    <div className="bg-gray-50 p-4 rounded-lg">
+                    <div className="bg-gray-50 p-5 rounded-lg">
                       <h4 className="font-semibold text-gray-900 mb-2">Account Timeline</h4>
                       <div className="space-y-2 text-sm">
                         <div>
@@ -1417,36 +1417,42 @@ export default function AdminPanel() {
                         )}
                       </div>
                     </div>
-
-                    <div className="bg-gray-50 p-4 rounded-lg sm:col-span-2">
-                      <h4 className="font-semibold text-gray-900 mb-2">Statistics & System Info</h4>
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div className="flex items-center justify-between">
-                          <span className="font-medium text-gray-700">User ID:</span>
-                          <span className="text-gray-600">#{selectedUserForDetails.id}</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="font-medium text-gray-700">Total Posts:</span>
-                          <span className="text-gray-600">
-                            {posts.filter(post => post.userName === selectedUserForDetails.nickname).length}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="font-medium text-gray-700">Lost Posts:</span>
-                          <span className="text-gray-600">
-                            {posts.filter(post => post.userName === selectedUserForDetails.nickname && post.type === 'LOST').length}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="font-medium text-gray-700">Found Posts:</span>
-                          <span className="text-gray-600">
-                            {posts.filter(post => post.userName === selectedUserForDetails.nickname && post.type === 'FOUND').length}
-                          </span>
-                        </div>
+                  </div>
+                  <div className="bg-gray-50 p-5 rounded-lg sm:col-span-2">
+                    <h4 className="font-semibold text-gray-900 mb-2">Statistics & System Info</h4>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-gray-700">User ID:</span>
+                        <span className="text-gray-600">#{selectedUserForDetails.id}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-gray-700">Total Posts:</span>
+                        <span className="text-gray-600">
+                          {posts.filter(post => post.userEmail === selectedUserForDetails.email).length}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-gray-700">Lost Posts:</span>
+                        <span className="text-gray-600">
+                          {posts.filter(
+                            post =>
+                              post.userEmail?.toLowerCase().trim() === selectedUserForDetails.email?.toLowerCase().trim() &&
+                              post.type?.toUpperCase().trim() === 'LOST'
+                          ).length}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-gray-700">Found Posts:</span>
+                        <span className="text-gray-600">
+                          {posts.filter(
+                            post =>
+                              post.userEmail?.toLowerCase().trim() === selectedUserForDetails.email?.toLowerCase().trim() &&
+                              post.type?.toUpperCase().trim() === 'FOUND'
+                          ).length}
+                        </span>
                       </div>
                     </div>
                   </div>
-
                   {/* Action Buttons */}
                   <div className="flex space-x-3 pt-4 border-t border-gray-200">
                     <button
