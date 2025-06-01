@@ -352,6 +352,10 @@ export default function CreatePost() {
                 classNamePrefix="react-select"
                 styles={customSelectStyles}
                 required
+                menuPlacement="auto"
+                menuPosition="fixed"
+                menuPortalTarget={typeof window !== "undefined" ? document.body : undefined}
+                maxMenuHeight={240}
               />
             </div>
 
@@ -367,6 +371,10 @@ export default function CreatePost() {
                 classNamePrefix="react-select"
                 styles={customSelectStyles}
                 required
+                menuPlacement="auto"
+                menuPosition="fixed"
+                menuPortalTarget={typeof window !== "undefined" ? document.body : undefined}
+                maxMenuHeight={240}
               />
             </div>
 
