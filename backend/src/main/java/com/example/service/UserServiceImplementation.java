@@ -152,6 +152,11 @@ public class UserServiceImplementation implements UserService {
         response.setBio(user.getBio());
         response.setNickname(user.getNickname());
         
+        // Add ban information
+        response.setIsBanned(user.isCurrentlyBanned());
+        response.setBanExpiresAt(user.getBanExpiresAt());
+        response.setBanReason(user.getBanReason());
+        
         return response;
     }
 

@@ -6,7 +6,7 @@ import Navbar from '@/components/ui/Navbar';
 import ConfirmationModal from '@/components/ConfirmationModal';
 import { formatDistanceToNow } from 'date-fns';
 import { enUS } from 'date-fns/locale';
-import { FiSearch, FiSend, FiMoreVertical, FiPhone, FiVideo, FiPaperclip, FiSmile, FiX, FiChevronDown, FiChevronUp } from 'react-icons/fi';
+import { FiSearch, FiSend, FiMoreVertical, FiPaperclip, FiSmile, FiMessageCircle, FiX, FiImage, FiChevronUp, FiChevronDown } from 'react-icons/fi';
 import { BsCheck, BsCheckAll } from 'react-icons/bs';
 import Image from 'next/image';
 import { messageApi, MessageResponse, ConversationResponse, UserProfile } from '@/lib/messageApi';
@@ -28,6 +28,7 @@ interface Message {
   timestamp: string;
   isRead: boolean;
   isSent: boolean;
+  imageBase64List?: string[];
 }
 
 interface Conversation {
@@ -58,11 +59,79 @@ export default function Messages() {
   const [highlightedMessageId, setHighlightedMessageId] = useState<number | null>(null);
   const messageRefs = useRef<{ [key: number]: HTMLDivElement }>({});
   const [currentSearchIndex, setCurrentSearchIndex] = useState(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [previews, setPreviews] = useState<string[]>([]);
+  const [fileSendLoading, setFileSendLoading] = useState(false);
+  const [fileSendError, setFileSendError] = useState<string | null>(null);
 
   // Fix hydration issues
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  // Admin kontrolü ekle
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          router.push('/auth');
+          return;
+        }
+
+        // Fresh user bilgisini çek ve ban kontrolü yap
+        const profileResponse = await fetch('http://localhost:8080/api/v1/users/profile', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+
+        if (profileResponse.ok) {
+          const userData = await profileResponse.json();
+          
+          // LocalStorage'ı güncelle
+          localStorage.setItem('user', JSON.stringify(userData));
+          
+          // Ban kontrolü yap
+          if (userData.isBanned) {
+            const banExpiresAt = userData.banExpiresAt;
+            const now = new Date();
+            
+            if (!banExpiresAt || new Date(banExpiresAt) > now) {
+              // Kullanıcı hala banlı
+              localStorage.removeItem('token');
+              localStorage.removeItem('user');
+              router.push('/auth');
+              return;
+            }
+          }
+        } else if (profileResponse.status === 401) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          router.push('/auth');
+          return;
+        }
+
+        // Admin kontrolü yap
+        const response = await fetch('http://localhost:8080/api/v1/admin/users', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+
+        if (response.ok) {
+          // Admin ise admin panel'e yönlendir
+          router.push('/admin');
+          return;
+        }
+      } catch (error) {
+        // Admin değil, normal kullanıcı olarak devam et
+      }
+    };
+
+    checkAdminStatus();
+  }, [router]);
 
   // Function to refresh conversations
   const refreshConversations = async () => {
@@ -332,13 +401,82 @@ export default function Messages() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+  const handleAttachmentClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    setSelectedFiles(files);
+    setPreviews(files.map(file => URL.createObjectURL(file)));
+  };
+
+  const removeFile = (idx: number) => {
+    setSelectedFiles(selectedFiles.filter((_, i) => i !== idx));
+    setPreviews(previews.filter((_, i) => i !== idx));
+  };
+
+  const handleSend = async () => {
+    if (!selectedConversation || !currentUser) return;
+    setFileSendLoading(true);
+    setFileSendError(null);
+    try {
+      // Convert images to base64
+      const base64List = await Promise.all(selectedFiles.map(file => {
+        return new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = e => resolve((e.target?.result as string).split(',')[1]);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      }));
+      // Send message
+      await messageApi.sendMessage({
+        receiverId: selectedConversation.user.id,
+        messageText: newMessage,
+        imageBase64List: base64List
+      });
+      // Add to local state (optimistic)
+      const message = {
+        id: Date.now(),
+        senderId: currentUser.id,
+        receiverId: selectedConversation.user.id,
+        content: newMessage,
+        timestamp: new Date().toISOString(),
+        isRead: false,
+        isSent: true,
+        imageBase64List: base64List
+      };
+      setMessages(prev => [...prev, message]);
+      setNewMessage('');
+      setSelectedFiles([]);
+      setPreviews([]);
+      setFileSendError(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      setConversations(prev => prev.map(conv =>
+        conv.user.id === selectedConversation.user.id
+          ? { ...conv, lastMessage: message }
+          : conv
+      ));
+      await refreshConversations();
+    } catch (error) {
+      setFileSendError('Mesaj gönderilemedi. Lütfen tekrar deneyin.');
+    } finally {
+      setFileSendLoading(false);
+    }
+  };
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !selectedConversation || !currentUser) return;
 
     try {
-      // Send message to backend
-      await messageApi.sendMessage(selectedConversation.user.id, newMessage.trim());
+      // Send message to backend using the correct format
+      await messageApi.sendMessage({
+        receiverId: selectedConversation.user.id,
+        messageText: newMessage.trim(),
+        imageBase64List: []
+      });
 
       // Add message to local state immediately for better UX
       const message: Message = {

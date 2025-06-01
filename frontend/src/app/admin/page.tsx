@@ -32,6 +32,7 @@ interface User {
   isVerified: boolean;
   profilePhotoUrl?: string;
   lastLogin?: string;
+  banExpiresAt?: string;
 }
 
 interface Post {
@@ -73,7 +74,18 @@ export default function AdminPanel() {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [showPostModal, setShowPostModal] = useState(false);
+  const [showBanModal, setShowBanModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [banDuration, setBanDuration] = useState<string>('1h');
+  const [banReason, setBanReason] = useState<string>('');
+  const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const router = useRouter();
+
+  // Show notification function
+  const showNotification = (type: 'success' | 'error', message: string) => {
+    setNotification({ type, message });
+    setTimeout(() => setNotification(null), 5000); // Auto hide after 5 seconds
+  };
 
   // Mock data
   useEffect(() => {
@@ -141,13 +153,14 @@ export default function AdminPanel() {
         const data = await response.json();
         setUsers(data);
       } else if (response.status === 403) {
-        alert('Access denied: Admin role required');
+        showNotification('error', 'Access denied: Admin role required');
         router.push('/home');
       } else {
-        console.error('Failed to fetch users');
+        showNotification('error', 'Failed to fetch users');
       }
     } catch (error) {
       console.error('Error fetching users:', error);
+      showNotification('error', 'Error connecting to server');
     }
   };
 
@@ -164,44 +177,122 @@ export default function AdminPanel() {
         const data = await response.json();
         setPosts(data);
       } else if (response.status === 403) {
-        alert('Access denied: Admin role required');
+        showNotification('error', 'Access denied: Admin role required');
         router.push('/home');
       } else {
-        console.error('Failed to fetch posts');
+        showNotification('error', 'Failed to fetch posts');
       }
     } catch (error) {
       console.error('Error fetching posts:', error);
+      showNotification('error', 'Error connecting to server');
     }
   };
 
-  const handleBanUser = async (userId: number) => {
+  const handleBanUser = async (userId: number, duration?: string, reason?: string) => {
     try {
       const token = localStorage.getItem('token');
+      
+      // Calculate ban expiry time based on duration
+      let banExpiresAt = null;
+      if (duration && duration !== 'permanent') {
+        const now = new Date();
+        switch (duration) {
+          case '1h':
+            banExpiresAt = new Date(now.getTime() + 60 * 60 * 1000);
+            break;
+          case '24h':
+            banExpiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+            break;
+          case '7d':
+            banExpiresAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+            break;
+          case '30d':
+            banExpiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+            break;
+        }
+      }
+
+      const requestBody: any = {};
+      if (banExpiresAt) {
+        // Format for Java LocalDateTime (no 'Z' at the end, use 'T' format)
+        requestBody.banExpiresAt = banExpiresAt.toISOString().slice(0, -1); // Remove 'Z'
+      }
+      if (reason) {
+        requestBody.banReason = reason;
+      }
+
       const response = await fetch(`http://localhost:8080/api/v1/admin/users/${userId}/ban`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
         },
+        body: Object.keys(requestBody).length > 0 ? JSON.stringify(requestBody) : undefined,
       });
       
       if (response.ok) {
         // Update local state
         setUsers(prev => prev.map(user => 
-          user.id === userId ? { ...user, isBanned: !user.isBanned } : user
+          user.id === userId ? { 
+            ...user, 
+            isBanned: !user.isBanned,
+            banExpiresAt: banExpiresAt?.toISOString()
+          } : user
         ));
+        
         const user = users.find(u => u.id === userId);
-        alert(user?.isBanned ? 'User unbanned successfully' : 'User banned successfully');
+        if (user?.isBanned) {
+          showNotification('success', `${user.nickname || user.name} has been unbanned successfully`);
+        } else {
+          const durationText = duration === 'permanent' ? 'permanently' : 
+                              duration === '1h' ? 'for 1 hour' :
+                              duration === '24h' ? 'for 24 hours' :
+                              duration === '7d' ? 'for 7 days' :
+                              duration === '30d' ? 'for 30 days' : '';
+          showNotification('success', `${user?.nickname || user?.name} has been banned ${durationText}`);
+        }
       } else {
-        alert('Failed to update user status');
+        showNotification('error', 'Failed to update user ban status');
       }
     } catch (error) {
       console.error('Error updating user status:', error);
-      alert('An error occurred while updating user status');
+      showNotification('error', 'An error occurred while updating user status');
     }
   };
 
+  const openBanModal = (user: User) => {
+    setSelectedUser(user);
+    setBanDuration('1h');
+    setBanReason('');
+    setShowBanModal(true);
+  };
+
+  const closeBanModal = () => {
+    setShowBanModal(false);
+    setSelectedUser(null);
+    setBanDuration('1h');
+    setBanReason('');
+  };
+
+  const confirmBanUser = async () => {
+    if (!selectedUser) return;
+    
+    if (selectedUser.isBanned) {
+      // Unban user
+      await handleBanUser(selectedUser.id);
+    } else {
+      // Ban user with duration and reason
+      await handleBanUser(selectedUser.id, banDuration, banReason);
+    }
+    
+    closeBanModal();
+  };
+
   const handleDeleteUser = async (userId: number) => {
-    if (!confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
+    const user = users.find(u => u.id === userId);
+    if (!user) return;
+
+    if (!confirm(`Are you sure you want to delete ${user.nickname || user.name}? This action cannot be undone.`)) {
       return;
     }
     
@@ -217,18 +308,21 @@ export default function AdminPanel() {
       if (response.ok) {
         // Update local state
         setUsers(prev => prev.filter(user => user.id !== userId));
-        alert('User deleted successfully');
+        showNotification('success', `${user.nickname || user.name} has been deleted successfully`);
       } else {
-        alert('Failed to delete user');
+        showNotification('error', 'Failed to delete user');
       }
     } catch (error) {
       console.error('Error deleting user:', error);
-      alert('An error occurred while deleting user');
+      showNotification('error', 'An error occurred while deleting user');
     }
   };
 
   const handleDeletePost = async (postId: number) => {
-    if (!confirm('Are you sure you want to delete this post?')) {
+    const post = posts.find(p => p.id === postId);
+    if (!post) return;
+
+    if (!confirm(`Are you sure you want to delete the post "${post.title}"?`)) {
       return;
     }
     
@@ -244,13 +338,13 @@ export default function AdminPanel() {
       if (response.ok) {
         // Update local state
         setPosts(prev => prev.filter(post => post.id !== postId));
-        alert('Post deleted successfully');
+        showNotification('success', `Post "${post.title}" has been deleted successfully`);
       } else {
-        alert('Failed to delete post');
+        showNotification('error', 'Failed to delete post');
       }
     } catch (error) {
       console.error('Error deleting post:', error);
-      alert('An error occurred while deleting post');
+      showNotification('error', 'An error occurred while deleting post');
     }
   };
 
@@ -465,7 +559,7 @@ export default function AdminPanel() {
                       </div>
                       <div className="flex items-center space-x-2">
                         <button
-                          onClick={() => handleBanUser(user.id)}
+                          onClick={() => openBanModal(user)}
                           className={`p-2 rounded-lg transition-colors ${
                             user.isBanned
                               ? 'bg-green-100 text-green-600 hover:bg-green-200'
@@ -735,6 +829,147 @@ export default function AdminPanel() {
                     </button>
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Ban User Modal */}
+      {showBanModal && selectedUser && (
+        <div 
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={closeBanModal}
+        >
+          <div 
+            className="bg-white rounded-lg max-w-md w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center p-6 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-900">
+                {selectedUser.isBanned ? 'Unban User' : 'Ban User'}
+              </h2>
+              <button
+                onClick={closeBanModal}
+                className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="p-6">
+              <div className="mb-6">
+                <h3 className="text-xl font-bold text-gray-900 mb-3">
+                  {selectedUser.nickname || selectedUser.name}
+                </h3>
+                <p className="text-base text-gray-600 font-medium">{selectedUser.email}</p>
+              </div>
+
+              {selectedUser.isBanned ? (
+                <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-base font-medium text-red-800 mb-2">
+                    This user is currently banned. Click unban to restore their access.
+                  </p>
+                  {selectedUser.banExpiresAt && (
+                    <p className="text-sm font-bold text-red-700">
+                      Ban expires: {new Date(selectedUser.banExpiresAt).toLocaleString()}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-6 mb-6">
+                  <div>
+                    <label className="block text-base font-bold text-gray-800 mb-3">
+                      Ban Duration
+                    </label>
+                    <select
+                      value={banDuration}
+                      onChange={(e) => setBanDuration(e.target.value)}
+                      className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9a0e20] focus:border-transparent font-medium"
+                    >
+                      <option value="1h">1 Hour</option>
+                      <option value="24h">24 Hours</option>
+                      <option value="7d">7 Days</option>
+                      <option value="30d">30 Days</option>
+                      <option value="permanent">Permanent</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-base font-bold text-gray-800 mb-3">
+                      Reason (Optional)
+                    </label>
+                    <textarea
+                      value={banReason}
+                      onChange={(e) => setBanReason(e.target.value)}
+                      rows={4}
+                      className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9a0e20] focus:border-transparent resize-none"
+                      placeholder="Enter reason for ban..."
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="flex space-x-3">
+                <button
+                  onClick={closeBanModal}
+                  className="flex-1 px-6 py-3 text-base font-semibold text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmBanUser}
+                  className={`flex-1 px-6 py-3 text-base font-semibold text-white rounded-lg transition-colors ${
+                    selectedUser.isBanned 
+                      ? 'bg-green-600 hover:bg-green-700' 
+                      : 'bg-red-600 hover:bg-red-700'
+                  }`}
+                >
+                  {selectedUser.isBanned ? 'Unban User' : 'Ban User'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Notification */}
+      {notification && (
+        <div className="fixed top-4 right-4 z-50 animate-slide-in-right">
+          <div className={`max-w-sm w-full rounded-lg shadow-lg border ${
+            notification.type === 'success' 
+              ? 'bg-green-50 border-green-200' 
+              : 'bg-red-50 border-red-200'
+          }`}>
+            <div className="p-4">
+              <div className="flex items-start">
+                <div className="flex-shrink-0">
+                  {notification.type === 'success' ? (
+                    <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center">
+                      <BsCheckCircle className="w-4 h-4 text-green-600" />
+                    </div>
+                  ) : (
+                    <div className="w-6 h-6 rounded-full bg-red-100 flex items-center justify-center">
+                      <BsXCircle className="w-4 h-4 text-red-600" />
+                    </div>
+                  )}
+                </div>
+                <div className="ml-3 flex-1">
+                  <p className={`text-sm font-medium ${
+                    notification.type === 'success' ? 'text-green-800' : 'text-red-800'
+                  }`}>
+                    {notification.message}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setNotification(null)}
+                  className={`ml-2 inline-flex text-gray-400 hover:text-gray-600 focus:outline-none ${
+                    notification.type === 'success' ? 'hover:text-green-600' : 'hover:text-red-600'
+                  }`}
+                >
+                  <span className="sr-only">Close</span>
+                  ×
+                </button>
               </div>
             </div>
           </div>

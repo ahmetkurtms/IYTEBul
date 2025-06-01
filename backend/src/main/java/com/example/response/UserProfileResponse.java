@@ -20,4 +20,7 @@ public class UserProfileResponse {
     private String studentId;
     private String bio;
     private String nickname;
+    private Boolean isBanned;
+    private LocalDateTime banExpiresAt;
+    private String banReason;
 } 

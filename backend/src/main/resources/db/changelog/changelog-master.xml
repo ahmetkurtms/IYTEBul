@@ -5,4 +5,7 @@
         xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.4.xsd">
     <include file="db/changelog/0001_init_tables.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/0002_add_profile_fields.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/0003_fix_profile_photo_column.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/0004_add_ban_fields.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/0005_update_messages_table.sql" relativeToChangelogFile="false"/>
 </databaseChangeLog>

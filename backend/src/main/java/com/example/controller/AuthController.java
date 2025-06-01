@@ -132,9 +132,28 @@ public class AuthController {
         if (user == null || user.getIsVerified() == null || !user.getIsVerified()) {
             throw new BadCredentialsException("Email is not verified.");
         }
+        
+        // Check if user is currently banned
+        if (user.isCurrentlyBanned()) {
+            String banMessage = "Your account is banned";
+            if (user.getBanExpiresAt() != null) {
+                banMessage += " until " + user.getBanExpiresAt().toString();
+            } else {
+                banMessage += " permanently";
+            }
+            if (user.getBanReason() != null) {
+                banMessage += ". Reason: " + user.getBanReason();
+            }
+            banMessage += ". Please contact administrators.";
+            throw new BadCredentialsException(banMessage);
+        }
+        
         Authentication authentication = authenticate(loginRequest.getUniMail(), loginRequest.getPassword());
         String token = JwtProvider.generateToken(authentication);
+        
+        // Include user information in response for frontend use
         AuthResponse res = new AuthResponse(token, "Login Success");
+        res.setUser(user); // We need to update AuthResponse to include user
         return res;
     }
 

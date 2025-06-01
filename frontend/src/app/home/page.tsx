@@ -141,6 +141,92 @@ export default function Home() {
   const day = String(now.getDate()).padStart(2, '0');
   const today = `${year}-${month}-${day}`;
 
+  // Geliştirilmiş ban kontrolü fonksiyonu
+  const checkUserBanStatus = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        router.push('/auth');
+        return false;
+      }
+
+      // Backend'den fresh user bilgisi çek
+      const response = await fetch('http://localhost:8080/api/v1/users/profile', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const userData = await response.json();
+        
+        // LocalStorage'ı güncelle
+        localStorage.setItem('user', JSON.stringify(userData));
+        
+        // Ban kontrolü yap
+        if (userData.isBanned) {
+          const banExpiresAt = userData.banExpiresAt;
+          const now = new Date();
+          
+          if (!banExpiresAt || new Date(banExpiresAt) > now) {
+            // Kullanıcı hala banlı
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            router.push('/auth');
+            return false;
+          }
+          // Ban süresi bitmiş ama backend henüz güncellememiş olabilir
+          // Bu durumda kullanıcıya devam etmesine izin ver
+        }
+        
+        return true;
+      } else if (response.status === 401) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        router.push('/auth');
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error checking ban status:', error);
+      return true; // Hata durumunda erişime izin ver
+    }
+  };
+
+  // Admin kontrolü ekle
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      try {
+        // Önce ban kontrolü yap
+        const canAccess = await checkUserBanStatus();
+        if (!canAccess) return;
+
+        const token = localStorage.getItem('token');
+        if (!token) {
+          router.push('/auth');
+          return;
+        }
+
+        const response = await fetch('http://localhost:8080/api/v1/admin/users', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+
+        if (response.ok) {
+          // Admin ise admin panel'e yönlendir
+          router.push('/admin');
+          return;
+        }
+      } catch (error) {
+        // Admin değil, normal kullanıcı olarak devam et
+      }
+    };
+
+    checkAdminStatus();
+  }, [router]);
+
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) {

@@ -3,8 +3,8 @@ package com.example.response;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -22,4 +22,5 @@ public class MessageResponse {
     private String messageText;
     private LocalDateTime sentAt;
     private Boolean isRead;
+    private List<String> imageBase64List;
 } 

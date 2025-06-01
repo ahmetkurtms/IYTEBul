@@ -14,6 +14,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -56,10 +58,18 @@ public class AdminController {
                     userMap.put("email", user.getUniMail());
                     userMap.put("department", user.getDepartment() != null ? user.getDepartment() : "Unknown");
                     userMap.put("createdAt", user.getCreated_at().toString());
-                    userMap.put("isBanned", user.getBanned_status());
+                    userMap.put("isBanned", user.isCurrentlyBanned());
                     userMap.put("isVerified", user.getIsVerified());
                     userMap.put("profilePhotoUrl", user.getProfilePhotoUrl());
                     userMap.put("role", user.getRole().toString());
+                    
+                    if (user.getBanExpiresAt() != null) {
+                        userMap.put("banExpiresAt", user.getBanExpiresAt().toString());
+                    }
+                    if (user.getBanReason() != null) {
+                        userMap.put("banReason", user.getBanReason());
+                    }
+                    
                     return userMap;
                 })
                 .collect(Collectors.toList());
@@ -71,16 +81,43 @@ public class AdminController {
     }
 
     @PutMapping("/users/{userId}/ban")
-    public ResponseEntity<ApiResponse> banUser(@PathVariable Long userId, @RequestHeader("Authorization") String jwt) {
+    public ResponseEntity<ApiResponse> banUser(
+            @PathVariable Long userId, 
+            @RequestHeader("Authorization") String jwt,
+            @RequestBody(required = false) Map<String, String> banRequest) {
         try {
             validateAdmin(jwt);
             
             User user = userService.findUserById(userId);
-            user.setBanned_status(!user.getBanned_status());
-            userRepository.save(user);
             
-            String message = user.getBanned_status() ? "User banned successfully" : "User unbanned successfully";
-            return ResponseEntity.ok(new ApiResponse(message, true));
+            if (user.isCurrentlyBanned()) {
+                user.setBanned_status(false);
+                user.setBanExpiresAt(null);
+                user.setBanReason(null);
+                userRepository.save(user);
+                return ResponseEntity.ok(new ApiResponse("User unbanned successfully", true));
+            } else {
+                user.setBanned_status(true);
+                
+                if (banRequest != null && banRequest.containsKey("banExpiresAt")) {
+                    String expiryStr = banRequest.get("banExpiresAt");
+                    if (expiryStr != null && !expiryStr.isEmpty()) {
+                        try {
+                            LocalDateTime expiry = LocalDateTime.parse(expiryStr, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+                            user.setBanExpiresAt(expiry);
+                        } catch (Exception e) {
+                            user.setBanExpiresAt(null);
+                        }
+                    }
+                }
+                
+                if (banRequest != null && banRequest.containsKey("banReason")) {
+                    user.setBanReason(banRequest.get("banReason"));
+                }
+                
+                userRepository.save(user);
+                return ResponseEntity.ok(new ApiResponse("User banned successfully", true));
+            }
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ApiResponse(e.getMessage(), false));
         }
@@ -154,7 +191,7 @@ public class AdminController {
             Map<String, Object> stats = new HashMap<>();
             stats.put("totalUsers", userRepository.count());
             stats.put("totalPosts", itemRepository.count());
-            stats.put("bannedUsers", userRepository.findAll().stream().mapToLong(u -> u.getBanned_status() ? 1 : 0).sum());
+            stats.put("bannedUsers", userRepository.findAll().stream().mapToLong(u -> u.isCurrentlyBanned() ? 1 : 0).sum());
             stats.put("lostItems", itemRepository.findAll().stream().mapToLong(i -> i.getType().toString().equals("Lost") ? 1 : 0).sum());
             stats.put("foundItems", itemRepository.findAll().stream().mapToLong(i -> i.getType().toString().equals("Found") ? 1 : 0).sum());
             

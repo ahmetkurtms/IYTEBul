@@ -123,14 +123,50 @@ export default function Auth() {
           router.push(`/auth/verify?email=${encodeURIComponent(values.uniMail)}`);
           return;
         } else {
-          // Login başarılıysa token kaydet ve home'a yönlendir
+          // Login başarılıysa token kaydet ve admin kontrolü yap
           const token = responseData.token;
           localStorage.setItem('token', token);
           if (responseData.user) {
             localStorage.setItem('user', JSON.stringify(responseData.user));
           }
           await new Promise(resolve => setTimeout(resolve, 100));
-          router.push('/home');
+          
+          // Ban kontrolü yap
+          if (responseData.user?.isBanned) {
+            const banExpiresAt = responseData.user.banExpiresAt;
+            const now = new Date();
+            
+            if (!banExpiresAt || new Date(banExpiresAt) > now) {
+              // Kullanıcı hala banlı
+              const banExpiry = banExpiresAt ? new Date(banExpiresAt).toLocaleString() : 'indefinitely';
+              setStatus(`🚫 YOUR ACCOUNT IS BANNED until ${banExpiry}. Please contact administrators for more information.`);
+              localStorage.removeItem('token');
+              localStorage.removeItem('user');
+              setSubmitting(false);
+              return;
+            }
+          }
+          
+          // Admin kontrolü yap
+          try {
+            const adminCheckResponse = await fetch('http://localhost:8080/api/v1/admin/users', {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+              },
+            });
+            
+            if (adminCheckResponse.ok) {
+              // Admin ise admin panel'e yönlendir
+              router.push('/admin');
+            } else {
+              // Normal kullanıcı ise home'a yönlendir
+              router.push('/home');
+            }
+          } catch (error) {
+            // Hata durumunda normal kullanıcı olarak kabul et
+            router.push('/home');
+          }
+          
           router.refresh();
         }
       } else {

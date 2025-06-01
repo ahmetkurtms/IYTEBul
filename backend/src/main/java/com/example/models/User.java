@@ -29,6 +29,12 @@ public class User {
     private LocalDateTime created_at;
     private Boolean banned_status;
 
+    // Ban related fields
+    private LocalDateTime banExpiresAt;
+    
+    @Column(columnDefinition = "TEXT")
+    private String banReason;
+
     @Enumerated(EnumType.STRING)
     private Role role;
 
@@ -47,5 +53,20 @@ public class User {
     
     private String studentId;
     private String department;
+
+    // Helper method to check if user is currently banned
+    public boolean isCurrentlyBanned() {
+        if (!Boolean.TRUE.equals(banned_status)) {
+            return false;
+        }
+        
+        // If no expiry date, ban is permanent
+        if (banExpiresAt == null) {
+            return true;
+        }
+        
+        // Check if ban has expired
+        return LocalDateTime.now().isBefore(banExpiresAt);
+    }
 
 }

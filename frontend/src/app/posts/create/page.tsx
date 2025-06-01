@@ -31,6 +31,61 @@ export default function CreatePost() {
       return;
     }
 
+    // Admin kontrolü ekle
+    const checkAdminStatus = async () => {
+      try {
+        // Fresh user bilgisini çek ve ban kontrolü yap
+        const profileResponse = await fetch('http://localhost:8080/api/v1/users/profile', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+
+        if (profileResponse.ok) {
+          const userData = await profileResponse.json();
+          
+          // LocalStorage'ı güncelle
+          localStorage.setItem('user', JSON.stringify(userData));
+          
+          // Ban kontrolü yap
+          if (userData.isBanned) {
+            const banExpiresAt = userData.banExpiresAt;
+            const now = new Date();
+            
+            if (!banExpiresAt || new Date(banExpiresAt) > now) {
+              // Kullanıcı hala banlı
+              localStorage.removeItem('token');
+              localStorage.removeItem('user');
+              router.push('/auth');
+              return;
+            }
+          }
+        } else if (profileResponse.status === 401) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          router.push('/auth');
+          return;
+        }
+
+        // Admin kontrolü yap
+        const response = await fetch('http://localhost:8080/api/v1/admin/users', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+
+        if (response.ok) {
+          // Admin ise admin panel'e yönlendir
+          router.push('/admin');
+          return;
+        }
+      } catch (error) {
+        // Admin değil, normal kullanıcı olarak devam et
+      }
+    };
+
+    checkAdminStatus();
+
     // Fetch categories and locations
     const fetchData = async () => {
       try {

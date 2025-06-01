@@ -2,10 +2,12 @@ package com.example.controller;
 
 import com.example.models.Messages;
 import com.example.models.User;
+import com.example.models.MessageImage;
 import com.example.request.SendMessageRequest;
 import com.example.response.ApiResponse;
 import com.example.response.ConversationResponse;
 import com.example.response.MessageResponse;
+import com.example.repository.MessageImageRepository;
 import com.example.service.MessageService;
 import com.example.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,6 +31,8 @@ public class MessageController {
     
     @Autowired
     private UserService userService;
+    @Autowired
+    private MessageImageRepository messageImageRepository;
     
     // Health check endpoint
     @GetMapping("/health")
@@ -68,7 +72,15 @@ public class MessageController {
             
             Messages message = messageService.sendMessage(sender, receiver, request.getMessageText());
             System.out.println("Message sent successfully: " + message.getMessageId());
-            
+            // Save images if present
+            if (request.getImageBase64List() != null) {
+                for (String base64 : request.getImageBase64List()) {
+                    MessageImage img = new MessageImage();
+                    img.setMessage(message);
+                    img.setImageBase64(base64);
+                    messageImageRepository.save(img);
+               }
+            }
             return ResponseEntity.ok(new ApiResponse("Message sent successfully", true));
             
         } catch (Exception e) {
@@ -278,6 +290,12 @@ public class MessageController {
         response.setMessageText(message.getMessageText());
         response.setSentAt(message.getSentAt());
         response.setIsRead(message.getIsRead());
+        List<MessageImage> images = messageImageRepository.findByMessage(message);
+        List<String> imageBase64List = new ArrayList<>();
+        for (MessageImage img : images) {
+            imageBase64List.add(img.getImageBase64());
+        }
+        response.setImageBase64List(imageBase64List);
         return response;
     }
 } 
