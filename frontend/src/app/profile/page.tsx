@@ -464,7 +464,7 @@ export default function ProfilePage() {
                   <button
                     onClick={handleProfilePhotoClick}
                     disabled={isSaving}
-                    className="absolute -top-2 -right-2 w-10 h-10 bg-[#9a0e20] rounded-full shadow-lg flex items-center justify-center text-white hover:bg-[#7a0b19] hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed border-2 border-white"
+                    className="absolute -top-2 -right-2 w-10 h-10 bg-[#9a0e20] rounded-full shadow-lg flex items-center justify-center text-white hover:bg-[#7a0b19] hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed border-2 border-white cursor-pointer"
                     title="Change profile photo"
                   >
                     {isSaving ? (
@@ -522,7 +522,7 @@ export default function ProfilePage() {
                   className={`py-4 px-1 border-b-2 font-medium ${
                     activeTab === "posts" 
                       ? "border-[#9a0e20] text-[#9a0e20]" 
-                      : "border-transparent text-gray-500 hover:text-gray-700"
+                      : "border-transparent text-gray-500 hover:text-gray-700 cursor-pointer"
                   }`}
                 >
                   My Posts
@@ -532,7 +532,7 @@ export default function ProfilePage() {
                   className={`py-4 px-1 border-b-2 font-medium ${
                     activeTab === "settings" 
                       ? "border-[#9a0e20] text-[#9a0e20]" 
-                      : "border-transparent text-gray-500 hover:text-gray-700"
+                      : "border-transparent text-gray-500 hover:text-gray-700 cursor-pointer"
                   }`}
                 >
                   Settings
@@ -635,14 +635,14 @@ export default function ProfilePage() {
                             <div className="flex space-x-1 ml-2">
                               <button
                                 onClick={() => openPostModal(post)}
-                                className="p-1.5 text-gray-400 hover:text-[#9a0e20] transition-colors"
+                                className="p-1.5 text-gray-400 hover:text-[#9a0e20] transition-colors cursor-pointer"
                                 title="View post"
                               >
                                 <FaEye className="w-4 h-4" />
                               </button>
                               <button
                                 onClick={() => showDeleteConfirmation(post)}
-                                className="p-1.5 text-gray-400 hover:text-red-600 transition-colors"
+                                className="p-1.5 text-gray-400 hover:text-red-600 transition-colors cursor-pointer"
                                 title="Delete post"
                               >
                                 <FaTrash className="w-4 h-4" />
@@ -718,13 +718,13 @@ export default function ProfilePage() {
                           <button
                             onClick={() => handleFieldSave("nickname")}
                             disabled={isSaving}
-                            className="p-2 text-green-600 hover:text-green-700 disabled:opacity-50"
+                            className="p-2 text-green-600 hover:text-green-700 disabled:opacity-50 cursor-pointer"
                           >
                             <FaCheck className="w-4 h-4" />
                           </button>
                           <button
                             onClick={handleFieldCancel}
-                            className="p-2 text-red-600 hover:text-red-700"
+                            className="p-2 text-red-600 hover:text-red-700 cursor-pointer"
                           >
                             <FaTimes className="w-4 h-4" />
                           </button>
@@ -736,7 +736,7 @@ export default function ProfilePage() {
                           </p>
                           <button
                             onClick={() => setEditingField("nickname")}
-                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-[#9a0e20] transition-colors"
+                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-[#9a0e20] transition-colors cursor-pointer"
                           >
                             <FaEdit className="w-4 h-4" />
                           </button>
@@ -776,13 +776,13 @@ export default function ProfilePage() {
                           <button
                             onClick={() => handleFieldSave("studentId")}
                             disabled={isSaving}
-                            className="p-2 text-green-600 hover:text-green-700 disabled:opacity-50"
+                            className="p-2 text-green-600 hover:text-green-700 disabled:opacity-50 cursor-pointer"
                           >
                             <FaCheck className="w-4 h-4" />
                           </button>
                           <button
                             onClick={handleFieldCancel}
-                            className="p-2 text-red-600 hover:text-red-700"
+                            className="p-2 text-red-600 hover:text-red-700 cursor-pointer"
                           >
                             <FaTimes className="w-4 h-4" />
                           </button>
@@ -794,7 +794,7 @@ export default function ProfilePage() {
                           </p>
                           <button
                             onClick={() => setEditingField("studentId")}
-                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-[#9a0e20] transition-colors"
+                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-[#9a0e20] transition-colors cursor-pointer"
                           >
                             <FaEdit className="w-4 h-4" />
                           </button>
@@ -810,7 +810,7 @@ export default function ProfilePage() {
                       {editingField === "phoneNumber" ? (
                         <div className="flex items-center space-x-2">
                           <div className="flex flex-1">
-                            <select className="px-3 py-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-[#9a0e20] focus:border-transparent bg-white text-gray-900 border-r-0">
+                            <select className="px-3 py-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-[#9a0e20] focus:border-transparent bg-white text-gray-900 border-r-0 cursor-pointer">
                               <option value="+90">🇹🇷 +90</option>
                               <option value="+1">🇺🇸 +1</option>
                               <option value="+44">🇬🇧 +44</option>
@@ -844,13 +844,13 @@ export default function ProfilePage() {
                           <button
                             onClick={() => handleFieldSave("phoneNumber")}
                             disabled={isSaving}
-                            className="p-2 text-green-600 hover:text-green-700 disabled:opacity-50"
+                            className="p-2 text-green-600 hover:text-green-700 disabled:opacity-50 cursor-pointer"
                           >
                             <FaCheck className="w-4 h-4" />
                           </button>
                           <button
                             onClick={handleFieldCancel}
-                            className="p-2 text-red-600 hover:text-red-700"
+                            className="p-2 text-red-600 hover:text-red-700 cursor-pointer"
                           >
                             <FaTimes className="w-4 h-4" />
                           </button>
@@ -862,7 +862,7 @@ export default function ProfilePage() {
                           </p>
                           <button
                             onClick={() => setEditingField("phoneNumber")}
-                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-[#9a0e20] transition-colors"
+                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-[#9a0e20] transition-colors cursor-pointer"
                           >
                             <FaEdit className="w-4 h-4" />
                           </button>
@@ -892,13 +892,13 @@ export default function ProfilePage() {
                           <button
                             onClick={() => handleFieldSave("bio")}
                             disabled={isSaving}
-                            className="p-2 text-green-600 hover:text-green-700 disabled:opacity-50"
+                            className="p-2 text-green-600 hover:text-green-700 disabled:opacity-50 cursor-pointer"
                           >
                             <FaCheck className="w-4 h-4" />
                           </button>
                           <button
                             onClick={handleFieldCancel}
-                            className="p-2 text-red-600 hover:text-red-700"
+                            className="p-2 text-red-600 hover:text-red-700 cursor-pointer"
                           >
                             <FaTimes className="w-4 h-4" />
                           </button>
@@ -911,7 +911,7 @@ export default function ProfilePage() {
                         </p>
                         <button
                           onClick={() => setEditingField("bio")}
-                          className="absolute right-3 top-3 text-gray-400 hover:text-[#9a0e20] transition-colors"
+                          className="absolute right-3 top-3 text-gray-400 hover:text-[#9a0e20] transition-colors cursor-pointer"
                         >
                           <FaEdit className="w-4 h-4" />
                         </button>
