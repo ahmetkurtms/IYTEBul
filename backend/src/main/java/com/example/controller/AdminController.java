@@ -8,6 +8,8 @@ import com.example.models.Report;
 import com.example.repository.UserRepository;
 import com.example.repository.ItemRepository;
 import com.example.repository.ReportRepository;
+import com.example.repository.UserReportRepository;
+import com.example.models.UserReport;
 import com.example.service.UserService;
 import com.example.service.ItemService;
 import com.example.service.EmailService;
@@ -32,6 +34,7 @@ public class AdminController {
     private final UserRepository userRepository;
     private final ItemRepository itemRepository;
     private final ReportRepository reportRepository;
+    private final UserReportRepository userReportRepository;
     private final UserService userService;
     private final ItemService itemService;
     private final EmailService emailService;
@@ -255,34 +258,57 @@ public class AdminController {
     public ResponseEntity<List<Map<String, Object>>> getAllReports(@RequestHeader("Authorization") String jwt) {
         try {
             validateAdmin(jwt);
-            
+            List<Map<String, Object>> response = new java.util.ArrayList<>();
+            // Post reports
             List<Report> reports = reportRepository.findAllByOrderByCreatedAtDesc();
-            List<Map<String, Object>> response = reports.stream()
-                .map(report -> {
-                    Map<String, Object> reportMap = new HashMap<>();
-                    reportMap.put("id", report.getId());
-                    reportMap.put("postId", report.getPost().getItem_id());
-                    reportMap.put("postTitle", report.getPost().getTitle());
-                    reportMap.put("postType", report.getPost().getType().toString());
-                    reportMap.put("reporterId", report.getReporter().getUser_id());
-                    reportMap.put("reporterName", report.getReporter().getNickname());
-                    reportMap.put("reporterEmail", report.getReporter().getUniMail());
-                    reportMap.put("reason", report.getReason());
-                    reportMap.put("description", report.getDescription());
-                    reportMap.put("status", report.getStatus().toString());
-                    reportMap.put("createdAt", report.getCreatedAt().toString());
-                    
-                    if (report.getReviewedAt() != null) {
-                        reportMap.put("reviewedAt", report.getReviewedAt().toString());
-                    }
-                    if (report.getReviewedBy() != null) {
-                        reportMap.put("reviewedBy", report.getReviewedBy().getNickname());
-                    }
-                    
-                    return reportMap;
-                })
-                .collect(Collectors.toList());
-            
+            for (Report report : reports) {
+                Map<String, Object> reportMap = new java.util.HashMap<>();
+                reportMap.put("id", report.getId());
+                reportMap.put("type", "post");
+                reportMap.put("postId", report.getPost().getItem_id());
+                reportMap.put("postTitle", report.getPost().getTitle());
+                reportMap.put("postType", report.getPost().getType().toString());
+                reportMap.put("reporterId", report.getReporter().getUser_id());
+                reportMap.put("reporterName", report.getReporter().getNickname());
+                reportMap.put("reporterEmail", report.getReporter().getUniMail());
+                reportMap.put("reason", report.getReason());
+                reportMap.put("description", report.getDescription());
+                reportMap.put("status", report.getStatus().toString());
+                reportMap.put("createdAt", report.getCreatedAt().toString());
+                if (report.getReviewedAt() != null) {
+                    reportMap.put("reviewedAt", report.getReviewedAt().toString());
+                }
+                if (report.getReviewedBy() != null) {
+                    reportMap.put("reviewedBy", report.getReviewedBy().getNickname());
+                }
+                response.add(reportMap);
+            }
+            // User reports
+            List<UserReport> userReports = userReportRepository.findAllByOrderByCreatedAtDesc();
+            for (UserReport report : userReports) {
+                Map<String, Object> reportMap = new java.util.HashMap<>();
+                reportMap.put("id", report.getId());
+                reportMap.put("type", "user");
+                reportMap.put("userId", report.getUser().getUser_id());
+                reportMap.put("userNickname", report.getUser().getNickname());
+                reportMap.put("userEmail", report.getUser().getUniMail());
+                reportMap.put("reporterId", report.getReporter().getUser_id());
+                reportMap.put("reporterName", report.getReporter().getNickname());
+                reportMap.put("reporterEmail", report.getReporter().getUniMail());
+                reportMap.put("reason", report.getReason());
+                reportMap.put("description", report.getDescription());
+                reportMap.put("status", report.getStatus().toString());
+                reportMap.put("createdAt", report.getCreatedAt().toString());
+                if (report.getReviewedAt() != null) {
+                    reportMap.put("reviewedAt", report.getReviewedAt().toString());
+                }
+                if (report.getReviewedBy() != null) {
+                    reportMap.put("reviewedBy", report.getReviewedBy().getNickname());
+                }
+                response.add(reportMap);
+            }
+            // Hepsini birleştirip tarihe göre sırala (en yeni en üstte)
+            response.sort((a, b) -> b.get("createdAt").toString().compareTo(a.get("createdAt").toString()));
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(null);

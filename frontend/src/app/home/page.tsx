@@ -19,6 +19,7 @@ import { MdOutlineViewDay } from "react-icons/md";
 import { MdOutlineAdd } from "react-icons/md";
 
 import { MdOutlineGridView } from "react-icons/md";
+import { BsCheckCircle, BsXCircle } from 'react-icons/bs';
 
 // Custom 4x4 grid icon component (16 squares)
 const QuadGridIcon = ({ className = "h-6 w-6" }: { className?: string }) => (
@@ -96,6 +97,9 @@ export default function Home() {
   // Message form states
   const [openMessageForms, setOpenMessageForms] = useState<Set<number>>(new Set());
 
+  // Notification state
+  const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
   // Handle sending message to post owner
   const handleSendMessage = async (userId: number, userName: string) => {
     const token = localStorage.getItem('token');
@@ -135,6 +139,12 @@ export default function Home() {
     setShowReportModal(true);
   };
 
+  // Show notification
+  const showNotification = (type: 'success' | 'error', message: string) => {
+    setNotification({ type, message });
+    setTimeout(() => setNotification(null), 5000);
+  };
+
   // Submit report
   const submitReport = async () => {
     if (!reportPostId || !reportReason.trim()) return;
@@ -165,27 +175,34 @@ export default function Home() {
       console.log('Report response status:', response.status);
 
       if (response.ok) {
-        console.log('Report submitted successfully');
         setShowReportModal(false);
         setReportPostId(null);
         setReportPostTitle('');
         setReportReason('');
         setReportDescription('');
-        // Show success message
         setError('');
-        // You could show a success toast here
-        alert('Report submitted successfully');
+        showNotification('success', 'Report submitted successfully');
       } else {
-        const errorText = await response.text();
-        console.error('Report submission failed:', response.status, errorText);
-        throw new Error(`Failed to submit report: ${response.status} - ${errorText}`);
+        let errorMessage = 'Failed to submit report';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch (e) {
+          const errorText = await response.text();
+          if (errorText) errorMessage = errorText;
+        }
+        showNotification('error', errorMessage);
+        throw new Error(errorMessage);
       }
     } catch (error) {
-      console.error('Error submitting report:', error);
       if (error instanceof TypeError && error.message.includes('fetch')) {
         setError('Cannot connect to server. Please make sure the backend is running on http://localhost:8080');
+        showNotification('error', 'Cannot connect to server. Please make sure the backend is running.');
+      } else if (error instanceof Error && error.message) {
+        setError(error.message);
       } else {
         setError('Failed to submit report. Please try again.');
+        showNotification('error', 'Failed to submit report. Please try again.');
       }
     } finally {
       setIsSubmittingReport(false);
@@ -783,6 +800,7 @@ export default function Home() {
                   showMessageForm={openMessageForms.has(post.id)}
                   onToggleMessageForm={handleToggleMessageForm}
                   onSendMessageText={handleSendMessageText}
+                  viewMode={viewMode}
                 />
               ))}
             </div>
@@ -808,34 +826,34 @@ export default function Home() {
 
             <div className="p-6">
               <div className="mb-4">
-                <p className="text-sm text-gray-600 mb-2">Post: "{reportPostTitle}"</p>
-                <label className="block text-sm font-medium text-gray-900 mb-2">
+                <p className="text-sm font-medium text-gray-800 mb-2">Post: <span className="font-semibold text-gray-900">"{reportPostTitle}"</span></p>
+                <label className="block text-sm font-semibold text-gray-900 mb-2">
                   Reason for reporting *
                 </label>
                 <select
                   value={reportReason}
                   onChange={(e) => setReportReason(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9a0e20] focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-[#9a0e20] focus:border-transparent"
                   required
                 >
-                  <option value="">Select a reason</option>
-                  <option value="inappropriate_content">Inappropriate Content</option>
-                  <option value="spam">Spam</option>
-                  <option value="false_information">False Information</option>
-                  <option value="harassment">Harassment</option>
-                  <option value="other">Other</option>
+                  <option value="" className="text-gray-500">Select a reason</option>
+                  <option value="inappropriate_content" className="text-gray-900">Inappropriate Content</option>
+                  <option value="spam" className="text-gray-900">Spam</option>
+                  <option value="false_information" className="text-gray-900">False Information</option>
+                  <option value="harassment" className="text-gray-900">Harassment</option>
+                  <option value="other" className="text-gray-900">Other</option>
                 </select>
               </div>
 
               <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-900 mb-2">
+                <label className="block text-sm font-semibold text-gray-900 mb-2">
                   Additional details (optional)
                 </label>
                 <textarea
                   value={reportDescription}
                   onChange={(e) => setReportDescription(e.target.value)}
                   rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9a0e20] focus:border-transparent resize-none"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-[#9a0e20] focus:border-transparent resize-none placeholder-gray-500"
                   placeholder="Provide additional details about why you're reporting this post..."
                 />
               </div>
@@ -843,18 +861,59 @@ export default function Home() {
               <div className="flex space-x-3">
                 <button
                   onClick={closeReportModal}
-                  className="flex-1 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+                  className="flex-1 bg-gray-700 text-white font-medium px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={submitReport}
                   disabled={!reportReason.trim() || isSubmittingReport}
-                  className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 bg-[#9a0e20] text-white font-medium px-4 py-2 rounded-lg hover:bg-[#801d21] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isSubmittingReport ? 'Submitting...' : 'Submit Report'}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Notification */}
+      {notification && (
+        <div className="fixed top-1/2 left-1/2 z-50 -translate-x-1/2 -translate-y-1/2 animate-slide-in-right">
+          <div className={`max-w-sm w-full rounded-lg shadow-lg border ${
+            notification.type === 'success' 
+              ? 'bg-green-50 border-green-200' 
+              : 'bg-red-50 border-red-200'
+          }`}>
+            <div className="p-4 flex items-center">
+              <div className="flex-shrink-0">
+                {notification.type === 'success' ? (
+                  <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center">
+                    <BsCheckCircle className="w-4 h-4 text-green-600" />
+                  </div>
+                ) : (
+                  <div className="w-6 h-6 rounded-full bg-red-100 flex items-center justify-center">
+                    <BsXCircle className="w-4 h-4 text-red-600" />
+                  </div>
+                )}
+              </div>
+              <div className="ml-3 flex-1">
+                <p className={`text-sm font-medium ${
+                  notification.type === 'success' ? 'text-green-800' : 'text-red-800'
+                }`}>
+                  {notification.message}
+                </p>
+              </div>
+              <button
+                onClick={() => setNotification(null)}
+                className={`ml-2 inline-flex text-gray-400 hover:text-gray-600 focus:outline-none ${
+                  notification.type === 'success' ? 'hover:text-green-600' : 'hover:text-red-600'
+                }`}
+              >
+                <span className="sr-only">Close</span>
+                ×
+              </button>
             </div>
           </div>
         </div>

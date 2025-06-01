@@ -22,4 +22,7 @@ public interface ReportRepository extends JpaRepository<Report, Long> {
 
     @Query("SELECT r FROM Report r WHERE r.post.item_id = :postId ORDER BY r.createdAt DESC")
     List<Report> findByPostId(@Param("postId") Long postId);
+
+    @Query("SELECT COUNT(r) > 0 FROM Report r WHERE r.post.item_id = :postId AND r.reporter.user_id = :reporterId")
+    boolean existsByPostIdAndReporterId(@Param("postId") Long postId, @Param("reporterId") Long reporterId);
 } 

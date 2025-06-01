@@ -28,6 +28,7 @@ interface PostCardProps {
   showMessageForm?: boolean;
   onToggleMessageForm?: (postId: number) => void;
   onSendMessageText?: (userId: number, userName: string, message: string) => void;
+  viewMode?: 'quad' | 'double' | 'single';
 }
 
 export default function PostCard({ 
@@ -38,7 +39,8 @@ export default function PostCard({
   highlightText,
   showMessageForm = false,
   onToggleMessageForm,
-  onSendMessageText
+  onSendMessageText,
+  viewMode = 'double',
 }: PostCardProps) {
   const [showMenu, setShowMenu] = useState(false);
   const [messageText, setMessageText] = useState('');
@@ -94,7 +96,7 @@ export default function PostCard({
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow relative h-full flex flex-col">
       {/* 3-Dot Menu - Only in top right corner */}
-      <div className="absolute top-1 right-1 z-10" ref={menuRef}>
+      <div className="absolute top-3 right-3 z-10" ref={menuRef}>
         <button
           onClick={() => setShowMenu(!showMenu)}
           className="p-1.5 bg-white/90 backdrop-blur-sm rounded-full shadow-sm hover:bg-white transition-colors"
@@ -151,7 +153,7 @@ export default function PostCard({
             <img
               src={`data:${post.imageContentType};base64,${post.imageBase64}`}
               alt={post.title}
-              className="object-cover w-full h-full"
+              className={`object-cover w-full h-full ${viewMode === 'double' ? 'max-w-[300px] max-h-[210px]' : ''}`}
             />
           ) : (
             <img
@@ -164,7 +166,7 @@ export default function PostCard({
                 '/assets/others.jpeg'
               }
               alt="Default category image"
-              className="object-cover w-full h-full"
+              className={`object-cover w-full h-full ${viewMode === 'double' ? 'max-w-[300px] max-h-[210px]' : ''}`}
             />
           )}
         </div>

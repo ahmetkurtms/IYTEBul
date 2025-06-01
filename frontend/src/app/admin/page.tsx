@@ -57,9 +57,16 @@ interface Post {
 
 interface Report {
   id: number;
-  postId: number;
-  postTitle: string;
-  postType: string;
+  type: 'post' | 'user';
+  // Post report fields
+  postId?: number;
+  postTitle?: string;
+  postType?: string;
+  // User report fields
+  userId?: number;
+  userNickname?: string;
+  userEmail?: string;
+  // Common fields
   reporterId: number;
   reporterName: string;
   reporterEmail: string;
@@ -1061,24 +1068,38 @@ export default function AdminPanel() {
                             }`}>
                               {report.status}
                             </span>
+                            <span className="px-2 py-1 text-xs rounded-full bg-gray-200 text-gray-700">
+                              {report.type === 'post' ? 'Post Report' : 'User Report'}
+                            </span>
                           </div>
                           <p className="text-sm text-gray-600 mb-2">{report.description}</p>
                           <div className="flex items-center space-x-4 text-xs text-gray-500">
                             <span>Reporter: {report.reporterName}</span>
                             <span>•</span>
-                            <span>Post: {report.postTitle}</span>
-                            <span>•</span>
+                            {report.type === 'post' ? (
+                              <>
+                                <span>Post: {report.postTitle}</span>
+                                <span>•</span>
+                              </>
+                            ) : (
+                              <>
+                                <span>User: {report.userNickname} ({report.userEmail})</span>
+                                <span>•</span>
+                              </>
+                            )}
                             <span>{formatDistanceToNow(new Date(report.createdAt), { addSuffix: true, locale: enUS })}</span>
                           </div>
                         </div>
                         <div className="flex items-center space-x-2 ml-4">
-                          <button
-                            onClick={() => handleViewReportedPost(report.postId)}
-                            className="p-2 rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors"
-                            title="View Reported Post"
-                          >
-                            <FiEye className="w-4 h-4" />
-                          </button>
+                          {report.type === 'post' && (
+                            <button
+                              onClick={() => handleViewReportedPost(report.postId!)}
+                              className="p-2 rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors"
+                              title="View Reported Post"
+                            >
+                              <FiEye className="w-4 h-4" />
+                            </button>
+                          )}
                           {report.status === 'PENDING' && (
                             <>
                               <button

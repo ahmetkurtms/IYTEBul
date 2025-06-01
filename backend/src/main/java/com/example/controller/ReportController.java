@@ -52,6 +52,12 @@ public class ReportController {
                     .body(new ApiResponse("You cannot report your own post", false));
             }
 
+            // Check if user already reported this post
+            if (reportRepository.existsByPostIdAndReporterId(postId, reporter.getUser_id())) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ApiResponse("You have already reported this post", false));
+            }
+
             // Create report
             Report report = new Report();
             report.setPost(post);

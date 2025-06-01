@@ -7,7 +7,7 @@ import ConfirmationModal from '@/components/ConfirmationModal';
 import { formatDistanceToNow } from 'date-fns';
 import { enUS } from 'date-fns/locale';
 import { FiSearch, FiSend, FiMoreVertical, FiPaperclip, FiSmile, FiMessageCircle, FiX, FiImage, FiChevronUp, FiChevronDown, FiCamera } from 'react-icons/fi';
-import { BsCheck, BsCheckAll } from 'react-icons/bs';
+import { BsCheck, BsCheckAll, BsCheckCircle, BsXCircle } from 'react-icons/bs';
 import Image from 'next/image';
 import { messageApi, MessageResponse, ConversationResponse, UserProfile } from '@/lib/messageApi';
 
@@ -64,6 +64,12 @@ export default function Messages() {
   const [previews, setPreviews] = useState<string[]>([]);
   const [fileSendLoading, setFileSendLoading] = useState(false);
   const [fileSendError, setFileSendError] = useState<string | null>(null);
+  const [showUserReportModal, setShowUserReportModal] = useState(false);
+  const [reportReason, setReportReason] = useState('');
+  const [reportDescription, setReportDescription] = useState('');
+  const [isSubmittingUserReport, setIsSubmittingUserReport] = useState(false);
+  const [userReportError, setUserReportError] = useState('');
+  const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null);
 
   // Fix hydration issues
   useEffect(() => {
@@ -616,6 +622,11 @@ export default function Messages() {
     setHighlightedMessageId(null);
   };
 
+  const showNotification = (type: 'success' | 'error', message: string) => {
+    setNotification({ type, message });
+    setTimeout(() => setNotification(null), 5000);
+  };
+
   if (loading || !isMounted) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -831,7 +842,7 @@ export default function Messages() {
                         <hr className="my-1 border-gray-200" />
                         <button
                           onClick={() => {
-                            alert(`${selectedConversation?.user.nickname} has been reported`);
+                            setShowUserReportModal(true);
                             setShowOptionsMenu(false);
                           }}
                           className="w-full px-4 py-2 text-left text-sm text-orange-600 hover:bg-orange-50 transition-colors flex items-center space-x-2"
@@ -1121,6 +1132,143 @@ export default function Messages() {
         cancelText="Cancel"
         type="danger"
       />
+
+      {/* User Report Modal */}
+      {showUserReportModal && (
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full">
+            <div className="flex justify-between items-center p-6 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-900">Report User</h2>
+              <button
+                onClick={() => setShowUserReportModal(false)}
+                className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              </button>
+            </div>
+            <div className="p-6">
+              <label className="block text-sm font-semibold text-gray-900 mb-2">
+                Reason for reporting *
+              </label>
+              <select
+                value={reportReason}
+                onChange={e => setReportReason(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-[#9a0e20] focus:border-transparent mb-4"
+                required
+              >
+                <option value="" className="text-gray-500 bg-white">Select a reason</option>
+                <option value="inappropriate_content" className="text-gray-900 bg-white">Inappropriate Content</option>
+                <option value="spam" className="text-gray-900 bg-white">Spam</option>
+                <option value="false_information" className="text-gray-900 bg-white">False Information</option>
+                <option value="harassment" className="text-gray-900 bg-white">Harassment</option>
+                <option value="other" className="text-gray-900 bg-white">Other</option>
+              </select>
+              <label className="block text-sm font-semibold text-gray-800 mb-2">
+                Additional details (optional)
+              </label>
+              <textarea
+                value={reportDescription}
+                onChange={e => setReportDescription(e.target.value)}
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9a0e20] focus:border-transparent resize-none mb-4"
+                placeholder="Provide additional details about why you're reporting this user..."
+              />
+              {userReportError && <p className="text-red-600 text-sm mb-2">{userReportError}</p>}
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={() => setShowUserReportModal(false)}
+                  className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    if (!reportReason.trim() || !selectedConversation?.user.id) return;
+                    setIsSubmittingUserReport(true);
+                    setUserReportError('');
+                    try {
+                      const token = localStorage.getItem('token');
+                      if (!token) throw new Error('Not authenticated');
+                      const response = await fetch('http://localhost:8080/api/v1/user-reports', {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json',
+                          'Authorization': `Bearer ${token}`,
+                        },
+                        body: JSON.stringify({
+                          userId: selectedConversation.user.id,
+                          reason: reportReason,
+                          description: reportDescription.trim() || null,
+                        }),
+                      });
+                      if (response.ok) {
+                        setShowUserReportModal(false);
+                        setReportReason('');
+                        setReportDescription('');
+                        showNotification('success', 'User report submitted successfully');
+                      } else {
+                        const errorText = await response.text();
+                        setUserReportError('Failed to submit user report: ' + errorText);
+                      }
+                    } catch (error) {
+                      setUserReportError('Failed to submit user report. Please try again.');
+                    } finally {
+                      setIsSubmittingUserReport(false);
+                    }
+                  }}
+                  disabled={!reportReason.trim() || isSubmittingUserReport}
+                  className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSubmittingUserReport ? 'Submitting...' : 'Submit Report'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Notification */}
+      {notification && (
+        <div className="fixed top-1/2 left-1/2 z-50 -translate-x-1/2 -translate-y-1/2 animate-slide-in-right">
+          <div className={`max-w-sm w-full rounded-lg shadow-lg border ${
+            notification.type === 'success' 
+              ? 'bg-green-50 border-green-200' 
+              : 'bg-red-50 border-red-200'
+          }`}>
+            <div className="p-4 flex items-center">
+              <div className="flex-shrink-0">
+                {notification.type === 'success' ? (
+                  <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center">
+                    <BsCheckCircle className="w-4 h-4 text-green-600" />
+                  </div>
+                ) : (
+                  <div className="w-6 h-6 rounded-full bg-red-100 flex items-center justify-center">
+                    <BsXCircle className="w-4 h-4 text-red-600" />
+                  </div>
+                )}
+              </div>
+              <div className="ml-3 flex-1">
+                <p className={`text-sm font-medium ${
+                  notification.type === 'success' ? 'text-green-800' : 'text-red-800'
+                }`}>
+                  {notification.message}
+                </p>
+              </div>
+              <button
+                onClick={() => setNotification(null)}
+                className={`ml-2 inline-flex text-gray-400 hover:text-gray-600 focus:outline-none ${
+                  notification.type === 'success' ? 'hover:text-green-600' : 'hover:text-red-600'
+                }`}
+              >
+                <span className="sr-only">Close</span>
+                ×
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
