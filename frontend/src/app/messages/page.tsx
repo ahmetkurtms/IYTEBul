@@ -382,7 +382,8 @@ export default function Messages() {
             content: msg.messageText,
             timestamp: msg.sentAt,
             isRead: msg.isRead,
-            isSent: true
+            isSent: true,
+            imageBase64List: msg.imageBase64List || []
           }));
 
           setMessages(convertedMessages);
@@ -401,29 +402,35 @@ export default function Messages() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Attachment icon click handler
   const handleAttachmentClick = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
+    if (fileInputRef.current) fileInputRef.current.click();
   };
 
+  // File input change handler for multiple images
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    setSelectedFiles(files);
-    setPreviews(files.map(file => URL.createObjectURL(file)));
+    // Prevent duplicates
+    const newFiles = files.filter(
+      file => !selectedFiles.some(f => f.name === file.name && f.size === file.size)
+    );
+    setSelectedFiles(prev => [...prev, ...newFiles]);
+    setPreviews(prev => [...prev, ...newFiles.map(file => URL.createObjectURL(file))]);
   };
 
+  // Remove a selected file
   const removeFile = (idx: number) => {
     setSelectedFiles(selectedFiles.filter((_, i) => i !== idx));
     setPreviews(previews.filter((_, i) => i !== idx));
   };
 
+  // Send message with multiple images
   const handleSend = async () => {
     if (!selectedConversation || !currentUser) return;
     setFileSendLoading(true);
     setFileSendError(null);
     try {
-      // Convert images to base64
       const base64List = await Promise.all(selectedFiles.map(file => {
         return new Promise<string>((resolve, reject) => {
           const reader = new FileReader();
@@ -432,13 +439,11 @@ export default function Messages() {
           reader.readAsDataURL(file);
         });
       }));
-      // Send message
       await messageApi.sendMessage({
         receiverId: selectedConversation.user.id,
         messageText: newMessage,
         imageBase64List: base64List
       });
-      // Add to local state (optimistic)
       const message = {
         id: Date.now(),
         senderId: currentUser.id,
@@ -467,6 +472,7 @@ export default function Messages() {
       setFileSendLoading(false);
     }
   };
+
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !selectedConversation || !currentUser) return;
 
@@ -514,7 +520,11 @@ export default function Messages() {
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSendMessage();
+      if (selectedFiles.length > 0) {
+        handleSend();
+      } else {
+        handleSendMessage();
+      }
     }
   };
 
@@ -930,10 +940,10 @@ export default function Messages() {
                       }`}
                     >
                       <div
-                        className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg shadow transition-all duration-300 ${
+                        className={`relative max-w-xs lg:max-w-md px-4 py-2 shadow transition-all duration-300 ${
                           isCurrentUser
-                            ? 'bg-[#A6292A] text-white self-end'
-                            : 'bg-[#f1f0f0] text-gray-900 self-start'
+                            ? 'bg-[#A6292A] text-white self-end rounded-tl-2xl rounded-tr-2xl rounded-bl-2xl rounded-br-md'
+                            : 'bg-[#f1f0f0] text-gray-900 self-start rounded-tl-2xl rounded-tr-2xl rounded-br-2xl rounded-bl-md'
                         } ${
                           isCurrentSearchResult ? 'ring-4 ring-[#A6292A]/40 ring-offset-2 scale-105' : 
                           isHighlighted ? 'ring-4 ring-[#A6292A]/30 ring-offset-2' : ''
@@ -941,48 +951,66 @@ export default function Messages() {
                           isMatchingSearch && !isCurrentSearchResult && !isHighlighted ? 'ring-2 ring-yellow-400/30' : ''
                         }`}
                       >
-                        <p className="text-sm leading-relaxed">
-                          {isMatchingSearch && messageSearchQuery ? (
-                            // Highlight search terms
-                            message.content.split(new RegExp(`(${messageSearchQuery})`, 'gi')).map((part, index) => 
-                              part.toLowerCase() === messageSearchQuery.toLowerCase() ? (
-                                <mark 
-                                  key={index} 
-                                  className={`rounded px-1 ${
-                                    isCurrentSearchResult 
-                                      ? 'bg-yellow-400 text-gray-900 font-semibold' 
-                                      : 'bg-yellow-300 text-gray-900'
-                                  }`}
-                                >
-                                  {part}
-                                </mark>
-                              ) : (
-                                part
+                        <div className="relative">
+                          <p className="text-sm leading-relaxed break-words pr-15">
+                            {isMatchingSearch && messageSearchQuery ? (
+                              // Highlight search terms
+                              message.content.split(new RegExp(`(${messageSearchQuery})`, 'gi')).map((part, index) =>
+                                part.toLowerCase() === messageSearchQuery.toLowerCase() ? (
+                                  <mark
+                                    key={index}
+                                    className={`rounded px-1 ${
+                                      isCurrentSearchResult
+                                        ? 'bg-yellow-400 text-gray-900 font-semibold'
+                                        : 'bg-yellow-300 text-gray-900'
+                                    }`}
+                                  >
+                                    {part}
+                                  </mark>
+                                ) : (
+                                  part
+                                )
                               )
-                            )
-                          ) : (
-                            message.content
-                          )}
-                        </p>
-                        <div className={`flex items-center justify-end mt-1 space-x-1 text-xs ${
-                          isCurrentUser ? 'text-white/80' : 'text-gray-500'
-                        }`}>
-                          <span>
-                            {new Date(message.timestamp).toLocaleTimeString('tr-TR', {
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
-                          </span>
-                          {isCurrentUser && (
-                            <div>
-                              {message.isRead ? (
-                                <BsCheckAll className="w-4 h-4 text-blue-300" />
-                              ) : (
-                                <BsCheck className="w-4 h-4" />
-                              )}
+                            ) : (
+                              message.content
+                            )}
+                          </p>
+                          {Array.isArray(message.imageBase64List) && message.imageBase64List.length > 0 && (
+                            <div className="flex flex-wrap gap-2 mt-2">
+                              {message.imageBase64List.map((base64, idx) => (
+                                <img
+                                  key={idx}
+                                  src={`data:image/jpeg;base64,${base64}`}
+                                  alt="Mesaj fotoğrafı"
+                                  className="w-32 h-32 object-cover rounded-lg border"
+                                  style={{ maxWidth: '100%', height: 'auto' }}
+                                />
+                              ))}
                             </div>
                           )}
+                          <div className="absolute right-2 bottom-2 flex items-center gap-1 text-xs text-gray-400">
+                            <span>
+                              {new Date(message.timestamp).toLocaleTimeString('tr-TR', {
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </span>
+                            {isCurrentUser && (
+                              <span>
+                                {message.isRead ? (
+                                  <BsCheckAll className="w-4 h-4 text-blue-400" />
+                                ) : (
+                                  <BsCheck className="w-4 h-4" />
+                                )}
+                              </span>
+                            )}
+                          </div>
                         </div>
+                        {isCurrentUser ? (
+                          <span className="absolute right-0 top-0 w-0 h-0 border-t-[16px] border-t-transparent border-l-[16px] border-l-[#A6292A] rotate-180"></span>
+                        ) : (
+                          <span className="absolute left-0 top-0 w-0 h-0 border-t-[16px] border-t-transparent border-r-[16px] border-r-[#f1f0f0] rotate-180"></span>
+                        )}
                       </div>
                     </div>
                   );
@@ -993,9 +1021,40 @@ export default function Messages() {
               {/* Message Input */}
               <div className="p-4 border-t border-gray-200 bg-[#f7f7f7]">
                 <div className="flex items-center space-x-2">
-                  <button className="p-2 rounded-full hover:bg-gray-200 transition-colors">
+                  <button
+                    type="button"
+                    className="p-2 rounded-full hover:bg-gray-200 transition-colors"
+                    onClick={handleAttachmentClick}
+                    aria-label="Dosya ekle"
+                  >
                     <FiPaperclip className="w-5 h-5 text-gray-600" />
                   </button>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    style={{ display: 'none' }}
+                    multiple
+                    accept="image/*"
+                    onChange={handleFileChange}
+                    aria-label="Fotoğraf seç"
+                  />
+                  {previews.length > 0 && (
+                    <div className="flex flex-wrap gap-3 mb-2 px-4 pt-4">
+                      {previews.map((src, idx) => (
+                        <div key={idx} className="relative group">
+                          <img src={src} alt="preview" className="w-20 h-20 object-cover rounded-lg border" />
+                          <button
+                            aria-label="Fotoğrafı kaldır"
+                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow hover:bg-red-700"
+                            onClick={() => removeFile(idx)}
+                            tabIndex={0}
+                          >
+                            <FiX />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   <div className="flex-1">
                     <input
                       type="text"
@@ -1007,15 +1066,20 @@ export default function Messages() {
                     />
                   </div>
                   <button
-                    onClick={handleSendMessage}
-                    disabled={!newMessage.trim()}
+                    onClick={selectedFiles.length > 0 ? handleSend : handleSendMessage}
+                    disabled={fileSendLoading || (!newMessage.trim() && selectedFiles.length === 0)}
                     className={`p-2 rounded-full ml-2 transition-colors ${
-                      newMessage.trim()
+                      (newMessage.trim() || selectedFiles.length > 0)
                         ? 'bg-[#A6292A] text-white hover:bg-[#8a1f1f]'
                         : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                     }`}
+                    aria-label="Mesajı gönder"
                   >
-                    <FiSend className="w-5 h-5" />
+                    {fileSendLoading ? (
+                      <span className="loader w-5 h-5" />
+                    ) : (
+                      <FiSend className="w-5 h-5" />
+                    )}
                   </button>
                 </div>
               </div>

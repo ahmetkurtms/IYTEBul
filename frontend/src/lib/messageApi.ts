@@ -13,6 +13,7 @@ export interface MessageResponse {
   messageText: string;
   sentAt: string;
   isRead: boolean;
+  imageBase64List?: string[];
 }
 
 export interface ConversationResponse {
@@ -177,12 +178,11 @@ export const messageApi = {
   },
 
   // Send a message
-  sendMessage: async (receiverId: number, messageText: string): Promise<void> => {
+  sendMessage: async ({ receiverId, messageText, imageBase64List }: { receiverId: number, messageText: string, imageBase64List: string[] }) => {
     const token = localStorage.getItem('token');
     if (!token) throw new Error('No token found');
 
-    console.log('Calling sendMessage API:', { receiverId, messageText });
-    
+    console.log('Calling sendMessage API:', { receiverId, messageText, imageBase64List });
     try {
       const response = await fetch(`${API_BASE_URL}/send`, {
         method: 'POST',
@@ -193,17 +193,16 @@ export const messageApi = {
         body: JSON.stringify({
           receiverId,
           messageText,
+          imageBase64List,
         }),
       });
 
       console.log('sendMessage response status:', response.status);
-      
       if (!response.ok) {
         const errorText = await response.text();
         console.error('sendMessage error response:', errorText);
         throw new Error('Failed to send message');
       }
-
       console.log('sendMessage success');
     } catch (error) {
       console.error('sendMessage fetch error:', error);
