@@ -39,7 +39,7 @@ export default function Home() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [viewMode, setViewMode] = useState<'double' | 'single'>('double');
+  const [viewMode, setViewMode] = useState<'quad' | 'double' | 'single'>('double');
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
   const [postType, setPostType] = useState<'all' | 'lost' | 'found'>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -62,6 +62,14 @@ export default function Home() {
   const [sortPopoverOpen, setSortPopoverOpen] = useState(false); // Sort popover'ı kapatma
   const sortRef = useRef<HTMLDivElement>(null);
 
+  // Report modal states
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportPostId, setReportPostId] = useState<number | null>(null);
+  const [reportPostTitle, setReportPostTitle] = useState('');
+  const [reportReason, setReportReason] = useState('');
+  const [reportDescription, setReportDescription] = useState('');
+  const [isSubmittingReport, setIsSubmittingReport] = useState(false);
+
   // Handle sending message to post owner
   const handleSendMessage = async (userId: number, userName: string) => {
     const token = localStorage.getItem('token');
@@ -72,6 +80,79 @@ export default function Home() {
 
     // Redirect to messages page with the user ID as a parameter
     router.push(`/messages?startWith=${userId}`);
+  };
+
+  // Handle reporting a post
+  const handleReportPost = async (postId: number, postTitle: string) => {
+    setReportPostId(postId);
+    setReportPostTitle(postTitle);
+    setShowReportModal(true);
+  };
+
+  // Submit report
+  const submitReport = async () => {
+    if (!reportPostId || !reportReason.trim()) return;
+
+    setIsSubmittingReport(true);
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        router.push('/auth');
+        return;
+      }
+
+      console.log('Submitting report for post:', reportPostId, 'with reason:', reportReason);
+
+      const response = await fetch('http://localhost:8080/api/v1/reports', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          postId: reportPostId,
+          reason: reportReason,
+          description: reportDescription.trim() || null,
+        }),
+      });
+
+      console.log('Report response status:', response.status);
+
+      if (response.ok) {
+        console.log('Report submitted successfully');
+        setShowReportModal(false);
+        setReportPostId(null);
+        setReportPostTitle('');
+        setReportReason('');
+        setReportDescription('');
+        // Show success message
+        setError('');
+        // You could show a success toast here
+        alert('Report submitted successfully');
+      } else {
+        const errorText = await response.text();
+        console.error('Report submission failed:', response.status, errorText);
+        throw new Error(`Failed to submit report: ${response.status} - ${errorText}`);
+      }
+    } catch (error) {
+      console.error('Error submitting report:', error);
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        setError('Cannot connect to server. Please make sure the backend is running on http://localhost:8080');
+      } else {
+        setError('Failed to submit report. Please try again.');
+      }
+    } finally {
+      setIsSubmittingReport(false);
+    }
+  };
+
+  // Close report modal
+  const closeReportModal = () => {
+    setShowReportModal(false);
+    setReportPostId(null);
+    setReportPostTitle('');
+    setReportReason('');
+    setReportDescription('');
   };
 
   // Function to highlight search terms in text
@@ -582,6 +663,15 @@ export default function Home() {
                 {/* Görünüm Seçenekleri */}
                 <div className="flex items-center bg-gray-50 rounded-lg p-1">
                   <button
+                    onClick={() => setViewMode('quad')}
+                    className={`p-2 rounded-lg ${
+                      viewMode === 'quad' ? 'bg-[#9a0e20] text-white' : 'text-gray-700 hover:bg-gray-200 cursor-pointer'
+                    }`}
+                    title="Quad View"
+                  >
+                    <FiGrid className="h-6 w-6" />
+                  </button>
+                  <button
                     onClick={() => setViewMode('double')}
                     className={`p-2 rounded-lg ${
                       viewMode === 'double' ? 'bg-[#9a0e20] text-white' : 'text-gray-700 hover:bg-gray-200 cursor-pointer'
@@ -629,9 +719,12 @@ export default function Home() {
               <div className="text-gray-600">No posts yet.</div>
             </div>
           ) : (
-            <div className={viewMode === 'double' 
-              ? "grid grid-cols-1 md:grid-cols-2 gap-6"
-              : "flex flex-col space-y-6 max-w-2xl mx-auto"
+            <div className={
+              viewMode === 'quad' 
+                ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
+                : viewMode === 'double' 
+                  ? "grid grid-cols-1 md:grid-cols-2 gap-6"
+                  : "flex flex-col space-y-6 max-w-2xl mx-auto"
             }>
               {posts.map((post) => (
                 <PostCard
@@ -639,6 +732,7 @@ export default function Home() {
                   post={post}
                   searchQuery={searchQuery}
                   onSendMessage={handleSendMessage}
+                  onReportPost={handleReportPost}
                   highlightText={highlightText}
                 />
               ))}
@@ -646,6 +740,76 @@ export default function Home() {
           )}
         </div>
       </main>
+
+      {/* Report Modal */}
+      {showReportModal && (
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full">
+            <div className="flex justify-between items-center p-6 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-900">Report Post</h2>
+              <button
+                onClick={closeReportModal}
+                className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="p-6">
+              <div className="mb-4">
+                <p className="text-sm text-gray-600 mb-2">Post: "{reportPostTitle}"</p>
+                <label className="block text-sm font-medium text-gray-900 mb-2">
+                  Reason for reporting *
+                </label>
+                <select
+                  value={reportReason}
+                  onChange={(e) => setReportReason(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9a0e20] focus:border-transparent"
+                  required
+                >
+                  <option value="">Select a reason</option>
+                  <option value="inappropriate_content">Inappropriate Content</option>
+                  <option value="spam">Spam</option>
+                  <option value="false_information">False Information</option>
+                  <option value="harassment">Harassment</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-900 mb-2">
+                  Additional details (optional)
+                </label>
+                <textarea
+                  value={reportDescription}
+                  onChange={(e) => setReportDescription(e.target.value)}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9a0e20] focus:border-transparent resize-none"
+                  placeholder="Provide additional details about why you're reporting this post..."
+                />
+              </div>
+
+              <div className="flex space-x-3">
+                <button
+                  onClick={closeReportModal}
+                  className="flex-1 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={submitReport}
+                  disabled={!reportReason.trim() || isSubmittingReport}
+                  className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSubmittingReport ? 'Submitting...' : 'Submit Report'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

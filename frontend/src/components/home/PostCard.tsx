@@ -1,5 +1,6 @@
 import { formatDistanceToNow } from 'date-fns';
 import { enUS } from 'date-fns/locale';
+import { FiFlag } from 'react-icons/fi';
 
 interface Post {
   id: number;
@@ -21,10 +22,11 @@ interface PostCardProps {
   post: Post;
   searchQuery: string;
   onSendMessage: (userId: number, userName: string) => void;
+  onReportPost: (postId: number, postTitle: string) => void;
   highlightText: (text: string, searchTerm: string) => React.ReactNode;
 }
 
-export default function PostCard({ post, searchQuery, onSendMessage, highlightText }: PostCardProps) {
+export default function PostCard({ post, searchQuery, onSendMessage, onReportPost, highlightText }: PostCardProps) {
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
       {/* Post İçeriği */}
@@ -99,7 +101,15 @@ export default function PostCard({ post, searchQuery, onSendMessage, highlightTe
               Location: {post.location}
             </span>
           </div>
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center space-x-2">
+            <button
+              onClick={() => onReportPost(post.id, post.title)}
+              className="flex items-center space-x-1 bg-gray-100 text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-200 transition-colors cursor-pointer"
+              title="Report this post"
+            >
+              <FiFlag className="h-4 w-4" />
+              <span className="text-sm">Report</span>
+            </button>
             <button
               onClick={() => onSendMessage(post.userId, post.userName)}
               className="flex items-center space-x-2 bg-[#9a0e20] text-white px-4 py-2 rounded-lg hover:bg-[#7a0b19] transition-colors cursor-pointer"

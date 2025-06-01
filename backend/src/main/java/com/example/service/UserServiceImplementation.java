@@ -157,6 +157,9 @@ public class UserServiceImplementation implements UserService {
         response.setBanExpiresAt(user.getBanExpiresAt());
         response.setBanReason(user.getBanReason());
         
+        // Add email notification preference
+        response.setEmailNotifications(user.getEmailNotifications());
+        
         return response;
     }
 
@@ -176,6 +179,9 @@ public class UserServiceImplementation implements UserService {
         }
         if (request.getStudentId() != null) {
             user.setStudentId(request.getStudentId());
+        }
+        if (request.getEmailNotifications() != null) {
+            user.setEmailNotifications(request.getEmailNotifications());
         }
         
         User updatedUser = userRepository.save(user);

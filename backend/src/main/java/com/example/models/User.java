@@ -57,6 +57,9 @@ public class User {
     private String studentId;
     private String department;
 
+    // Email notification preference (default true)
+    private Boolean emailNotifications = true;
+
     // Helper method to check if user is currently banned
     public boolean isCurrentlyBanned() {
         if (!Boolean.TRUE.equals(banned_status)) {

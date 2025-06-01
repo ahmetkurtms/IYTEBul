@@ -4,8 +4,10 @@ import com.example.config.JwtProvider;
 import com.example.models.Role;
 import com.example.models.User;
 import com.example.models.Item;
+import com.example.models.Report;
 import com.example.repository.UserRepository;
 import com.example.repository.ItemRepository;
+import com.example.repository.ReportRepository;
 import com.example.service.UserService;
 import com.example.service.ItemService;
 import com.example.service.EmailService;
@@ -29,6 +31,7 @@ public class AdminController {
 
     private final UserRepository userRepository;
     private final ItemRepository itemRepository;
+    private final ReportRepository reportRepository;
     private final UserService userService;
     private final ItemService itemService;
     private final EmailService emailService;
@@ -140,18 +143,24 @@ public class AdminController {
                 
                 userRepository.save(user);
                 
-                // Send ban notification email
-                try {
-                    emailService.sendBanNotification(
-                        user.getUniMail(), 
-                        user.getNickname() != null ? user.getNickname() : user.getName(),
-                        banReason,
-                        banExpiresAt,
-                        isPermanent
-                    );
-                } catch (Exception emailError) {
-                    // Log email error but don't fail the ban operation
-                    System.err.println("Failed to send ban notification email: " + emailError.getMessage());
+                // Send ban notification email only if user has email notifications enabled
+                if (Boolean.TRUE.equals(user.getEmailNotifications())) {
+                    try {
+                        // Convert ban expiry to Turkey timezone for email
+                        String banExpiryStr;
+                        if (banExpiresAt != null) {
+                            ZonedDateTime banExpiryTurkey = banExpiresAt.atZone(ZoneId.of("Europe/Istanbul"));
+                            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd MMMM yyyy, HH:mm", Locale.forLanguageTag("tr-TR"));
+                            banExpiryStr = banExpiryTurkey.format(formatter);
+                        } else {
+                            banExpiryStr = "Kalıcı"; // Permanent
+                        }
+                        
+                        emailService.sendBanNotification(user.getUniMail(), user.getNickname(), banReason, banExpiryStr);
+                    } catch (Exception emailError) {
+                        // Log email error but don't fail the ban operation
+                        System.err.println("Failed to send ban notification email: " + emailError.getMessage());
+                    }
                 }
                 
                 return ResponseEntity.ok(new ApiResponse("User banned successfully", true));
@@ -195,7 +204,7 @@ public class AdminController {
                     postMap.put("userName", post.getUser().getNickname());
                     postMap.put("userEmail", post.getUser().getUniMail());
                     postMap.put("imageBase64", post.getImage());
-                    postMap.put("reportCount", 0); // TODO: Implement report system
+                    postMap.put("reportCount", reportRepository.countByPostId(post.getItem_id()));
                     return postMap;
                 })
                 .collect(Collectors.toList());
@@ -229,6 +238,8 @@ public class AdminController {
             Map<String, Object> stats = new HashMap<>();
             stats.put("totalUsers", userRepository.count());
             stats.put("totalPosts", itemRepository.count());
+            stats.put("totalReports", reportRepository.count());
+            stats.put("pendingReports", reportRepository.findByStatusOrderByCreatedAtDesc(Report.ReportStatus.PENDING).size());
             stats.put("bannedUsers", userRepository.findAll().stream().mapToLong(u -> u.isCurrentlyBanned() ? 1 : 0).sum());
             stats.put("lostItems", itemRepository.findAll().stream().mapToLong(i -> i.getType().toString().equals("Lost") ? 1 : 0).sum());
             stats.put("foundItems", itemRepository.findAll().stream().mapToLong(i -> i.getType().toString().equals("Found") ? 1 : 0).sum());
@@ -236,6 +247,95 @@ public class AdminController {
             return ResponseEntity.ok(stats);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(null);
+        }
+    }
+
+    // Report Management APIs
+    @GetMapping("/reports")
+    public ResponseEntity<List<Map<String, Object>>> getAllReports(@RequestHeader("Authorization") String jwt) {
+        try {
+            validateAdmin(jwt);
+            
+            List<Report> reports = reportRepository.findAllByOrderByCreatedAtDesc();
+            List<Map<String, Object>> response = reports.stream()
+                .map(report -> {
+                    Map<String, Object> reportMap = new HashMap<>();
+                    reportMap.put("id", report.getId());
+                    reportMap.put("postId", report.getPost().getItem_id());
+                    reportMap.put("postTitle", report.getPost().getTitle());
+                    reportMap.put("postType", report.getPost().getType().toString());
+                    reportMap.put("reporterId", report.getReporter().getUser_id());
+                    reportMap.put("reporterName", report.getReporter().getNickname());
+                    reportMap.put("reporterEmail", report.getReporter().getUniMail());
+                    reportMap.put("reason", report.getReason());
+                    reportMap.put("description", report.getDescription());
+                    reportMap.put("status", report.getStatus().toString());
+                    reportMap.put("createdAt", report.getCreatedAt().toString());
+                    
+                    if (report.getReviewedAt() != null) {
+                        reportMap.put("reviewedAt", report.getReviewedAt().toString());
+                    }
+                    if (report.getReviewedBy() != null) {
+                        reportMap.put("reviewedBy", report.getReviewedBy().getNickname());
+                    }
+                    
+                    return reportMap;
+                })
+                .collect(Collectors.toList());
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(null);
+        }
+    }
+
+    @PutMapping("/reports/{reportId}/status")
+    public ResponseEntity<ApiResponse> updateReportStatus(
+            @PathVariable Long reportId, 
+            @RequestHeader("Authorization") String jwt,
+            @RequestBody Map<String, String> statusRequest) {
+        try {
+            User admin = validateAdmin(jwt);
+            
+            Report report = reportRepository.findById(reportId).orElse(null);
+            if (report == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse("Report not found", false));
+            }
+            
+            String statusStr = statusRequest.get("status");
+            Report.ReportStatus newStatus = Report.ReportStatus.valueOf(statusStr.toUpperCase());
+            
+            report.setStatus(newStatus);
+            report.setReviewedAt(LocalDateTime.now());
+            report.setReviewedBy(admin);
+            
+            reportRepository.save(report);
+            
+            return ResponseEntity.ok(new ApiResponse("Report status updated successfully", true));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(new ApiResponse(e.getMessage(), false));
+        }
+    }
+
+    @DeleteMapping("/reports/{reportId}")
+    public ResponseEntity<ApiResponse> deleteReport(@PathVariable Long reportId, @RequestHeader("Authorization") String jwt) {
+        try {
+            validateAdmin(jwt);
+            
+            Report report = reportRepository.findById(reportId).orElse(null);
+            if (report == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse("Report not found", false));
+            }
+            
+            reportRepository.delete(report);
+            
+            return ResponseEntity.ok(new ApiResponse("Report deleted successfully", true));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(new ApiResponse(e.getMessage(), false));
         }
     }
 } 

@@ -57,15 +57,18 @@ interface Post {
 
 interface Report {
   id: number;
+  postId: number;
+  postTitle: string;
+  postType: string;
+  reporterId: number;
   reporterName: string;
-  reportedUserName: string;
-  reportedUserId: number;
+  reporterEmail: string;
   reason: string;
   description: string;
+  status: 'PENDING' | 'REVIEWED' | 'DISMISSED' | 'ACTION_TAKEN';
   createdAt: string;
-  status: 'PENDING' | 'REVIEWED' | 'RESOLVED';
-  postId?: number;
-  postTitle?: string;
+  reviewedAt?: string;
+  reviewedBy?: string;
 }
 
 type TabType = 'users' | 'posts' | 'reports';
@@ -169,44 +172,7 @@ export default function AdminPanel() {
     fetchUsers();
     fetchPosts();
     fetchLocations();
-    // fetchReports(); // TODO: Implement when report system is ready
-    
-    // Mock reports data until backend implementation
-    const mockReports: Report[] = [
-      {
-        id: 1,
-        reporterName: 'Ahmet Yılmaz',
-        reportedUserName: 'Mehmet Kaya',
-        reportedUserId: 3,
-        reason: 'Inappropriate Content',
-        description: 'User posted inappropriate content in their lost item description',
-        createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-        status: 'PENDING',
-        postId: 3,
-        postTitle: 'Lost Student ID'
-      },
-      {
-        id: 2,
-        reporterName: 'Elif Demir',
-        reportedUserName: 'Mehmet Kaya',
-        reportedUserId: 3,
-        reason: 'Spam',
-        description: 'User is posting too many fake lost items',
-        createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-        status: 'REVIEWED'
-      },
-      {
-        id: 3,
-        reporterName: 'Anonymous',
-        reportedUserName: 'Test User',
-        reportedUserId: 4,
-        reason: 'Harassment',
-        description: 'User is sending inappropriate messages',
-        createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-        status: 'RESOLVED'
-      }
-    ];
-    setReports(mockReports);
+    fetchReports();
     
     setLoading(false);
   }, [router]);
@@ -263,19 +229,38 @@ export default function AdminPanel() {
 
   const fetchLocations = async () => {
     try {
+      const response = await fetch('http://localhost:8080/api/v1/locations');
+      if (response.ok) {
+        const locationsData = await response.json();
+        setLocations(locationsData);
+      }
+    } catch (error) {
+      console.error('Error fetching locations:', error);
+      setLocations([]);
+    }
+  };
+
+  const fetchReports = async () => {
+    try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:8080/api/v1/locations', {
+      if (!token) return;
+
+      const response = await fetch('http://localhost:8080/api/v1/admin/reports', {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
       });
-      
+
       if (response.ok) {
-        const data = await response.json();
-        setLocations(data);
+        const reportsData = await response.json();
+        setReports(reportsData);
+      } else {
+        console.error('Failed to fetch reports:', response.status);
+        setReports([]);
       }
     } catch (error) {
-      console.error('Error fetching locations:', error);
+      console.error('Error fetching reports:', error);
+      setReports([]);
     }
   };
 
@@ -449,13 +434,104 @@ export default function AdminPanel() {
     setSelectedPost(null);
   };
 
-  const handleReportAction = (reportId: number, action: 'approve' | 'reject') => {
-    // TODO: Implement when report system is ready
-    setReports(prev => prev.map(report => 
-      report.id === reportId 
-        ? { ...report, status: action === 'approve' ? 'RESOLVED' : 'REVIEWED' }
-        : report
-    ));
+  const handleReportAction = async (reportId: number, action: 'approve' | 'reject') => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        router.push('/auth');
+        return;
+      }
+
+      // Map actions to status values
+      const statusMap = {
+        'approve': 'ACTION_TAKEN',
+        'reject': 'DISMISSED'
+      };
+
+      const response = await fetch(`http://localhost:8080/api/v1/admin/reports/${reportId}/status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          status: statusMap[action]
+        }),
+      });
+
+      if (response.ok) {
+        // Update the report status in the state
+        setReports(prev => prev.map(report => 
+          report.id === reportId 
+            ? { ...report, status: statusMap[action] as 'PENDING' | 'REVIEWED' | 'DISMISSED' | 'ACTION_TAKEN' }
+            : report
+        ));
+        
+        showNotification('success', `Report ${action === 'approve' ? 'approved' : 'rejected'} successfully`);
+      } else {
+        throw new Error('Failed to update report status');
+      }
+    } catch (error) {
+      console.error('Error updating report status:', error);
+      showNotification('error', 'Failed to update report status');
+    }
+  };
+
+  const handleViewReportedPost = async (postId: number) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        router.push('/auth');
+        return;
+      }
+
+      // Find the post in posts array first
+      const foundPost = posts.find(p => p.id === postId);
+      if (foundPost) {
+        setSelectedPost(foundPost);
+        setShowPostModal(true);
+        return;
+      }
+
+      // If not found in posts array, fetch from backend
+      const response = await fetch(`http://localhost:8080/api/v1/admin/posts`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const allPosts = await response.json();
+        const reportedPost = allPosts.find((p: any) => p.id === postId);
+        
+        if (reportedPost) {
+          // Convert to our Post interface format
+          const postForModal: Post = {
+            id: reportedPost.id,
+            title: reportedPost.title,
+            description: reportedPost.description,
+            type: reportedPost.type,
+            category: reportedPost.category,
+            location: reportedPost.location,
+            createdAt: reportedPost.createdAt,
+            userName: reportedPost.userName,
+            userEmail: reportedPost.userEmail,
+            imageBase64: reportedPost.imageBase64,
+            reportCount: reportedPost.reportCount
+          };
+          
+          setSelectedPost(postForModal);
+          setShowPostModal(true);
+        } else {
+          showNotification('error', 'Post not found');
+        }
+      } else {
+        showNotification('error', 'Failed to fetch post details');
+      }
+    } catch (error) {
+      console.error('Error fetching reported post:', error);
+      showNotification('error', 'Failed to fetch post details');
+    }
   };
 
   const openUserDetailsModal = (user: User) => {
@@ -523,11 +599,20 @@ export default function AdminPanel() {
 
   const filteredReports = reports.filter(report => {
     const matchesSearch = (report.reporterName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         (report.reportedUserName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                          (report.reason || '').toLowerCase().includes(searchQuery.toLowerCase());
     
     if (filterStatus === 'all') return matchesSearch;
-    return matchesSearch && (report.status || '').toLowerCase() === filterStatus.toLowerCase();
+    
+    // Map filter status to backend status values
+    const statusMap: { [key: string]: string } = {
+      'pending': 'PENDING',
+      'reviewed': 'REVIEWED', 
+      'dismissed': 'DISMISSED',
+      'action_taken': 'ACTION_TAKEN'
+    };
+    
+    const backendStatus = statusMap[filterStatus];
+    return matchesSearch && (report.status === backendStatus);
   });
 
   if (loading) {
@@ -815,7 +900,8 @@ export default function AdminPanel() {
                         <option value="all">All Reports</option>
                         <option value="pending">Pending</option>
                         <option value="reviewed">Reviewed</option>
-                        <option value="resolved">Resolved</option>
+                        <option value="dismissed">Dismissed</option>
+                        <option value="action_taken">Action Taken</option>
                       </>
                     )}
                   </select>
@@ -969,6 +1055,8 @@ export default function AdminPanel() {
                                 ? 'bg-yellow-100 text-yellow-800'
                                 : report.status === 'REVIEWED'
                                 ? 'bg-blue-100 text-blue-800'
+                                : report.status === 'DISMISSED'
+                                ? 'bg-red-100 text-red-800'
                                 : 'bg-green-100 text-green-800'
                             }`}>
                               {report.status}
@@ -978,35 +1066,38 @@ export default function AdminPanel() {
                           <div className="flex items-center space-x-4 text-xs text-gray-500">
                             <span>Reporter: {report.reporterName}</span>
                             <span>•</span>
-                            <span>Reported: {report.reportedUserName}</span>
-                            {report.postTitle && (
-                              <>
-                                <span>•</span>
-                                <span>Post: {report.postTitle}</span>
-                              </>
-                            )}
+                            <span>Post: {report.postTitle}</span>
                             <span>•</span>
                             <span>{formatDistanceToNow(new Date(report.createdAt), { addSuffix: true, locale: enUS })}</span>
                           </div>
                         </div>
-                        {report.status === 'PENDING' && (
-                          <div className="flex items-center space-x-2 ml-4">
-                            <button
-                              onClick={() => handleReportAction(report.id, 'approve')}
-                              className="p-2 rounded-lg bg-green-100 text-green-600 hover:bg-green-200 transition-colors"
-                              title="Approve Report"
-                            >
-                              <BsCheckCircle className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => handleReportAction(report.id, 'reject')}
-                              className="p-2 rounded-lg bg-red-100 text-red-600 hover:bg-red-200 transition-colors"
-                              title="Reject Report"
-                            >
-                              <BsXCircle className="w-4 h-4" />
-                            </button>
-                          </div>
-                        )}
+                        <div className="flex items-center space-x-2 ml-4">
+                          <button
+                            onClick={() => handleViewReportedPost(report.postId)}
+                            className="p-2 rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors"
+                            title="View Reported Post"
+                          >
+                            <FiEye className="w-4 h-4" />
+                          </button>
+                          {report.status === 'PENDING' && (
+                            <>
+                              <button
+                                onClick={() => handleReportAction(report.id, 'approve')}
+                                className="p-2 rounded-lg bg-green-100 text-green-600 hover:bg-green-200 transition-colors"
+                                title="Approve Report"
+                              >
+                                <BsCheckCircle className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleReportAction(report.id, 'reject')}
+                                className="p-2 rounded-lg bg-red-100 text-red-600 hover:bg-red-200 transition-colors"
+                                title="Reject Report"
+                              >
+                                <BsXCircle className="w-4 h-4" />
+                              </button>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))}

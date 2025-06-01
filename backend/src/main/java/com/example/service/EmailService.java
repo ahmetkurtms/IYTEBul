@@ -44,7 +44,7 @@ public class EmailService {
         }
     }
 
-    public void sendBanNotification(String to, String nickname, String reason, LocalDateTime banExpiresAt, boolean isPermanent) {
+    public void sendBanNotification(String to, String nickname, String reason, String banExpiryStr) {
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
@@ -52,16 +52,8 @@ public class EmailService {
             helper.setSubject("IYTEBul Account Suspension Notice");
             
             int year = java.time.Year.now().getValue();
-            String banDuration;
-            String banExpiry = "";
-            
-            if (isPermanent) {
-                banDuration = "permanently";
-            } else {
-                banDuration = "temporarily";
-                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
-                banExpiry = banExpiresAt.format(formatter);
-            }
+            boolean isPermanent = "Kalıcı".equals(banExpiryStr);
+            String banDuration = isPermanent ? "permanently" : "temporarily";
             
             String reasonText = reason != null && !reason.trim().isEmpty() 
                 ? reason 
@@ -78,7 +70,7 @@ public class EmailService {
                 "    <div style='background:#fee2e2;border:1px solid #fecaca;border-radius:12px;padding:20px;margin-bottom:24px;text-align:center;'>" +
                 "      <h2 style='font-size:1.4rem;color:#dc2626;margin:0 0 12px 0;font-weight:700;'>⚠️ Account Suspended</h2>" +
                 "      <p style='color:#7f1d1d;font-size:1.1rem;margin:0;font-weight:600;'>Your account has been " + banDuration + " suspended.</p>" +
-                (isPermanent ? "" : "      <p style='color:#7f1d1d;font-size:1rem;margin:8px 0 0 0;font-weight:500;'>Suspension expires: <strong>" + banExpiry + "</strong></p>") +
+                (isPermanent ? "" : "      <p style='color:#7f1d1d;font-size:1rem;margin:8px 0 0 0;font-weight:500;'>Suspension expires: <strong>" + banExpiryStr + "</strong></p>") +
                 "    </div>" +
                 "    " +
                 "    <div style='margin-bottom:24px;'>" +

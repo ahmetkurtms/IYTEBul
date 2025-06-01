@@ -19,6 +19,7 @@ interface UserProfile {
   studentId?: string
   bio?: string
   nickname?: string
+  emailNotifications?: boolean
 }
 
 interface UserPost {
@@ -47,6 +48,7 @@ export default function ProfilePage() {
   const [showModal, setShowModal] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [postToDelete, setPostToDelete] = useState<UserPost | null>(null)
+  const [updatingNotifications, setUpdatingNotifications] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
 
@@ -324,6 +326,50 @@ export default function ProfilePage() {
   const handleFieldCancel = () => {
     setEditedProfile(profile)
     setEditingField(null)
+  }
+
+  const handleEmailNotificationToggle = async () => {
+    if (!profile) return
+
+    setUpdatingNotifications(true)
+    setError("")
+
+    try {
+      const token = localStorage.getItem("token")
+      if (!token) {
+        router.push("/auth")
+        return
+      }
+
+      const newValue = !profile.emailNotifications
+      
+      const response = await fetch("http://localhost:8080/api/v1/users/profile/email-notifications", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ emailNotifications: newValue }),
+      })
+
+      if (response.ok) {
+        const updatedProfile = { ...profile, emailNotifications: newValue }
+        setProfile(updatedProfile)
+        setEditedProfile(updatedProfile)
+        console.log("Email notifications updated successfully")
+      } else if (response.status === 401) {
+        localStorage.removeItem("token")
+        router.push("/auth")
+      } else {
+        throw new Error(`Failed to update email notifications: ${response.status}`)
+      }
+
+    } catch (error) {
+      console.error("Email notification ayarı güncellenirken hata:", error)
+      setError(error instanceof Error ? error.message : "Email notification ayarı güncellenirken bir hata oluştu")
+    } finally {
+      setUpdatingNotifications(false)
+    }
   }
 
   const handleProfilePhotoClick = () => {
@@ -931,11 +977,20 @@ export default function ProfilePage() {
                     <div className="flex items-center justify-between">
                       <div>
                         <h4 className="text-sm font-medium text-gray-900">Email Notifications</h4>
-                        <p className="text-sm text-gray-500">Receive emails for important updates</p>
+                        <p className="text-sm text-gray-500">Receive emails for ban notifications and account updates</p>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" className="sr-only peer" />
-                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[#9a0e20]/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#9a0e20]"></div>
+                        <input 
+                          type="checkbox" 
+                          className="sr-only peer" 
+                          checked={profile?.emailNotifications ?? true}
+                          onChange={handleEmailNotificationToggle}
+                          disabled={updatingNotifications}
+                        />
+                        <div className={`w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[#9a0e20]/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#9a0e20] ${updatingNotifications ? 'opacity-50 cursor-not-allowed' : ''}`}></div>
+                        {updatingNotifications && (
+                          <div className="ml-2 w-4 h-4 border-2 border-[#9a0e20] border-t-transparent rounded-full animate-spin"></div>
+                        )}
                       </label>
                     </div>
                   </div>

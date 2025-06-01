@@ -15,6 +15,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
@@ -90,6 +91,21 @@ public class UserController {
             @RequestBody UpdateProfileRequest request) {
         try {
             UserProfileResponse updatedProfile = userService.updateUserProfile(jwt, request);
+            return ResponseEntity.ok(updatedProfile);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
+        }
+    }
+
+    @PutMapping("/api/v1/users/profile/email-notifications")
+    public ResponseEntity<UserProfileResponse> updateEmailNotifications(
+            @RequestHeader("Authorization") String jwt,
+            @RequestBody Map<String, Boolean> request) {
+        try {
+            UpdateProfileRequest updateRequest = new UpdateProfileRequest();
+            updateRequest.setEmailNotifications(request.get("emailNotifications"));
+            
+            UserProfileResponse updatedProfile = userService.updateUserProfile(jwt, updateRequest);
             return ResponseEntity.ok(updatedProfile);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
