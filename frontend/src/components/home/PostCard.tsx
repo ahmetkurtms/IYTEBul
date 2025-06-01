@@ -153,7 +153,7 @@ export default function PostCard({
             <img
               src={`data:${post.imageContentType};base64,${post.imageBase64}`}
               alt={post.title}
-              className={`object-cover w-full h-full ${viewMode === 'double' ? 'max-w-[300px] max-h-[210px]' : ''}`}
+              className="object-cover w-full h-full"
             />
           ) : (
             <img
@@ -166,7 +166,7 @@ export default function PostCard({
                 '/assets/others.jpeg'
               }
               alt="Default category image"
-              className={`object-cover w-full h-full ${viewMode === 'double' ? 'max-w-[300px] max-h-[210px]' : ''}`}
+              className="object-cover w-full h-full"
             />
           )}
         </div>
