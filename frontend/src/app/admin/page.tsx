@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Navbar from '@/components/ui/Navbar';
 import { formatDistanceToNow } from 'date-fns';
@@ -16,9 +16,11 @@ import {
   FiMoreVertical,
   FiShield,
   FiUserCheck,
-  FiFilter
+  FiFilter,
+  FiCalendar
 } from 'react-icons/fi';
 import { BsCheckCircle, BsXCircle } from 'react-icons/bs';
+import { FaSort } from 'react-icons/fa6';
 import Image from 'next/image';
 
 interface User {
@@ -33,6 +35,10 @@ interface User {
   profilePhotoUrl?: string;
   lastLogin?: string;
   banExpiresAt?: string;
+  phoneNumber?: string;
+  studentId?: string;
+  bio?: string;
+  surname?: string;
 }
 
 interface Post {
@@ -79,13 +85,77 @@ export default function AdminPanel() {
   const [banDuration, setBanDuration] = useState<string>('1h');
   const [banReason, setBanReason] = useState<string>('');
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  
+  // Additional filters for posts (from home page)
+  const [postSortOrder, setPostSortOrder] = useState<'desc' | 'asc'>('desc');
+  const [postDateStart, setPostDateStart] = useState('');
+  const [postDateEnd, setPostDateEnd] = useState('');
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
+  const [locations, setLocations] = useState<{id: number, name: string, nameEn: string}[]>([]);
+  const [datePopoverOpen, setDatePopoverOpen] = useState(false);
+  const [filterPopoverOpen, setFilterPopoverOpen] = useState(false);
+  const [sortPopoverOpen, setSortPopoverOpen] = useState(false);
+  const [filterSearch, setFilterSearch] = useState('');
+  
+  // User details modal state
+  const [showUserDetailsModal, setShowUserDetailsModal] = useState(false);
+  const [selectedUserForDetails, setSelectedUserForDetails] = useState<User | null>(null);
+  
+  const calendarRef = useRef<HTMLDivElement>(null);
+  const filterRef = useRef<HTMLDivElement>(null);
+  const sortRef = useRef<HTMLDivElement>(null);
+  
   const router = useRouter();
+
+  // Categories list
+  const categories = ['Accessories', 'Clothing', 'Cards', 'Other'];
+
+  // Get today's date
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const today = `${year}-${month}-${day}`;
 
   // Show notification function
   const showNotification = (type: 'success' | 'error', message: string) => {
     setNotification({ type, message });
     setTimeout(() => setNotification(null), 5000); // Auto hide after 5 seconds
   };
+
+  // Close popovers on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (datePopoverOpen && calendarRef.current && !calendarRef.current.contains(e.target as Node)) {
+        setDatePopoverOpen(false);
+      }
+      if (filterPopoverOpen && filterRef.current && !filterRef.current.contains(e.target as Node)) {
+        setFilterPopoverOpen(false);
+      }
+      if (sortPopoverOpen && sortRef.current && !sortRef.current.contains(e.target as Node)) {
+        setSortPopoverOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [datePopoverOpen, filterPopoverOpen, sortPopoverOpen]);
+
+  // Reset filters when changing tabs
+  useEffect(() => {
+    setSearchQuery('');
+    setFilterStatus('all');
+    if (activeTab === 'posts') {
+      // Keep post-specific filters
+    } else {
+      // Reset post-specific filters when not on posts tab
+      setPostDateStart('');
+      setPostDateEnd('');
+      setSelectedCategories([]);
+      setSelectedLocations([]);
+      setPostSortOrder('desc');
+    }
+  }, [activeTab]);
 
   // Mock data
   useEffect(() => {
@@ -98,6 +168,7 @@ export default function AdminPanel() {
     // Fetch real data from backend
     fetchUsers();
     fetchPosts();
+    fetchLocations();
     // fetchReports(); // TODO: Implement when report system is ready
     
     // Mock reports data until backend implementation
@@ -151,6 +222,8 @@ export default function AdminPanel() {
       
       if (response.ok) {
         const data = await response.json();
+        console.log('Full user data from backend:', data);
+        console.log('First user detailed:', JSON.stringify(data[0], null, 2));
         setUsers(data);
       } else if (response.status === 403) {
         showNotification('error', 'Access denied: Admin role required');
@@ -188,11 +261,29 @@ export default function AdminPanel() {
     }
   };
 
+  const fetchLocations = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:8080/api/v1/locations', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setLocations(data);
+      }
+    } catch (error) {
+      console.error('Error fetching locations:', error);
+    }
+  };
+
   const handleBanUser = async (userId: number, duration?: string, reason?: string) => {
     try {
       const token = localStorage.getItem('token');
       
-      // Calculate ban expiry time based on duration
+      // Calculate ban expiry time based on duration using local time
       let banExpiresAt = null;
       if (duration && duration !== 'permanent') {
         const now = new Date();
@@ -214,7 +305,7 @@ export default function AdminPanel() {
 
       const requestBody: any = {};
       if (banExpiresAt) {
-        // Format for Java LocalDateTime (no 'Z' at the end, use 'T' format)
+        // Send as ISO string, backend will handle timezone conversion
         requestBody.banExpiresAt = banExpiresAt.toISOString().slice(0, -1); // Remove 'Z'
       }
       if (reason) {
@@ -367,6 +458,16 @@ export default function AdminPanel() {
     ));
   };
 
+  const openUserDetailsModal = (user: User) => {
+    setSelectedUserForDetails(user);
+    setShowUserDetailsModal(true);
+  };
+
+  const closeUserDetailsModal = () => {
+    setShowUserDetailsModal(false);
+    setSelectedUserForDetails(null);
+  };
+
   const filteredUsers = users.filter(user => {
     const matchesSearch = (user.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                          (user.nickname || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -383,11 +484,41 @@ export default function AdminPanel() {
                          (post.description || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                          (post.userName || '').toLowerCase().includes(searchQuery.toLowerCase());
     
-    if (filterStatus === 'all') return matchesSearch;
-    if (filterStatus === 'reported') return matchesSearch && post.reportCount > 0;
-    if (filterStatus === 'lost') return matchesSearch && post.type === 'LOST';
-    if (filterStatus === 'found') return matchesSearch && post.type === 'FOUND';
-    return matchesSearch;
+    // Basic filter status - improved with debug logging and case insensitive comparison
+    let matchesStatus = true;
+    if (filterStatus === 'reported') {
+      matchesStatus = post.reportCount > 0;
+    } else if (filterStatus === 'lost') {
+      matchesStatus = (post.type || '').toString().toUpperCase() === 'LOST';
+    } else if (filterStatus === 'found') {
+      matchesStatus = (post.type || '').toString().toUpperCase() === 'FOUND';
+    }
+    
+    // Advanced filters
+    const matchesCategories = selectedCategories.length === 0 || selectedCategories.includes(post.category);
+    const matchesLocations = selectedLocations.length === 0 || selectedLocations.includes(post.location);
+    
+    // Date range filter
+    let matchesDateRange = true;
+    if (postDateStart || postDateEnd) {
+      const postDate = new Date(post.createdAt);
+      if (postDateStart) {
+        const startDate = new Date(postDateStart);
+        matchesDateRange = matchesDateRange && postDate >= startDate;
+      }
+      if (postDateEnd) {
+        const endDate = new Date(postDateEnd + 'T23:59:59');
+        matchesDateRange = matchesDateRange && postDate <= endDate;
+      }
+    }
+    
+    const result = matchesSearch && matchesStatus && matchesCategories && matchesLocations && matchesDateRange;
+    
+    return result;
+  }).sort((a, b) => {
+    const dateA = new Date(a.createdAt).getTime();
+    const dateB = new Date(b.createdAt).getTime();
+    return postSortOrder === 'desc' ? dateB - dateA : dateA - dateB;
   });
 
   const filteredReports = reports.filter(report => {
@@ -467,21 +598,202 @@ export default function AdminPanel() {
             <div className="p-6 border-b border-gray-200">
               <div className="flex flex-col sm:flex-row gap-4">
                 <div className="flex-1 relative">
-                  <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                  <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-600" />
                   <input
                     type="text"
                     placeholder={`Search ${activeTab}...`}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9a0e20] focus:border-transparent"
+                    className={`w-full pl-10 ${activeTab === 'posts' ? 'pr-20' : 'pr-4'} py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9a0e20] focus:border-transparent text-gray-900 placeholder-gray-600 font-medium`}
                   />
+                  
+                  {/* Posts Advanced Filters Inside Search Bar */}
+                  {activeTab === 'posts' && (
+                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center space-x-2">
+                      {/* Date Range Filter */}
+                      <div className="relative">
+                        <FiCalendar
+                          className={`text-xl cursor-pointer hover:text-gray-800 transition-colors ${
+                            (postDateStart || postDateEnd) ? 'text-[#9a0e20]' : 'text-gray-600'
+                          }`}
+                          onClick={() => setDatePopoverOpen(v => !v)}
+                        />
+                        {datePopoverOpen && (
+                          <div ref={calendarRef} className="absolute right-0 top-full mt-2 z-50 w-64 bg-white rounded-xl shadow-xl border border-gray-100 p-4 animate-fade-in">
+                            <div className="flex justify-between items-center mb-2">
+                              <div className="font-semibold text-gray-900">Date Range</div>
+                              {(postDateStart || postDateEnd) && (
+                                <button
+                                  onClick={() => { setPostDateStart(''); setPostDateEnd(''); }}
+                                  className="text-sm text-[#9a0e20] hover:text-[#801d21] font-medium cursor-pointer"
+                                >
+                                  Clear all
+                                </button>
+                              )}
+                            </div>
+                            <div className="flex flex-col gap-2 mb-4">
+                              <div>
+                                <label className="block text-xs text-gray-500 mb-1">Start</label>
+                                <input
+                                  type="date"
+                                  value={postDateStart}
+                                  onChange={e => setPostDateStart(e.target.value)}
+                                  className="w-full border rounded px-2 py-1 text-gray-800 focus:ring-2 focus:ring-[#9a0e20] focus:border-[#9a0e20]"
+                                  max={postDateEnd && postDateEnd < today ? postDateEnd : today}
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs text-gray-500 mb-1">End</label>
+                                <input
+                                  type="date"
+                                  value={postDateEnd}
+                                  onChange={e => setPostDateEnd(e.target.value)}
+                                  className="w-full border rounded px-2 py-1 text-gray-800 focus:ring-2 focus:ring-[#9a0e20] focus:border-[#9a0e20]"
+                                  min={postDateStart || undefined}
+                                  max={today}
+                                />
+                              </div>
+                            </div>
+                            <button
+                              className="w-full bg-[#9a0e20] text-white rounded-lg py-2 font-semibold hover:bg-[#801d21] transition-colors cursor-pointer"
+                              onClick={() => setDatePopoverOpen(false)}
+                            >
+                              Apply
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Category & Location Filter */}
+                      <div className="relative">
+                        <FiFilter
+                          className={`text-xl cursor-pointer hover:text-gray-800 transition-colors ${
+                            (selectedCategories.length > 0 || selectedLocations.length > 0) ? 'text-[#9a0e20]' : 'text-gray-600'
+                          }`}
+                          onClick={() => setFilterPopoverOpen(v => !v)}
+                        />
+                        {filterPopoverOpen && (
+                          <div ref={filterRef} className="absolute right-0 top-full mt-2 z-50 w-72 bg-white rounded-xl shadow-xl border border-gray-100 p-4 animate-fade-in">
+                            <div className="flex justify-between items-center mb-2">
+                              <div className="font-semibold text-gray-900">Filters</div>
+                              {(selectedCategories.length > 0 || selectedLocations.length > 0) && (
+                                <button
+                                  onClick={() => {
+                                    setSelectedCategories([]);
+                                    setSelectedLocations([]);
+                                  }}
+                                  className="text-sm text-[#9a0e20] hover:text-[#801d21] font-medium"
+                                >
+                                  Clear all
+                                </button>
+                              )}
+                            </div>
+                            <div className="flex items-center mb-3 bg-gray-100 rounded px-2 py-1">
+                              <FiSearch className="text-gray-500 mr-2 text-sm" />
+                              <input
+                                type="text"
+                                value={filterSearch}
+                                onChange={e => setFilterSearch(e.target.value)}
+                                placeholder="Search..."
+                                className="bg-transparent border-none outline-none text-sm flex-1 text-gray-800 placeholder-gray-400"
+                              />
+                            </div>
+                            <div className="mb-2">
+                              <div className="font-semibold text-gray-700 text-sm mb-1">Categories</div>
+                              <div className="max-h-32 overflow-y-auto border-b pb-2 mb-2">
+                                {categories
+                                  .filter(cat => cat.toLowerCase().includes(filterSearch.toLowerCase()))
+                                  .map((cat) => (
+                                    <div
+                                      key={cat}
+                                      className={`px-2 py-1 cursor-pointer hover:bg-gray-100 rounded text-gray-800 flex items-center justify-between ${
+                                        selectedCategories.includes(cat) ? 'font-semibold text-[#9a0e20]' : ''
+                                      }`}
+                                      onClick={() => {
+                                        setSelectedCategories(selectedCategories.includes(cat)
+                                          ? selectedCategories.filter(c => c !== cat)
+                                          : [...selectedCategories, cat]);
+                                      }}
+                                    >
+                                      <span>{cat}</span>
+                                      {selectedCategories.includes(cat) && <span className="ml-2 text-[#9a0e20]">✓</span>}
+                                    </div>
+                                  ))}
+                              </div>
+                              <div className="font-semibold text-gray-700 text-sm mb-1 mt-2">Locations</div>
+                              <div className="max-h-32 overflow-y-auto">
+                                {locations
+                                  .filter(loc => loc && loc.nameEn)
+                                  .filter(loc => loc.nameEn.toLowerCase().includes(filterSearch.toLowerCase()))
+                                  .map((loc) => (
+                                    <div
+                                      key={loc.id}
+                                      className={`px-2 py-1 cursor-pointer hover:bg-gray-100 rounded text-gray-800 flex items-center justify-between ${
+                                        selectedLocations.includes(loc.nameEn) ? 'font-semibold text-[#9a0e20]' : ''
+                                      }`}
+                                      onClick={() => {
+                                        setSelectedLocations(selectedLocations.includes(loc.nameEn)
+                                          ? selectedLocations.filter(l => l !== loc.nameEn)
+                                          : [...selectedLocations, loc.nameEn]);
+                                      }}
+                                    >
+                                      <span>{loc.nameEn}</span>
+                                      {selectedLocations.includes(loc.nameEn) && <span className="ml-2 text-[#9a0e20]">✓</span>}
+                                    </div>
+                                  ))}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
+                
+                {/* Sort Order - Only for Posts */}
+                {activeTab === 'posts' && (
+                  <div className="relative">
+                    <button
+                      className="flex items-center px-3 py-2 bg-white border border-gray-200 rounded-lg shadow-sm text-gray-800 font-medium hover:border-[#801d21] focus:border-[#801d21] transition-colors cursor-pointer min-w-[160px] whitespace-nowrap"
+                      onClick={() => setSortPopoverOpen(v => !v)}
+                    >
+                      <FaSort className="mr-2 text-lg" />
+                      {postSortOrder === 'desc' ? 'Newest to Oldest' : 'Oldest to Newest'}
+                    </button>
+                    {sortPopoverOpen && (
+                      <div ref={sortRef} className="absolute right-0 top-full mt-2 z-50 w-56 bg-white rounded-xl shadow-xl border border-gray-100 p-4 animate-fade-in">
+                        <div className="flex flex-col gap-1">
+                          <button
+                            className={`flex items-center gap-2 px-2 py-1 rounded hover:bg-gray-100 whitespace-nowrap ${
+                              postSortOrder === 'desc' ? 'font-bold text-[#9a0e20]' : 'text-gray-700 cursor-pointer'
+                            }`}
+                            onClick={() => { setPostSortOrder('desc'); setSortPopoverOpen(false); }}
+                          >
+                            {postSortOrder === 'desc' ? <span>✓</span> : <span className="inline-block w-4" />} 
+                            Newest to Oldest
+                          </button>
+                          <button
+                            className={`flex items-center gap-2 px-2 py-1 rounded hover:bg-gray-100 whitespace-nowrap ${
+                              postSortOrder === 'asc' ? 'font-bold text-[#9a0e20]' : 'text-gray-700 cursor-pointer'
+                            }`}
+                            onClick={() => { setPostSortOrder('asc'); setSortPopoverOpen(false); }}
+                          >
+                            {postSortOrder === 'asc' ? <span>✓</span> : <span className="inline-block w-4" />} 
+                            Oldest to Newest
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {/* Basic Filter Dropdown */}
                 <div className="relative">
-                  <FiFilter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                  <FiFilter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-600" />
                   <select
                     value={filterStatus}
                     onChange={(e) => setFilterStatus(e.target.value)}
-                    className="pl-10 pr-8 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9a0e20] focus:border-transparent"
+                    className="pl-10 pr-8 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9a0e20] focus:border-transparent text-gray-900 font-medium"
                   >
                     {activeTab === 'users' && (
                       <>
@@ -558,6 +870,13 @@ export default function AdminPanel() {
                         </div>
                       </div>
                       <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => openUserDetailsModal(user)}
+                          className="p-2 rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors"
+                          title="View Details"
+                        >
+                          <FiEye className="w-4 h-4" />
+                        </button>
                         <button
                           onClick={() => openBanModal(user)}
                           className={`p-2 rounded-lg transition-colors ${
@@ -859,19 +1178,19 @@ export default function AdminPanel() {
 
             <div className="p-6">
               <div className="mb-6">
-                <h3 className="text-xl font-bold text-gray-900 mb-3">
+                <h3 className="text-2xl font-bold text-gray-900 mb-3">
                   {selectedUser.nickname || selectedUser.name}
                 </h3>
-                <p className="text-base text-gray-600 font-medium">{selectedUser.email}</p>
+                <p className="text-lg text-gray-800 font-semibold">{selectedUser.email}</p>
               </div>
 
               {selectedUser.isBanned ? (
                 <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-                  <p className="text-base font-medium text-red-800 mb-2">
+                  <p className="text-lg font-bold text-red-800 mb-2">
                     This user is currently banned. Click unban to restore their access.
                   </p>
                   {selectedUser.banExpiresAt && (
-                    <p className="text-sm font-bold text-red-700">
+                    <p className="text-base font-bold text-red-700">
                       Ban expires: {new Date(selectedUser.banExpiresAt).toLocaleString()}
                     </p>
                   )}
@@ -879,13 +1198,13 @@ export default function AdminPanel() {
               ) : (
                 <div className="space-y-6 mb-6">
                   <div>
-                    <label className="block text-base font-bold text-gray-800 mb-3">
+                    <label className="block text-lg font-bold text-gray-900 mb-3">
                       Ban Duration
                     </label>
                     <select
                       value={banDuration}
                       onChange={(e) => setBanDuration(e.target.value)}
-                      className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9a0e20] focus:border-transparent font-medium"
+                      className="w-full px-4 py-3 text-lg border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9a0e20] focus:border-transparent font-semibold text-gray-900"
                     >
                       <option value="1h">1 Hour</option>
                       <option value="24h">24 Hours</option>
@@ -896,14 +1215,14 @@ export default function AdminPanel() {
                   </div>
 
                   <div>
-                    <label className="block text-base font-bold text-gray-800 mb-3">
+                    <label className="block text-lg font-bold text-gray-900 mb-3">
                       Reason (Optional)
                     </label>
                     <textarea
                       value={banReason}
                       onChange={(e) => setBanReason(e.target.value)}
                       rows={4}
-                      className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9a0e20] focus:border-transparent resize-none"
+                      className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9a0e20] focus:border-transparent resize-none text-gray-900"
                       placeholder="Enter reason for ban..."
                     />
                   </div>
@@ -913,13 +1232,13 @@ export default function AdminPanel() {
               <div className="flex space-x-3">
                 <button
                   onClick={closeBanModal}
-                  className="flex-1 px-6 py-3 text-base font-semibold text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors"
+                  className="flex-1 px-6 py-3 text-lg font-bold text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={confirmBanUser}
-                  className={`flex-1 px-6 py-3 text-base font-semibold text-white rounded-lg transition-colors ${
+                  className={`flex-1 px-6 py-3 text-lg font-bold text-white rounded-lg transition-colors ${
                     selectedUser.isBanned 
                       ? 'bg-green-600 hover:bg-green-700' 
                       : 'bg-red-600 hover:bg-red-700'
@@ -927,6 +1246,239 @@ export default function AdminPanel() {
                 >
                   {selectedUser.isBanned ? 'Unban User' : 'Ban User'}
                 </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* User Details Modal */}
+      {showUserDetailsModal && selectedUserForDetails && (
+        <div 
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={closeUserDetailsModal}
+        >
+          <div 
+            className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center p-6 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-900">User Details</h2>
+              <button
+                onClick={closeUserDetailsModal}
+                className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="p-6">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Profile Photo Section */}
+                <div className="lg:col-span-1">
+                  <div className="text-center">
+                    <div className="w-32 h-32 mx-auto rounded-full bg-gray-300 flex items-center justify-center overflow-hidden mb-4">
+                      {selectedUserForDetails.profilePhotoUrl ? (
+                        <Image
+                          src={selectedUserForDetails.profilePhotoUrl}
+                          alt={selectedUserForDetails.name}
+                          width={128}
+                          height={128}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-gray-600 font-semibold text-4xl">
+                          {selectedUserForDetails.name.charAt(0).toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-center space-x-2">
+                        {selectedUserForDetails.isVerified && (
+                          <BsCheckCircle className="w-5 h-5 text-green-500" />
+                        )}
+                        {selectedUserForDetails.isBanned && (
+                          <span className="px-3 py-1 bg-red-100 text-red-800 text-sm rounded-full font-medium">
+                            Banned
+                          </span>
+                        )}
+                      </div>
+                      
+                      {selectedUserForDetails.isBanned && selectedUserForDetails.banExpiresAt && (
+                        <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
+                          <p className="font-medium">Ban expires:</p>
+                          <p>{new Date(selectedUserForDetails.banExpiresAt).toLocaleString()}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* User Information */}
+                <div className="lg:col-span-2 space-y-6">
+                  <div>
+                    <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                      {selectedUserForDetails.name} {selectedUserForDetails.surname || ''}
+                    </h3>
+                    <p className="text-lg text-gray-600 mb-1">@{selectedUserForDetails.nickname}</p>
+                    <p className="text-gray-500">{selectedUserForDetails.department || 'User'}</p>
+                    {selectedUserForDetails.bio ? (
+                      <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <p className="text-sm font-medium text-blue-800 mb-1">Bio:</p>
+                        <p className="text-sm text-blue-700">{selectedUserForDetails.bio}</p>
+                      </div>
+                    ) : (
+                      <div className="mt-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                        <p className="text-sm font-medium text-gray-600 mb-1">Bio:</p>
+                        <p className="text-sm text-gray-500 italic">Not provided</p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <h4 className="font-semibold text-gray-900 mb-2">Contact Information</h4>
+                      <div className="space-y-2 text-sm">
+                        <div>
+                          <span className="font-medium text-gray-700">Email:</span>
+                          <p className="text-gray-600 break-all">{selectedUserForDetails.email}</p>
+                        </div>
+                        <div>
+                          <span className="font-medium text-gray-700">Phone:</span>
+                          {selectedUserForDetails.phoneNumber ? (
+                            <p className="text-gray-600">{selectedUserForDetails.phoneNumber}</p>
+                          ) : (
+                            <p className="text-gray-500 italic">Not provided</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <h4 className="font-semibold text-gray-900 mb-2">Academic Information</h4>
+                      <div className="space-y-2 text-sm">
+                        {selectedUserForDetails.studentId && (
+                          <div>
+                            <span className="font-medium text-gray-700">Student ID:</span>
+                            <p className="text-gray-600">{selectedUserForDetails.studentId}</p>
+                          </div>
+                        )}
+                        {!selectedUserForDetails.studentId && (
+                          <div>
+                            <span className="font-medium text-gray-700">Student ID:</span>
+                            <p className="text-gray-500 italic">Not provided</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <h4 className="font-semibold text-gray-900 mb-2">Account Status</h4>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium text-gray-700">Status:</span>
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${
+                            selectedUserForDetails.isBanned 
+                              ? 'bg-red-100 text-red-800' 
+                              : 'bg-green-100 text-green-800'
+                          }`}>
+                            {selectedUserForDetails.isBanned ? 'Banned' : 'Active'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <h4 className="font-semibold text-gray-900 mb-2">Account Timeline</h4>
+                      <div className="space-y-2 text-sm">
+                        <div>
+                          <span className="font-medium text-gray-700">Joined:</span>
+                          <p className="text-gray-600">
+                            {formatDistanceToNow(new Date(selectedUserForDetails.createdAt), { 
+                              addSuffix: true, 
+                              locale: enUS 
+                            })}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {new Date(selectedUserForDetails.createdAt).toLocaleDateString()}
+                          </p>
+                        </div>
+                        {selectedUserForDetails.lastLogin && (
+                          <div>
+                            <span className="font-medium text-gray-700">Last Login:</span>
+                            <p className="text-gray-600">
+                              {formatDistanceToNow(new Date(selectedUserForDetails.lastLogin), { 
+                                addSuffix: true, 
+                                locale: enUS 
+                              })}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="bg-gray-50 p-4 rounded-lg sm:col-span-2">
+                      <h4 className="font-semibold text-gray-900 mb-2">Statistics & System Info</h4>
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium text-gray-700">User ID:</span>
+                          <span className="text-gray-600">#{selectedUserForDetails.id}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium text-gray-700">Total Posts:</span>
+                          <span className="text-gray-600">
+                            {posts.filter(post => post.userName === selectedUserForDetails.nickname).length}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium text-gray-700">Lost Posts:</span>
+                          <span className="text-gray-600">
+                            {posts.filter(post => post.userName === selectedUserForDetails.nickname && post.type === 'LOST').length}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium text-gray-700">Found Posts:</span>
+                          <span className="text-gray-600">
+                            {posts.filter(post => post.userName === selectedUserForDetails.nickname && post.type === 'FOUND').length}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex space-x-3 pt-4 border-t border-gray-200">
+                    <button
+                      onClick={() => {
+                        openBanModal(selectedUserForDetails);
+                        closeUserDetailsModal();
+                      }}
+                      className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${
+                        selectedUserForDetails.isBanned
+                          ? 'bg-green-600 text-white hover:bg-green-700'
+                          : 'bg-yellow-600 text-white hover:bg-yellow-700'
+                      }`}
+                    >
+                      {selectedUserForDetails.isBanned ? 'Unban User' : 'Ban User'}
+                    </button>
+                    <button
+                      onClick={() => {
+                        handleDeleteUser(selectedUserForDetails.id);
+                        closeUserDetailsModal();
+                      }}
+                      className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors font-medium"
+                    >
+                      Delete User
+                    </button>
+                    <button
+                      onClick={closeUserDetailsModal}
+                      className="flex-1 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors font-medium"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

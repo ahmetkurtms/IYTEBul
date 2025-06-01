@@ -8,6 +8,7 @@ import com.example.repository.UserRepository;
 import com.example.repository.ItemRepository;
 import com.example.service.UserService;
 import com.example.service.ItemService;
+import com.example.service.EmailService;
 import com.example.response.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -15,6 +16,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -28,6 +31,7 @@ public class AdminController {
     private final ItemRepository itemRepository;
     private final UserService userService;
     private final ItemService itemService;
+    private final EmailService emailService;
 
     // Check if user is admin
     private User validateAdmin(String jwt) throws Exception {
@@ -53,10 +57,14 @@ public class AdminController {
                 .map(user -> {
                     Map<String, Object> userMap = new HashMap<>();
                     userMap.put("id", user.getUser_id());
-                    userMap.put("name", user.getName() + " " + user.getSurname());
+                    userMap.put("name", user.getName());
+                    userMap.put("surname", user.getSurname());
                     userMap.put("nickname", user.getNickname());
                     userMap.put("email", user.getUniMail());
                     userMap.put("department", user.getDepartment() != null ? user.getDepartment() : "Unknown");
+                    userMap.put("phoneNumber", user.getPhoneNumber());
+                    userMap.put("studentId", user.getStudentId());
+                    userMap.put("bio", user.getBio());
                     userMap.put("createdAt", user.getCreated_at().toString());
                     userMap.put("isBanned", user.isCurrentlyBanned());
                     userMap.put("isVerified", user.getIsVerified());
@@ -91,31 +99,61 @@ public class AdminController {
             User user = userService.findUserById(userId);
             
             if (user.isCurrentlyBanned()) {
+                // Unban user
                 user.setBanned_status(false);
                 user.setBanExpiresAt(null);
                 user.setBanReason(null);
                 userRepository.save(user);
                 return ResponseEntity.ok(new ApiResponse("User unbanned successfully", true));
             } else {
+                // Ban user
                 user.setBanned_status(true);
                 
+                LocalDateTime banExpiresAt = null;
+                boolean isPermanent = true;
+                String banReason = null;
+                
+                // Set ban expiry if provided
                 if (banRequest != null && banRequest.containsKey("banExpiresAt")) {
                     String expiryStr = banRequest.get("banExpiresAt");
                     if (expiryStr != null && !expiryStr.isEmpty()) {
                         try {
-                            LocalDateTime expiry = LocalDateTime.parse(expiryStr, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
-                            user.setBanExpiresAt(expiry);
+                            // Parse the ISO string and convert to Turkey timezone
+                            ZonedDateTime utcTime = ZonedDateTime.parse(expiryStr + "Z");
+                            ZonedDateTime turkeyTime = utcTime.withZoneSameInstant(ZoneId.of("Europe/Istanbul"));
+                            banExpiresAt = turkeyTime.toLocalDateTime();
+                            user.setBanExpiresAt(banExpiresAt);
+                            isPermanent = false;
                         } catch (Exception e) {
+                            // If parsing fails, set permanent ban
                             user.setBanExpiresAt(null);
+                            isPermanent = true;
                         }
                     }
                 }
                 
+                // Set ban reason if provided
                 if (banRequest != null && banRequest.containsKey("banReason")) {
-                    user.setBanReason(banRequest.get("banReason"));
+                    banReason = banRequest.get("banReason");
+                    user.setBanReason(banReason);
                 }
                 
                 userRepository.save(user);
+                
+                // Send ban notification email
+                try {
+                    emailService.sendBanNotification(
+                        user.getUniMail(), 
+                        user.getNickname() != null ? user.getNickname() : user.getName(),
+                        banReason,
+                        banExpiresAt,
+                        isPermanent
+                    );
+                } catch (Exception emailError) {
+                    // Log email error but don't fail the ban operation
+                    System.err.println("Failed to send ban notification email: " + emailError.getMessage());
+                }
+                
                 return ResponseEntity.ok(new ApiResponse("User banned successfully", true));
             }
         } catch (Exception e) {

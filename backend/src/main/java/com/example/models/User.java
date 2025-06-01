@@ -6,6 +6,9 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -65,8 +68,12 @@ public class User {
             return true;
         }
         
+        // Get current time in Turkey timezone and convert to LocalDateTime for comparison
+        ZonedDateTime nowTurkey = ZonedDateTime.now(ZoneId.of("Europe/Istanbul"));
+        LocalDateTime nowLocal = nowTurkey.toLocalDateTime();
+        
         // Check if ban has expired
-        return LocalDateTime.now().isBefore(banExpiresAt);
+        return nowLocal.isBefore(banExpiresAt);
     }
 
 }

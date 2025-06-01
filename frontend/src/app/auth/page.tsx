@@ -229,6 +229,15 @@ export default function Auth() {
           >
             {({ errors, touched, isSubmitting, status, isValid, setStatus, handleChange }) => (
               <Form className='space-y-3'>
+                {/* Genel hata mesajı - moved to top */}
+                {status && (
+                  <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <div className='text-[#9a0e20] text-sm text-center font-medium'>
+                      {status}
+                    </div>
+                  </div>
+                )}
+
                 {!isLogin && (
                   <>
                     <div className="flex gap-3 justify-center">
@@ -358,15 +367,6 @@ export default function Auth() {
                     </div>
                   </div>
                 )}
-
-                {/* Genel hata mesajı */}
-                <div className="h-5">
-                  {status && (
-                    <div className='text-[#9a0e20] text-sm text-center'>
-                      {status}
-                    </div>
-                  )}
-                </div>
 
                 <button
                   type='submit'
