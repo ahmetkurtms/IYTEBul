@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Navbar from '@/components/Navbar';
+import Navbar from '@/components/ui/Navbar';
 import ConfirmationModal from '@/components/ConfirmationModal';
 import { formatDistanceToNow } from 'date-fns';
 import { enUS } from 'date-fns/locale';

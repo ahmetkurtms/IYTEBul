@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
-import Navbar from "@/components/Navbar"
+import Navbar from "@/components/ui/Navbar"
 import { FaCamera, FaMapMarkerAlt, FaCalendarAlt, FaPhone, FaEnvelope, FaEdit, FaCheck, FaTimes, FaTrash, FaEye, FaIdCard } from "react-icons/fa"
 
 
@@ -376,7 +376,7 @@ export default function ProfilePage() {
 
           {/* Profile Content */}
           <div className="bg-white rounded-b-lg shadow-lg relative">
-            <div className="px-8 pt-16 pb-8">
+            <div className="px-8 pt-8 pb-8">
               {/* Profile Photo */}
               <div className="absolute -top-16 left-8">
                 <div className="relative w-32 h-32 rounded-full border-4 border-white bg-white overflow-hidden shadow-lg">

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
-import { useSidebar } from './ui/Sidebar';
+import { useSidebar } from './Sidebar';
 import { FiLogOut, FiUser, FiMenu } from 'react-icons/fi';
 
 
