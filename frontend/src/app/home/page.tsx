@@ -14,7 +14,11 @@ import { enUS } from 'date-fns/locale';
 import { FiMenu, FiSearch, FiFilter, FiCalendar, FiGrid, FiList } from 'react-icons/fi';
 import { FaSort } from "react-icons/fa6";
 import PostCard from '@/components/home/PostCard';
+import { MdOutlineViewAgenda } from "react-icons/md";
+import { MdOutlineViewDay } from "react-icons/md";
+import { MdOutlineAdd } from "react-icons/md";
 
+import { MdOutlineGridView } from "react-icons/md";
 interface Post {
   id: number;
   title: string;
@@ -582,18 +586,18 @@ export default function Home() {
                     className={`p-2 rounded-lg ${
                       viewMode === 'double' ? 'bg-[#9a0e20] text-white' : 'text-gray-700 hover:bg-gray-200 cursor-pointer'
                     }`}
-                    title="İkili Görünüm"
+                    title="Dual View"
                   >
-                    <FiGrid className="h-5 w-5" />
+                    <MdOutlineGridView className="h-6 w-6" />
                   </button>
                   <button
                     onClick={() => setViewMode('single')}
                     className={`p-2 rounded-lg ${
                       viewMode === 'single' ? 'bg-[#9a0e20] text-white' : 'text-gray-700 hover:bg-gray-200 cursor-pointer'
                     }`}
-                    title="Tekli Görünüm"
+                    title="Single View"
                   >
-                    <FiList className="h-5 w-5" />
+                    <MdOutlineViewAgenda className="h-6 w-6" />
                   </button>
                 </div>
 
@@ -602,9 +606,7 @@ export default function Home() {
                   onClick={() => router.push('/posts/create')}
                   className="bg-[#9a0e20] text-white px-4 py-2 rounded-lg hover:bg-[#7a0b19] transition-colors flex items-center space-x-2 text-sm font-medium cursor-pointer"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
-                  </svg>
+                  <MdOutlineAdd className="h-6 w-6" />                  
                   <span>New Post</span>
                 </button>
               </div>
