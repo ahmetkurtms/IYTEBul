@@ -110,7 +110,7 @@ function SidebarNavItem({ icon: Icon, label, href }: SidebarNavItemProps) {
         setOpen(false)
       }}
       className={cn(
-        "flex items-center gap-3 w-full px-3 py-2 rounded-lg font-medium text-base transition-colors",
+        "flex items-center gap-3 w-full px-3 py-2 rounded-lg font-medium text-base transition-colors cursor-pointer",
         isActive
           ? "bg-[#f8d7da] text-[#9a0e20] shadow-sm"
           : "text-gray-700 hover:bg-[#f8d7da]/60 hover:text-[#9a0e20]"

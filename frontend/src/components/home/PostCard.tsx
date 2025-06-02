@@ -99,7 +99,7 @@ export default function PostCard({
       <div className="absolute top-3 right-3 z-10" ref={menuRef}>
         <button
           onClick={() => setShowMenu(!showMenu)}
-          className="p-1.5 bg-white/90 backdrop-blur-sm rounded-full shadow-sm hover:bg-white transition-colors"
+          className="p-1.5 bg-white/90 backdrop-blur-sm rounded-full shadow-sm hover:bg-white transition-colors cursor-pointer"
           title="More options"
         >
           <FiMoreVertical className="w-3 h-3 text-gray-600" />
@@ -109,7 +109,7 @@ export default function PostCard({
           <div className="absolute top-full right-0 mt-1 bg-white rounded-lg shadow-lg border border-gray-200 py-1 min-w-[120px] z-20">
             <button
               onClick={handleReportClick}
-              className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
+              className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2 cursor-pointer"
             >
               <FiFlag className="w-4 h-4" />
               <span>Report</span>
@@ -197,7 +197,7 @@ export default function PostCard({
           {!showMessageForm ? (
             <button
               onClick={handleSendMessageClick}
-              className="w-full bg-[#9a0e20] text-white px-3 py-2 rounded-lg hover:bg-[#7a0b19] transition-colors flex items-center justify-center space-x-2"
+              className="w-full bg-[#9a0e20] text-white px-3 py-2 rounded-lg hover:bg-[#7a0b19] transition-colors flex items-center justify-center space-x-2 cursor-pointer"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 sm:h-4 sm:w-4" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clipRule="evenodd" />
@@ -216,14 +216,14 @@ export default function PostCard({
               <div className="flex space-x-2">
                 <button
                   onClick={handleCancelMessage}
-                  className="flex-1 bg-gray-500 text-white px-3 py-2 rounded-lg hover:bg-gray-600 transition-colors text-sm"
+                  className="flex-1 bg-gray-500 text-white px-3 py-2 rounded-lg hover:bg-gray-600 transition-colors text-sm cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSendMessageText}
                   disabled={!messageText.trim()}
-                  className="flex-1 bg-[#9a0e20] text-white px-3 py-2 rounded-lg hover:bg-[#7a0b19] transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                  className="flex-1 bg-[#9a0e20] text-white px-3 py-2 rounded-lg hover:bg-[#7a0b19] transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm cursor-pointer"
                 >
                   Send
                 </button>
