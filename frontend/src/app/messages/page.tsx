@@ -804,8 +804,8 @@ export default function Messages() {
                   {/* Message Search Button */}
                   <button 
                     onClick={() => setShowMessageSearch(!showMessageSearch)}
-                    className={`p-2 rounded-lg transition-colors ${
-                      showMessageSearch ? 'bg-[#A6292A] text-white' : 'hover:bg-gray-100 text-gray-600'
+                    className={`p-2 rounded-lg transition-colors cursor-pointer ${
+                      showMessageSearch ? 'bg-[#A6292A] text-white' : 'hover:bg-gray-100 text-gray-600 cursor-pointer'
                     }`}
                   >
                     <FiSearch className="w-5 h-5" />
@@ -814,7 +814,7 @@ export default function Messages() {
                   <div className="relative" ref={optionsMenuRef}>
                     <button 
                       onClick={() => setShowOptionsMenu(!showOptionsMenu)}
-                      className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                      className="p-2 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
                     >
                       <FiMoreVertical className="w-5 h-5 text-gray-600" />
                     </button>
@@ -824,7 +824,7 @@ export default function Messages() {
                       <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10">
                         <button
                           onClick={handleClearMessages}
-                          className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 transition-colors flex items-center space-x-2"
+                          className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 transition-colors flex items-center space-x-2 cursor-pointer"
                         >
                           <span>🗑️</span>
                           <span>Clear Messages</span>
@@ -834,7 +834,7 @@ export default function Messages() {
                             alert(`${selectedConversation?.user.nickname} has been blocked`);
                             setShowOptionsMenu(false);
                           }}
-                          className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center space-x-2"
+                          className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center space-x-2 cursor-pointer"
                         >
                           <span>🚫</span>
                           <span>Block User</span>
@@ -845,7 +845,7 @@ export default function Messages() {
                             setShowUserReportModal(true);
                             setShowOptionsMenu(false);
                           }}
-                          className="w-full px-4 py-2 text-left text-sm text-orange-600 hover:bg-orange-50 transition-colors flex items-center space-x-2"
+                          className="w-full px-4 py-2 text-left text-sm text-orange-600 hover:bg-orange-50 transition-colors flex items-center space-x-2 cursor-pointer"
                         >
                           <span>⚠️</span>
                           <span>Report User</span>
@@ -885,7 +885,7 @@ export default function Messages() {
                               className={`p-1 rounded transition-colors ${
                                 currentSearchIndex >= filteredMessages.length - 1 
                                   ? 'text-gray-300 cursor-not-allowed' 
-                                  : 'hover:bg-gray-200 text-gray-600'
+                                  : 'hover:bg-gray-200 text-gray-600 cursor-pointer'
                               }`}
                               title={currentSearchIndex >= filteredMessages.length - 1 ? 'Already at oldest result' : 'Go to older result'}
                             >
@@ -897,7 +897,7 @@ export default function Messages() {
                               className={`p-1 rounded transition-colors ${
                                 currentSearchIndex === 0 
                                   ? 'text-gray-300 cursor-not-allowed' 
-                                  : 'hover:bg-gray-200 text-gray-600'
+                                  : 'hover:bg-gray-200 text-gray-600 cursor-pointer'
                               }`}
                               title={currentSearchIndex === 0 ? 'Already at newest result' : 'Go to newer result'}
                             >
@@ -908,7 +908,7 @@ export default function Messages() {
                         
                         <button
                           onClick={clearSearch}
-                          className="p-1 rounded-full hover:bg-gray-200 transition-colors"
+                          className="p-1 rounded-full hover:bg-gray-200 transition-colors cursor-pointer"
                           title="Clear search"
                         >
                           <FiX className="w-3 h-3 text-gray-400" />
@@ -918,13 +918,13 @@ export default function Messages() {
                     
                     {/* No results message */}
                     {messageSearchQuery && filteredMessages.length === 0 && (
-                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center space-x-2">
+                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center space-x-2 ">
                         <span className="text-xs text-red-500 font-medium">
                           No results
                         </span>
                         <button
                           onClick={clearSearch}
-                          className="p-1 rounded-full hover:bg-gray-200 transition-colors"
+                          className="p-1 rounded-full hover:bg-gray-200 transition-colors cursor-pointer"
                         >
                           <FiX className="w-3 h-3 text-gray-400" />
                         </button>
@@ -1041,7 +1041,7 @@ export default function Messages() {
                 <div className="flex items-center space-x-2">
                   <button
                     type="button"
-                    className="p-2 rounded-full hover:bg-gray-200 transition-colors"
+                    className="p-2 rounded-full hover:bg-gray-200 transition-colors cursor-pointer"
                     onClick={handleAttachmentClick}
                     aria-label="Dosya ekle"
                   >
@@ -1063,7 +1063,7 @@ export default function Messages() {
                           <img src={src} alt="preview" className="w-20 h-20 object-cover rounded-lg border" />
                           <button
                             aria-label="Remove Photo"
-                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow hover:bg-red-700"
+                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow hover:bg-red-700 cursor-pointer"
                             onClick={() => removeFile(idx)}
                             tabIndex={0}
                           >
@@ -1086,12 +1086,12 @@ export default function Messages() {
                   <button
                     onClick={selectedFiles.length > 0 ? handleSend : handleSendMessage}
                     disabled={fileSendLoading || (!newMessage.trim() && selectedFiles.length === 0)}
-                    className={`p-2 rounded-full ml-2 transition-colors ${
+                    className={`p-2 rounded-full ml-2 transition-colors  ${
                       (newMessage.trim() || selectedFiles.length > 0)
-                        ? 'bg-[#A6292A] text-white hover:bg-[#8a1f1f]'
+                        ? 'bg-[#A6292A] text-white hover:bg-[#8a1f1f] cursor-pointer'
                         : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                     }`}
-                    aria-label="Mesajı gönder"
+                    aria-label="Send message"
                   >
                     {fileSendLoading ? (
                       <span className="loader w-5 h-5" />
@@ -1141,7 +1141,7 @@ export default function Messages() {
               <h2 className="text-xl font-semibold text-gray-900">Report User</h2>
               <button
                 onClick={() => setShowUserReportModal(false)}
-                className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                className="p-2 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
               >
                 <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
@@ -1155,7 +1155,7 @@ export default function Messages() {
               <select
                 value={reportReason}
                 onChange={e => setReportReason(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-[#9a0e20] focus:border-transparent mb-4"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-[#9a0e20] focus:border-transparent mb-4 cursor-pointer"
                 required
               >
                 <option value="" className="text-gray-500 bg-white">Select a reason</option>
@@ -1179,7 +1179,7 @@ export default function Messages() {
               <div className="flex justify-end gap-2">
                 <button
                   onClick={() => setShowUserReportModal(false)}
-                  className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+                  className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
