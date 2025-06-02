@@ -551,6 +551,8 @@ export default function AdminPanel() {
     setSelectedUserForDetails(null);
   };
 
+  const [filterReportType, setFilterReportType] = useState<string>('all');
+
   const filteredUsers = users.filter(user => {
     const matchesSearch = (user.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                          (user.nickname || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -608,6 +610,9 @@ export default function AdminPanel() {
     const matchesSearch = (report.reporterName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                          (report.reason || '').toLowerCase().includes(searchQuery.toLowerCase());
     
+    // Report Type filtresi
+    if (filterReportType !== 'all' && report.type !== filterReportType) return false;
+
     if (filterStatus === 'all') return matchesSearch;
     
     // Map filter status to backend status values
@@ -619,7 +624,9 @@ export default function AdminPanel() {
     };
     
     const backendStatus = statusMap[filterStatus];
-    return matchesSearch && (report.status === backendStatus);
+    if (!backendStatus) return matchesSearch; // Hatalı filterStatus ise filtreyi uygulama
+    if (!report.status) return false;
+    return matchesSearch && (report.status.toUpperCase() === backendStatus.toUpperCase());
   });
 
   if (loading) {
@@ -653,7 +660,7 @@ export default function AdminPanel() {
             <div className="flex border-b border-gray-200">
               <button
                 onClick={() => setActiveTab('users')}
-                className={`flex items-center space-x-2 px-6 py-4 font-medium transition-colors ${
+                className={`flex items-center space-x-2 px-6 py-4 font-medium transition-colors cursor-pointer ${
                   activeTab === 'users'
                     ? 'text-[#9a0e20] border-b-2 border-[#9a0e20] bg-[#f8d7da]/30'
                     : 'text-gray-600 hover:text-gray-900'
@@ -664,7 +671,7 @@ export default function AdminPanel() {
               </button>
               <button
                 onClick={() => setActiveTab('posts')}
-                className={`flex items-center space-x-2 px-6 py-4 font-medium transition-colors ${
+                className={`flex items-center space-x-2 px-6 py-4 font-medium transition-colors cursor-pointer ${
                   activeTab === 'posts'
                     ? 'text-[#9a0e20] border-b-2 border-[#9a0e20] bg-[#f8d7da]/30'
                     : 'text-gray-600 hover:text-gray-900'
@@ -675,7 +682,7 @@ export default function AdminPanel() {
               </button>
               <button
                 onClick={() => setActiveTab('reports')}
-                className={`flex items-center space-x-2 px-6 py-4 font-medium transition-colors ${
+                className={`flex items-center space-x-2 px-6 py-4 font-medium transition-colors cursor-pointer ${
                   activeTab === 'reports'
                     ? 'text-[#9a0e20] border-b-2 border-[#9a0e20] bg-[#f8d7da]/30'
                     : 'text-gray-600 hover:text-gray-900'
@@ -819,7 +826,7 @@ export default function AdminPanel() {
                                   .filter(loc => loc.nameEn.toLowerCase().includes(filterSearch.toLowerCase()))
                                   .map((loc) => (
                                     <div
-                                      key={loc.id}
+                                      key={`${loc.id}-${loc.nameEn}`}
                                       className={`px-2 py-1 cursor-pointer hover:bg-gray-100 rounded text-gray-800 flex items-center justify-between ${
                                         selectedLocations.includes(loc.nameEn) ? 'font-semibold text-[#9a0e20]' : ''
                                       }`}
@@ -885,7 +892,7 @@ export default function AdminPanel() {
                   <select
                     value={filterStatus}
                     onChange={(e) => setFilterStatus(e.target.value)}
-                    className="pl-10 pr-8 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9a0e20] focus:border-transparent text-gray-900 font-medium"
+                    className="pl-10 pr-8 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9a0e20] focus:border-transparent text-gray-900 font-medium cursor-pointer"
                   >
                     {activeTab === 'users' && (
                       <>
@@ -964,14 +971,14 @@ export default function AdminPanel() {
                       <div className="flex items-center space-x-2">
                         <button
                           onClick={() => openUserDetailsModal(user)}
-                          className="p-2 rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors"
+                          className="p-2 rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors cursor-pointer"
                           title="View Details"
                         >
                           <FiEye className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => openBanModal(user)}
-                          className={`p-2 rounded-lg transition-colors ${
+                          className={`p-2 rounded-lg transition-colors cursor-pointer ${
                             user.isBanned
                               ? 'bg-green-100 text-green-600 hover:bg-green-200'
                               : 'bg-yellow-100 text-yellow-600 hover:bg-yellow-200'
@@ -982,7 +989,7 @@ export default function AdminPanel() {
                         </button>
                         <button 
                           onClick={() => handleDeleteUser(user.id)}
-                          className="p-2 rounded-lg bg-red-100 text-red-600 hover:bg-red-200 transition-colors"
+                          className="p-2 rounded-lg bg-red-100 text-red-600 hover:bg-red-200 transition-colors cursor-pointer"
                           title="Delete User"
                         >
                           <FiTrash2 className="w-4 h-4" />
@@ -1029,14 +1036,14 @@ export default function AdminPanel() {
                         <div className="flex items-center space-x-2 ml-4">
                           <button
                             onClick={() => handleViewPost(post)}
-                            className="p-2 rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors"
+                            className="p-2 rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors cursor-pointer"
                             title="View Post"
                           >
                             <FiEye className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => handleDeletePost(post.id)}
-                            className="p-2 rounded-lg bg-red-100 text-red-600 hover:bg-red-200 transition-colors"
+                            className="p-2 rounded-lg bg-red-100 text-red-600 hover:bg-red-200 transition-colors cursor-pointer"
                             title="Delete Post"
                           >
                             <FiTrash2 className="w-4 h-4" />
@@ -1052,7 +1059,7 @@ export default function AdminPanel() {
               {activeTab === 'reports' && (
                 <div className="space-y-4">
                   {filteredReports.map((report) => (
-                    <div key={report.id} className="bg-gray-50 rounded-lg p-4">
+                    <div key={`${report.type}-${report.id}`} className="bg-gray-50 rounded-lg p-4">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center space-x-2 mb-2">
@@ -1094,7 +1101,7 @@ export default function AdminPanel() {
                           {report.type === 'post' && (
                             <button
                               onClick={() => handleViewReportedPost(report.postId!)}
-                              className="p-2 rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors"
+                              className="p-2 rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors cursor-pointer"
                               title="View Reported Post"
                             >
                               <FiEye className="w-4 h-4" />
@@ -1104,14 +1111,14 @@ export default function AdminPanel() {
                             <>
                               <button
                                 onClick={() => handleReportAction(report.id, 'approve')}
-                                className="p-2 rounded-lg bg-green-100 text-green-600 hover:bg-green-200 transition-colors"
+                                className="p-2 rounded-lg bg-green-100 text-green-600 hover:bg-green-200 transition-colors cursor-pointer"
                                 title="Approve Report"
                               >
                                 <BsCheckCircle className="w-4 h-4" />
                               </button>
                               <button
                                 onClick={() => handleReportAction(report.id, 'reject')}
-                                className="p-2 rounded-lg bg-red-100 text-red-600 hover:bg-red-200 transition-colors"
+                                className="p-2 rounded-lg bg-red-100 text-red-600 hover:bg-red-200 transition-colors cursor-pointer"
                                 title="Reject Report"
                               >
                                 <BsXCircle className="w-4 h-4" />
@@ -1143,7 +1150,7 @@ export default function AdminPanel() {
               <h2 className="text-xl font-semibold text-gray-900">Post Details</h2>
               <button
                 onClick={closePostModal}
-                className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                className="p-2 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
               >
                 ×
               </button>
@@ -1246,14 +1253,14 @@ export default function AdminPanel() {
                         handleDeletePost(selectedPost.id);
                         closePostModal();
                       }}
-                      className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center"
+                      className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center cursor-pointer"
                     >
                       <FiTrash2 className="w-4 h-4 mr-2" />
                       Delete Post
                     </button>
                     <button
                       onClick={closePostModal}
-                      className="flex-1 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+                      className="flex-1 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors cursor-pointer"
                     >
                       Close
                     </button>
@@ -1281,7 +1288,7 @@ export default function AdminPanel() {
               </h2>
               <button
                 onClick={closeBanModal}
-                className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                className="p-2 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
               >
                 ×
               </button>
@@ -1315,7 +1322,7 @@ export default function AdminPanel() {
                     <select
                       value={banDuration}
                       onChange={(e) => setBanDuration(e.target.value)}
-                      className="w-full px-4 py-3 text-lg border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9a0e20] focus:border-transparent font-semibold text-gray-900"
+                      className="w-full px-4 py-3 text-lg border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9a0e20] focus:border-transparent font-semibold text-gray-900 cursor-pointer"
                     >
                       <option value="1h">1 Hour</option>
                       <option value="24h">24 Hours</option>
@@ -1343,13 +1350,13 @@ export default function AdminPanel() {
               <div className="flex space-x-3">
                 <button
                   onClick={closeBanModal}
-                  className="flex-1 px-6 py-3 text-lg font-bold text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors"
+                  className="flex-1 px-6 py-3 text-lg font-bold text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={confirmBanUser}
-                  className={`flex-1 px-6 py-3 text-lg font-bold text-white rounded-lg transition-colors ${
+                  className={`flex-1 px-6 py-3 text-lg font-bold text-white rounded-lg transition-colors cursor-pointer ${
                     selectedUser.isBanned 
                       ? 'bg-green-600 hover:bg-green-700' 
                       : 'bg-red-600 hover:bg-red-700'
@@ -1378,7 +1385,7 @@ export default function AdminPanel() {
               <h2 className="text-xl font-semibold text-gray-900">User Details</h2>
               <button
                 onClick={closeUserDetailsModal}
-                className="p-2 text-2xl text-gray-400 hover:text-gray-600 transition-colors"
+                className="p-2 text-2xl text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
               >
                 ×
               </button>
@@ -1572,7 +1579,7 @@ export default function AdminPanel() {
                         openBanModal(selectedUserForDetails);
                         closeUserDetailsModal();
                       }}
-                      className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${
+                      className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors cursor-pointer ${
                         selectedUserForDetails.isBanned
                           ? 'bg-green-600 text-white hover:bg-green-700'
                           : 'bg-yellow-600 text-white hover:bg-yellow-700'
@@ -1585,13 +1592,13 @@ export default function AdminPanel() {
                         handleDeleteUser(selectedUserForDetails.id);
                         closeUserDetailsModal();
                       }}
-                      className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors font-medium"
+                      className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors font-medium cursor-pointer"
                     >
                       Delete User
                     </button>
                     <button
                       onClick={closeUserDetailsModal}
-                      className="flex-1 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors font-medium"
+                      className="flex-1 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors font-medium cursor-pointer"
                     >
                       Close
                     </button>
