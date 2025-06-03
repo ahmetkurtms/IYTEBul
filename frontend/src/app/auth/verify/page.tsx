@@ -23,8 +23,8 @@ export default function VerifyRegistration() {
   // Step 1: Email
   const handleSendCode = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.endsWith('@std.iyte.edu.tr')) {
-      setStatus('Please enter a valid IYTE student email.');
+    if (!email.match(/@(std\.)?iyte\.edu\.tr$/)) {
+      setStatus('Please enter a valid IYTE email address (@iyte.edu.tr or @std.iyte.edu.tr).');
       return;
     }
     setStatus('Sending verification code...');
@@ -131,7 +131,7 @@ export default function VerifyRegistration() {
                 <input
                   id="email"
                   type="email"
-                  placeholder="@std.iyte.edu.tr"
+                  placeholder="Enter your IYTE email (@iyte.edu.tr or @std.iyte.edu.tr)"
                   className="flex-1 outline-none bg-transparent text-base text-gray-700"
                   value={email}
                   onChange={e => setEmail(e.target.value)}

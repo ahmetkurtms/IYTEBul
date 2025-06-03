@@ -16,8 +16,8 @@ export default function ForgotPassword() {
   // Step 1: Email
   const handleSendCode = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.endsWith('@std.iyte.edu.tr')) {
-      setStatus('Please enter a valid IYTE student email.');
+    if (!email.match(/@(std\.)?iyte\.edu\.tr$/)) {
+      setStatus('Please enter a valid IYTE email address (@iyte.edu.tr or @std.iyte.edu.tr).');
       return;
     }
     setStatus('Sending verification code...');
@@ -142,7 +142,7 @@ export default function ForgotPassword() {
                 <input
                   id="email"
                   type="email"
-                  placeholder="@std.iyte.edu.tr"
+                  placeholder="Enter your IYTE email (@iyte.edu.tr or @std.iyte.edu.tr)"
                   className="flex-1 outline-none bg-transparent text-base text-gray-700"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
@@ -151,9 +151,9 @@ export default function ForgotPassword() {
               </div>
               <button
                 type="submit"
-                disabled={!email.endsWith('@std.iyte.edu.tr') || email.trim() === ''}
+                disabled={!email.match(/@(std\.)?iyte\.edu\.tr$/) || email.trim() === ''}
                 className={`w-full py-2 rounded-lg transition-colors text-lg font-semibold tracking-wide shadow-md
-                  ${(!email.endsWith('@std.iyte.edu.tr') || email.trim() === '')
+                  ${(!email.match(/@(std\.)?iyte\.edu\.tr$/) || email.trim() === '')
                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                     : 'bg-[#9a0e20] text-white hover:bg-[#7a0b19] cursor-pointer'}
                 `}

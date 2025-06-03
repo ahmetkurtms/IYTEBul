@@ -97,35 +97,25 @@ public class MessageController {
         try {
             System.out.println("=== GET CONVERSATIONS REQUEST ===");
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-            System.out.println("Authentication object: " + authentication);
+            System.out.println("Authentication: " + authentication);
             
             if (authentication == null) {
                 System.out.println("Authentication is null");
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ArrayList<>());
             }
             
-            System.out.println("Authentication class: " + authentication.getClass().getName());
-            System.out.println("Is authenticated: " + authentication.isAuthenticated());
-            System.out.println("Principal: " + authentication.getPrincipal());
-            System.out.println("Name: " + authentication.getName());
-            
-            if (!authentication.isAuthenticated()) {
-                System.out.println("User not authenticated");
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ArrayList<>());
-            }
-            
             String currentUserEmail = authentication.getName();
             System.out.println("Current user email: " + currentUserEmail);
             
-            if (currentUserEmail == null || currentUserEmail.equals("anonymousUser")) {
-                System.out.println("User email is null or anonymous");
+            if (currentUserEmail == null) {
+                System.out.println("Current user email is null");
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ArrayList<>());
             }
             
             User currentUser = userService.findUserByEmail(currentUserEmail);
             
             if (currentUser == null) {
-                System.out.println("User not found for email: " + currentUserEmail);
+                System.out.println("Current user not found for email: " + currentUserEmail);
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ArrayList<>());
             }
             
@@ -137,26 +127,55 @@ public class MessageController {
             List<ConversationResponse> conversations = new ArrayList<>();
             
             for (Messages message : latestMessages) {
-                User otherUser = message.getSender().getUser_id().equals(currentUser.getUser_id()) 
-                    ? message.getReceiver() : message.getSender();
-                
-                Long unreadCount = messageService.countUnreadMessagesExcludingDeleted(currentUser, otherUser);
-                
-                MessageResponse lastMessageResponse = convertToMessageResponse(message);
-                
-                ConversationResponse conversation = new ConversationResponse();
-                conversation.setConversationId(otherUser.getUser_id());
-                conversation.setOtherUserId(otherUser.getUser_id());
-                conversation.setOtherUserName(otherUser.getName() + " " + otherUser.getSurname());
-                conversation.setOtherUserNickname(otherUser.getNickname());
-                conversation.setOtherUserProfilePhoto(otherUser.getProfilePhotoUrl());
-                conversation.setOtherUserIsOnline(true); // TODO: Implement online status
-                conversation.setOtherUserLastSeen(LocalDateTime.now()); // TODO: Implement last seen
-                conversation.setLastMessage(lastMessageResponse);
-                conversation.setUnreadCount(unreadCount);
-                
-                conversations.add(conversation);
-                System.out.println("Added conversation with: " + otherUser.getName());
+                try {
+                    if (message == null) {
+                        System.out.println("WARNING: Null message in conversation list");
+                        continue;
+                    }
+                    
+                    if (message.getSender() == null || message.getReceiver() == null) {
+                        System.out.println("WARNING: Message with null sender or receiver - ID: " + message.getMessageId());
+                        continue;
+                    }
+                    
+                    User otherUser = message.getSender().getUser_id().equals(currentUser.getUser_id()) 
+                        ? message.getReceiver() : message.getSender();
+                    
+                    if (otherUser == null) {
+                        System.out.println("WARNING: Other user is null for message ID: " + message.getMessageId());
+                        continue;
+                    }
+                    
+                    Long unreadCount = messageService.countUnreadMessagesExcludingDeleted(currentUser, otherUser);
+                    if (unreadCount == null) {
+                        unreadCount = 0L;
+                    }
+                    
+                    MessageResponse lastMessageResponse = convertToMessageResponse(message);
+                    
+                    if (lastMessageResponse == null) {
+                        System.out.println("WARNING: Failed to convert message to response for message ID: " + message.getMessageId());
+                        continue;
+                    }
+                    
+                    ConversationResponse conversation = new ConversationResponse();
+                    conversation.setConversationId(otherUser.getUser_id());
+                    conversation.setOtherUserId(otherUser.getUser_id());
+                    conversation.setOtherUserName(otherUser.getName() + " " + otherUser.getSurname());
+                    conversation.setOtherUserNickname(otherUser.getNickname());
+                    conversation.setOtherUserProfilePhoto(otherUser.getProfilePhotoUrl());
+                    conversation.setOtherUserIsOnline(true); // TODO: Implement online status
+                    conversation.setOtherUserLastSeen(LocalDateTime.now()); // TODO: Implement last seen
+                    conversation.setLastMessage(lastMessageResponse);
+                    conversation.setUnreadCount(unreadCount);
+                    
+                    conversations.add(conversation);
+                    System.out.println("Added conversation with: " + otherUser.getName());
+                } catch (Exception innerException) {
+                    System.out.println("Error processing conversation for message ID " + (message != null ? message.getMessageId() : "null") + ": " + innerException.getMessage());
+                    innerException.printStackTrace();
+                    // Continue with next message instead of failing entire request
+                }
             }
             
             System.out.println("Returning " + conversations.size() + " conversations");
@@ -277,25 +296,53 @@ public class MessageController {
     }
     
     private MessageResponse convertToMessageResponse(Messages message) {
-        MessageResponse response = new MessageResponse();
-        response.setMessageId(message.getMessageId());
-        response.setSenderId(message.getSender().getUser_id());
-        response.setSenderName(message.getSender().getName() + " " + message.getSender().getSurname());
-        response.setSenderNickname(message.getSender().getNickname());
-        response.setSenderProfilePhoto(message.getSender().getProfilePhotoUrl());
-        response.setReceiverId(message.getReceiver().getUser_id());
-        response.setReceiverName(message.getReceiver().getName() + " " + message.getReceiver().getSurname());
-        response.setReceiverNickname(message.getReceiver().getNickname());
-        response.setReceiverProfilePhoto(message.getReceiver().getProfilePhotoUrl());
-        response.setMessageText(message.getMessageText());
-        response.setSentAt(message.getSentAt());
-        response.setIsRead(message.getIsRead());
-        List<MessageImage> images = messageImageRepository.findByMessage(message);
-        List<String> imageBase64List = new ArrayList<>();
-        for (MessageImage img : images) {
-            imageBase64List.add(img.getImageBase64());
+        try {
+            if (message == null) {
+                System.out.println("WARNING: Trying to convert null message to response");
+                return null;
+            }
+            
+            MessageResponse response = new MessageResponse();
+            response.setMessageId(message.getMessageId());
+            
+            if (message.getSender() != null) {
+                response.setSenderId(message.getSender().getUser_id());
+                response.setSenderName(message.getSender().getName() + " " + message.getSender().getSurname());
+                response.setSenderNickname(message.getSender().getNickname());
+                response.setSenderProfilePhoto(message.getSender().getProfilePhotoUrl());
+            } else {
+                System.out.println("WARNING: Message sender is null for message ID: " + message.getMessageId());
+            }
+            
+            if (message.getReceiver() != null) {
+                response.setReceiverId(message.getReceiver().getUser_id());
+                response.setReceiverName(message.getReceiver().getName() + " " + message.getReceiver().getSurname());
+                response.setReceiverNickname(message.getReceiver().getNickname());
+                response.setReceiverProfilePhoto(message.getReceiver().getProfilePhotoUrl());
+            } else {
+                System.out.println("WARNING: Message receiver is null for message ID: " + message.getMessageId());
+            }
+            
+            response.setMessageText(message.getMessageText());
+            response.setSentAt(message.getSentAt());
+            response.setIsRead(message.getIsRead());
+            
+            List<MessageImage> images = messageImageRepository.findByMessage(message);
+            List<String> imageBase64List = new ArrayList<>();
+            if (images != null) {
+                for (MessageImage img : images) {
+                    if (img != null && img.getImageBase64() != null) {
+                        imageBase64List.add(img.getImageBase64());
+                    }
+                }
+            }
+            response.setImageBase64List(imageBase64List);
+            
+            return response;
+        } catch (Exception e) {
+            System.out.println("Error converting message to response: " + e.getMessage());
+            e.printStackTrace();
+            return null;
         }
-        response.setImageBase64List(imageBase64List);
-        return response;
     }
 } 
