@@ -14,6 +14,9 @@ public interface MessageService {
     // Send a new message with referenced item
     Messages sendMessage(User sender, User receiver, String messageText, Item referencedItem);
     
+    // Send a new message with referenced item and reply
+    Messages sendMessage(User sender, User receiver, String messageText, Item referencedItem, Messages replyToMessage);
+    
     // Get all messages between two users
     List<Messages> getMessagesBetweenUsers(User user1, User user2);
     
@@ -40,4 +43,7 @@ public interface MessageService {
     
     // Clear all messages between two users (soft delete - only for current user)
     void clearMessagesBetweenUsers(User currentUser, User otherUser);
+    
+    // Delete a specific message by ID (hard delete - removes from both sides)
+    void deleteMessage(Long messageId, User currentUser);
 } 

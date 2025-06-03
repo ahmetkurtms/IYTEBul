@@ -1,26 +1,49 @@
 const API_BASE_URL = 'http://localhost:8080/api/messages';
 
+// Utility function to convert File to base64
+const convertFileToBase64 = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        // Remove the data URL prefix (e.g., "data:image/jpeg;base64,")
+        const base64 = reader.result.split(',')[1];
+        resolve(base64);
+      } else {
+        reject(new Error('Failed to convert file to base64'));
+      }
+    };
+    reader.onerror = (error) => reject(error);
+  });
+};
+
 export interface MessageResponse {
   messageId: number;
+  messageText: string;
   senderId: number;
   senderName: string;
   senderNickname: string;
-  senderProfilePhoto?: string;
+  senderProfilePhoto: string;
   receiverId: number;
   receiverName: string;
   receiverNickname: string;
-  receiverProfilePhoto?: string;
-  messageText: string;
+  receiverProfilePhoto: string;
   sentAt: string;
   isRead: boolean;
-  imageBase64List?: string[];
+  imageBase64List: string[];
   
-  // Referenced item/post information
+  // Referenced item fields
   referencedItemId?: number;
   referencedItemTitle?: string;
   referencedItemImage?: string;
   referencedItemCategory?: string;
   referencedItemType?: string;
+  
+  // Reply fields
+  replyToMessageId?: number;
+  replyToMessageText?: string;
+  replyToSenderName?: string;
 }
 
 export interface ConversationResponse {
@@ -41,6 +64,36 @@ export interface UserProfile {
   nickname: string;
   email: string;
   profilePhotoUrl?: string;
+}
+
+export interface SendMessageRequest {
+  receiverId: number;
+  messageText: string;
+  imageBase64List?: string[];
+  referencedItemId?: number;
+  replyToMessageId?: number;
+}
+
+export interface Message {
+  messageId: number;
+  messageText: string;
+  senderId: number;  
+  senderName: string;
+  sentAt: string;
+  isRead: boolean;
+  imageUrls?: string[];
+  itemId?: number;
+  itemTitle?: string;
+  itemImage?: string;
+  itemCategory?: string;
+  itemType?: string;
+  replyToMessageId?: number;
+  replyToMessageText?: string;
+  replyToSenderName?: string;
+}
+
+export interface UserInfo {
+  // Add any necessary properties for UserInfo
 }
 
 export const messageApi = {
@@ -185,45 +238,39 @@ export const messageApi = {
   },
 
   // Send a message
-  sendMessage: async ({ 
-    receiverId, 
-    messageText, 
-    imageBase64List, 
-    referencedItemId 
-  }: { 
-    receiverId: number, 
-    messageText: string, 
-    imageBase64List: string[], 
-    referencedItemId?: number 
-  }) => {
-    const token = localStorage.getItem('token');
-    if (!token) throw new Error('No token found');
-
-    console.log('Calling sendMessage API:', { receiverId, messageText, imageBase64List, referencedItemId });
+  sendMessage: async (receiverId: number, messageText: string, images?: File[], referencedItemId?: number, replyToMessageId?: number): Promise<Message> => {
     try {
+      // Convert images to base64 if present
+      const imageBase64List: string[] = [];
+      if (images && images.length > 0) {
+        for (const image of images) {
+          const base64 = await convertFileToBase64(image);
+          imageBase64List.push(base64);
+        }
+      }
+
       const response = await fetch(`${API_BASE_URL}/send`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify({
           receiverId,
           messageText,
-          imageBase64List,
+          imageBase64List: imageBase64List.length > 0 ? imageBase64List : undefined,
           referencedItemId,
-        }),
+          replyToMessageId
+        })
       });
 
-      console.log('sendMessage response status:', response.status);
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('sendMessage error response:', errorText);
         throw new Error('Failed to send message');
       }
-      console.log('sendMessage success');
+
+      return await response.json();
     } catch (error) {
-      console.error('sendMessage fetch error:', error);
+      console.error('Error sending message:', error);
       throw error;
     }
   },
@@ -288,6 +335,36 @@ export const messageApi = {
       console.log('clearMessages success');
     } catch (error) {
       console.error('clearMessages fetch error:', error);
+      throw error;
+    }
+  },
+
+  // Delete a specific message
+  deleteMessage: async (messageId: number): Promise<void> => {
+    const token = localStorage.getItem('token');
+    if (!token) throw new Error('No token found');
+
+    console.log('Calling deleteMessage API for message:', messageId);
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/${messageId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      console.log('deleteMessage response status:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('deleteMessage error response:', errorText);
+        throw new Error('Failed to delete message');
+      }
+
+      console.log('deleteMessage success');
+    } catch (error) {
+      console.error('deleteMessage fetch error:', error);
       throw error;
     }
   },

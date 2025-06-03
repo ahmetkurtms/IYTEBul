@@ -74,21 +74,35 @@ public class MessageController {
                     .body(new ApiResponse("Receiver not found", false));
             }
             
-            Messages message;
             Item referencedItem = null;
-            
-            // Check if there's a referenced item/post
             if (request.getReferencedItemId() != null) {
                 try {
                     referencedItem = itemService.findItemById(request.getReferencedItemId());
-                    System.out.println("Referenced item found: " + referencedItem.getTitle());
+                    if (referencedItem == null) {
+                        System.out.println("Referenced item not found for ID: " + request.getReferencedItemId());
+                        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                            .body(new ApiResponse("Referenced item not found", false));
+                    }
                 } catch (Exception e) {
                     System.out.println("Referenced item not found for ID: " + request.getReferencedItemId());
-                    // Continue without referenced item rather than failing
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(new ApiResponse("Referenced item not found", false));
                 }
             }
             
-            message = messageService.sendMessage(sender, receiver, request.getMessageText(), referencedItem);
+            // Find reply to message if provided
+            Messages replyToMessage = null;
+            if (request.getReplyToMessageId() != null) {
+                replyToMessage = messageService.getMessageById(request.getReplyToMessageId());
+                if (replyToMessage == null) {
+                    System.out.println("Reply to message not found for ID: " + request.getReplyToMessageId());
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(new ApiResponse("Reply to message not found", false));
+                }
+            }
+            
+            // Send the message
+            Messages message = messageService.sendMessage(sender, receiver, request.getMessageText(), referencedItem, replyToMessage);
             System.out.println("Message sent successfully: " + message.getMessageId());
             // Save images if present
             if (request.getImageBase64List() != null) {
@@ -169,7 +183,7 @@ public class MessageController {
                         unreadCount = 0L;
                     }
                     
-                    MessageResponse lastMessageResponse = convertToMessageResponse(message);
+                    MessageResponse lastMessageResponse = convertToMessageResponse(message, new ArrayList<>());
                     
                     if (lastMessageResponse == null) {
                         System.out.println("WARNING: Failed to convert message to response for message ID: " + message.getMessageId());
@@ -229,7 +243,7 @@ public class MessageController {
             List<MessageResponse> messageResponses = new ArrayList<>();
             
             for (Messages message : messages) {
-                messageResponses.add(convertToMessageResponse(message));
+                messageResponses.add(convertToMessageResponse(message, new ArrayList<>()));
             }
             
             // Mark messages as read
@@ -313,89 +327,103 @@ public class MessageController {
         }
     }
     
-    private MessageResponse convertToMessageResponse(Messages message) {
+    // Delete a specific message
+    @DeleteMapping("/{messageId}")
+    public ResponseEntity<ApiResponse> deleteMessage(@PathVariable Long messageId) {
         try {
-            if (message == null) {
-                System.out.println("WARNING: Trying to convert null message to response");
-                return null;
+            System.out.println("=== DELETE MESSAGE REQUEST ===");
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            String currentUserEmail = authentication.getName();
+            User currentUser = userService.findUserByEmail(currentUserEmail);
+            
+            if (currentUser == null) {
+                System.out.println("Current user not found for email: " + currentUserEmail);
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ApiResponse("User not found", false));
             }
             
-            MessageResponse response = new MessageResponse();
-            response.setMessageId(message.getMessageId());
+            System.out.println("Deleting message ID: " + messageId + " by user: " + currentUser.getName());
             
-            if (message.getSender() != null) {
-                response.setSenderId(message.getSender().getUser_id());
-                response.setSenderName(message.getSender().getName() + " " + message.getSender().getSurname());
-                response.setSenderNickname(message.getSender().getNickname());
-                response.setSenderProfilePhoto(message.getSender().getProfilePhotoUrl());
-            } else {
-                System.out.println("WARNING: Message sender is null for message ID: " + message.getMessageId());
-            }
+            // Delete the message
+            messageService.deleteMessage(messageId, currentUser);
             
-            if (message.getReceiver() != null) {
-                response.setReceiverId(message.getReceiver().getUser_id());
-                response.setReceiverName(message.getReceiver().getName() + " " + message.getReceiver().getSurname());
-                response.setReceiverNickname(message.getReceiver().getNickname());
-                response.setReceiverProfilePhoto(message.getReceiver().getProfilePhotoUrl());
-            } else {
-                System.out.println("WARNING: Message receiver is null for message ID: " + message.getMessageId());
-            }
+            return ResponseEntity.ok(new ApiResponse("Message deleted successfully", true));
             
-            response.setMessageText(message.getMessageText());
-            response.setSentAt(message.getSentAt());
-            response.setIsRead(message.getIsRead());
-            
-            // Add referenced item information if present
-            if (message.getReferencedItem() != null) {
-                Item referencedItem = message.getReferencedItem();
-                response.setReferencedItemId(referencedItem.getItem_id());
-                response.setReferencedItemTitle(referencedItem.getTitle());
-                
-                // If item has no image, use default category image
-                String itemImage = referencedItem.getImage();
-                if (itemImage == null || itemImage.trim().isEmpty()) {
-                    // Use default category images based on category
-                    String category = referencedItem.getCategory().toString();
-                    switch (category) {
-                        case "Electronics":
-                            itemImage = "default_electronic";
-                            break;
-                        case "Clothing":
-                            itemImage = "default_clothing";
-                            break;
-                        case "Cards":
-                            itemImage = "default_cards";
-                            break;
-                        case "Accessories":
-                            itemImage = "default_accessories";
-                            break;
-                        default:
-                            itemImage = "default_other";
-                            break;
-                    }
-                }
-                response.setReferencedItemImage(itemImage);
-                
-                response.setReferencedItemCategory(referencedItem.getCategory().toString());
-                response.setReferencedItemType(referencedItem.getType().toString());
-            }
-            
-            List<MessageImage> images = messageImageRepository.findByMessage(message);
-            List<String> imageBase64List = new ArrayList<>();
-            if (images != null) {
-                for (MessageImage img : images) {
-                    if (img != null && img.getImageBase64() != null) {
-                        imageBase64List.add(img.getImageBase64());
-                    }
-                }
-            }
-            response.setImageBase64List(imageBase64List);
-            
-            return response;
         } catch (Exception e) {
-            System.out.println("Error converting message to response: " + e.getMessage());
+            System.out.println("Error in deleteMessage: " + e.getMessage());
             e.printStackTrace();
-            return null;
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ApiResponse("Error deleting message: " + e.getMessage(), false));
         }
+    }
+    
+    private MessageResponse convertToMessageResponse(Messages message, List<String> imageUrls) {
+        MessageResponse response = new MessageResponse();
+        response.setMessageId(message.getMessageId());
+        
+        if (message.getSender() != null) {
+            response.setSenderId(message.getSender().getUser_id());
+            response.setSenderName(message.getSender().getName() + " " + message.getSender().getSurname());
+            response.setSenderNickname(message.getSender().getNickname());
+            response.setSenderProfilePhoto(message.getSender().getProfilePhotoUrl());
+        }
+        
+        if (message.getReceiver() != null) {
+            response.setReceiverId(message.getReceiver().getUser_id());
+            response.setReceiverName(message.getReceiver().getName() + " " + message.getReceiver().getSurname());
+            response.setReceiverNickname(message.getReceiver().getNickname());
+            response.setReceiverProfilePhoto(message.getReceiver().getProfilePhotoUrl());
+        }
+        
+        response.setMessageText(message.getMessageText());
+        response.setSentAt(message.getSentAt());
+        response.setIsRead(message.getIsRead());
+        response.setImageBase64List(imageUrls);
+        
+        // Add referenced item information if present
+        if (message.getReferencedItem() != null) {
+            Item item = message.getReferencedItem();
+            response.setReferencedItemId(item.getItem_id());
+            response.setReferencedItemTitle(item.getTitle());
+            response.setReferencedItemCategory(item.getCategory().toString());
+            response.setReferencedItemType(item.getType().toString());
+            
+            // If item has no image, use default category image
+            String itemImage = item.getImage();
+            if (itemImage == null || itemImage.trim().isEmpty()) {
+                // Use default category images based on category
+                String category = item.getCategory().toString();
+                switch (category) {
+                    case "Electronics":
+                        itemImage = "default_electronic";
+                        break;
+                    case "Clothing":
+                        itemImage = "default_clothing";
+                        break;
+                    case "Cards":
+                        itemImage = "default_cards";
+                        break;
+                    case "Accessories":
+                        itemImage = "default_accessories";
+                        break;
+                    default:
+                        itemImage = "default_other";
+                        break;
+                }
+            }
+            response.setReferencedItemImage(itemImage);
+        }
+        
+        // Add reply information if present
+        if (message.getReplyToMessage() != null) {
+            Messages replyMessage = message.getReplyToMessage();
+            response.setReplyToMessageId(replyMessage.getMessageId());
+            response.setReplyToMessageText(replyMessage.getMessageText());
+            if (replyMessage.getSender() != null) {
+                response.setReplyToSenderName(replyMessage.getSender().getName());
+            }
+        }
+        
+        return response;
     }
 } 

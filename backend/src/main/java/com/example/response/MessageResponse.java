@@ -30,4 +30,9 @@ public class MessageResponse {
     private String referencedItemImage;
     private String referencedItemCategory;
     private String referencedItemType;
+    
+    // Reply fields
+    private Long replyToMessageId;
+    private String replyToMessageText;
+    private String replyToSenderName;
 } 

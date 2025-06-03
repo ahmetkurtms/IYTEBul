@@ -4,8 +4,10 @@ import com.example.models.DeletedMessages;
 import com.example.models.Messages;
 import com.example.models.User;
 import com.example.models.Item;
+import com.example.models.MessageImage;
 import com.example.repository.DeletedMessagesRepository;
 import com.example.repository.MessageRepository;
+import com.example.repository.MessageImageRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,19 +27,28 @@ public class MessageServiceImplementation implements MessageService {
     @Autowired
     private DeletedMessagesRepository deletedMessagesRepository;
     
+    @Autowired
+    private MessageImageRepository messageImageRepository;
+    
     @Override
     public Messages sendMessage(User sender, User receiver, String messageText) {
-        return sendMessage(sender, receiver, messageText, null);
+        return sendMessage(sender, receiver, messageText, null, null);
     }
     
     @Override
     public Messages sendMessage(User sender, User receiver, String messageText, Item referencedItem) {
+        return sendMessage(sender, receiver, messageText, referencedItem, null);
+    }
+    
+    @Override
+    public Messages sendMessage(User sender, User receiver, String messageText, Item referencedItem, Messages replyToMessage) {
         Messages message = new Messages();
         message.setSender(sender);
         message.setReceiver(receiver);
         message.setMessageText(messageText);
         message.setIsRead(false);
         message.setReferencedItem(referencedItem);
+        message.setReplyToMessage(replyToMessage);
         
         return messageRepository.save(message);
     }
@@ -136,6 +147,48 @@ public class MessageServiceImplementation implements MessageService {
                 DeletedMessages deletedMessage = new DeletedMessages(message, currentUser);
                 deletedMessagesRepository.save(deletedMessage);
             }
+        }
+    }
+    
+    @Override
+    @Transactional
+    public void deleteMessage(Long messageId, User currentUser) {
+        try {
+            Messages message = messageRepository.findById(messageId).orElse(null);
+            if (message == null) {
+                System.out.println("Message not found for ID: " + messageId);
+                return;
+            }
+            
+            // Check if current user is sender or receiver
+            if (!message.getSender().getUser_id().equals(currentUser.getUser_id()) && 
+                !message.getReceiver().getUser_id().equals(currentUser.getUser_id())) {
+                System.out.println("User not authorized to delete this message");
+                return;
+            }
+            
+            System.out.println("Deleting message ID: " + messageId + " by user: " + currentUser.getName());
+            
+            // First delete any related message images
+            List<MessageImage> images = messageImageRepository.findByMessage(message);
+            for (MessageImage img : images) {
+                messageImageRepository.delete(img);
+            }
+            
+            // Delete from deleted_messages table if exists
+            List<DeletedMessages> deletedRecords = deletedMessagesRepository.findByMessage(message);
+            for (DeletedMessages deleted : deletedRecords) {
+                deletedMessagesRepository.delete(deleted);
+            }
+            
+            // Hard delete the message (removes from both sides)
+            messageRepository.delete(message);
+            
+            System.out.println("Message deleted successfully");
+            
+        } catch (Exception e) {
+            System.out.println("Error deleting message: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 } 

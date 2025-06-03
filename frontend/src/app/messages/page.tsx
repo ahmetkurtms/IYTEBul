@@ -6,7 +6,7 @@ import Navbar from '@/components/ui/Navbar';
 import ConfirmationModal from '@/components/ConfirmationModal';
 import { formatDistanceToNow } from 'date-fns';
 import { enUS } from 'date-fns/locale';
-import { FiSearch, FiSend, FiMoreVertical, FiPaperclip, FiSmile, FiMessageCircle, FiX, FiImage, FiChevronUp, FiChevronDown, FiCamera } from 'react-icons/fi';
+import { FiSearch, FiSend, FiMoreVertical, FiPaperclip, FiSmile, FiMessageCircle, FiX, FiImage, FiChevronUp, FiChevronDown, FiCamera, FiTrash2, FiCornerUpLeft } from 'react-icons/fi';
 import { BsCheck, BsCheckAll, BsCheckCircle, BsXCircle } from 'react-icons/bs';
 import Image from 'next/image';
 import { messageApi, MessageResponse, ConversationResponse, UserProfile } from '@/lib/messageApi';
@@ -36,6 +36,11 @@ interface Message {
   referencedItemImage?: string;
   referencedItemCategory?: string;
   referencedItemType?: string;
+  
+  // Reply information
+  replyToMessageId?: number;
+  replyToMessageText?: string;
+  replyToSenderName?: string;
 }
 
 interface Conversation {
@@ -77,6 +82,10 @@ export default function Messages() {
   const [isSubmittingUserReport, setIsSubmittingUserReport] = useState(false);
   const [userReportError, setUserReportError] = useState('');
   const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+  
+  // Message hover states
+  const [hoveredMessageId, setHoveredMessageId] = useState<number | null>(null);
+  const [replyToMessage, setReplyToMessage] = useState<Message | null>(null);
 
   // Fix hydration issues
   useEffect(() => {
@@ -405,7 +414,12 @@ export default function Messages() {
             referencedItemTitle: msg.referencedItemTitle,
             referencedItemImage: msg.referencedItemImage,
             referencedItemCategory: msg.referencedItemCategory,
-            referencedItemType: msg.referencedItemType
+            referencedItemType: msg.referencedItemType,
+            
+            // Reply information
+            replyToMessageId: msg.replyToMessageId,
+            replyToMessageText: msg.replyToMessageText,
+            replyToSenderName: msg.replyToSenderName
           }));
 
           setMessages(convertedMessages);
@@ -453,6 +467,16 @@ export default function Messages() {
     setFileSendLoading(true);
     setFileSendError(null);
     try {
+      // Convert selected files to File objects and send using new API
+      await messageApi.sendMessage(
+        selectedConversation.user.id,
+        newMessage,
+        selectedFiles, // Pass File objects directly
+        undefined, // referencedItemId
+        replyToMessage ? replyToMessage.id : undefined // replyToMessageId
+      );
+      
+      // Create base64 list for local display
       const base64List = await Promise.all(selectedFiles.map(file => {
         return new Promise<string>((resolve, reject) => {
           const reader = new FileReader();
@@ -461,12 +485,7 @@ export default function Messages() {
           reader.readAsDataURL(file);
         });
       }));
-      await messageApi.sendMessage({
-        receiverId: selectedConversation.user.id,
-        messageText: newMessage,
-        imageBase64List: base64List,
-        referencedItemId: undefined
-      });
+      
       const message = {
         id: Date.now(),
         senderId: currentUser.id,
@@ -482,13 +501,19 @@ export default function Messages() {
         referencedItemTitle: undefined,
         referencedItemImage: undefined,
         referencedItemCategory: undefined,
-        referencedItemType: undefined
+        referencedItemType: undefined,
+        
+        // Reply information
+        replyToMessageId: replyToMessage ? replyToMessage.id : undefined,
+        replyToMessageText: replyToMessage ? replyToMessage.content : undefined,
+        replyToSenderName: replyToMessage ? (replyToMessage.senderId === currentUser.id ? currentUser.name : selectedConversation.user.name) : undefined
       };
       setMessages(prev => [...prev, message]);
       setNewMessage('');
       setSelectedFiles([]);
       setPreviews([]);
       setFileSendError(null);
+      setReplyToMessage(null); // Clear reply state
       if (fileInputRef.current) fileInputRef.current.value = '';
       setConversations(prev => prev.map(conv =>
         conv.user.id === selectedConversation.user.id
@@ -508,12 +533,13 @@ export default function Messages() {
 
     try {
       // Send message to backend using the correct format
-      await messageApi.sendMessage({
-        receiverId: selectedConversation.user.id,
-        messageText: newMessage.trim(),
-        imageBase64List: [],
-        referencedItemId: undefined
-      });
+      await messageApi.sendMessage(
+        selectedConversation.user.id,
+        newMessage.trim(),
+        undefined, // images
+        undefined, // referencedItemId
+        replyToMessage ? replyToMessage.id : undefined // replyToMessageId
+      );
 
       // Add message to local state immediately for better UX
       const message: Message = {
@@ -530,7 +556,12 @@ export default function Messages() {
         referencedItemTitle: undefined,
         referencedItemImage: undefined,
         referencedItemCategory: undefined,
-        referencedItemType: undefined
+        referencedItemType: undefined,
+        
+        // Reply information
+        replyToMessageId: replyToMessage ? replyToMessage.id : undefined,
+        replyToMessageText: replyToMessage ? replyToMessage.content : undefined,
+        replyToSenderName: replyToMessage ? (replyToMessage.senderId === currentUser.id ? currentUser.name : selectedConversation.user.name) : undefined
       };
 
       console.log('Sending message:', message);
@@ -538,6 +569,7 @@ export default function Messages() {
 
       setMessages(prev => [...prev, message]);
       setNewMessage('');
+      setReplyToMessage(null); // Clear reply state
 
       // Update the conversation's last message locally first for immediate feedback
       setConversations(prev => prev.map(conv => 
@@ -655,6 +687,34 @@ export default function Messages() {
   const showNotification = (type: 'success' | 'error', message: string) => {
     setNotification({ type, message });
     setTimeout(() => setNotification(null), 5000);
+  };
+
+  // Handle deleting a specific message
+  const handleDeleteMessage = async (messageId: number) => {
+    try {
+      console.log('Deleting message:', messageId);
+      
+      // Call backend API to delete message
+      await messageApi.deleteMessage(messageId);
+      
+      // Remove message from local state
+      setMessages(prev => prev.filter(msg => msg.id !== messageId));
+      
+      // Refresh conversations to update the conversation list
+      await refreshConversations();
+      
+      showNotification('success', 'Message deleted successfully');
+      
+    } catch (error) {
+      console.error('Error deleting message:', error);
+      showNotification('error', 'Failed to delete message');
+    }
+  };
+
+  // Handle replying to a message
+  const handleReplyToMessage = (message: Message) => {
+    setReplyToMessage(message);
+    setNewMessage(`@${selectedConversation?.user.nickname} `);
   };
 
   if (loading || !isMounted) {
@@ -985,13 +1045,35 @@ export default function Messages() {
                       }}
                       className={`flex ${isCurrentUser ? 'justify-end' : 'justify-start'} transition-all duration-300 ${
                         isHighlighted ? 'scale-105' : ''
-                      }`}
+                      } group`}
+                      onMouseEnter={() => setHoveredMessageId(message.id)}
+                      onMouseLeave={() => setHoveredMessageId(null)}
                     >
+                      {/* Action buttons - shown on hover */}
+                      {hoveredMessageId === message.id && (
+                        <div className={`flex items-center space-x-1 ${isCurrentUser ? 'order-1 mr-2' : 'order-2 ml-2'}`}>
+                          <button
+                            onClick={() => handleReplyToMessage(message)}
+                            className="p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors opacity-0 group-hover:opacity-100"
+                            title="Reply"
+                          >
+                            <FiCornerUpLeft className="w-3 h-3 text-gray-600" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteMessage(message.id)}
+                            className="p-1.5 rounded-full bg-red-100 hover:bg-red-200 transition-colors opacity-0 group-hover:opacity-100"
+                            title="Delete"
+                          >
+                            <FiTrash2 className="w-3 h-3 text-red-600" />
+                          </button>
+                        </div>
+                      )}
+                      
                       <div
                         className={`relative max-w-xs lg:max-w-md px-2 py-1 shadow transition-all duration-300 ${
                           isCurrentUser
-                            ? 'bg-[#A6292A] text-white self-end rounded-tl-lg rounded-tr-2xl rounded-bl-lg rounded-br-md'
-                            : 'bg-[#f1f0f0] text-gray-900 self-start rounded-tl-2xl rounded-tr-lg rounded-br-lg rounded-bl-2xl'
+                            ? 'bg-[#A6292A] text-white self-end rounded-tl-lg rounded-tr-2xl rounded-bl-lg rounded-br-md order-2'
+                            : 'bg-[#f1f0f0] text-gray-900 self-start rounded-tl-2xl rounded-tr-lg rounded-br-lg rounded-bl-2xl order-1'
                         } ${
                           isCurrentSearchResult ? 'ring-4 ring-[#A6292A]/40 ring-offset-2 scale-105' : 
                           isHighlighted ? 'ring-4 ring-[#A6292A]/30 ring-offset-2' : ''
@@ -1066,6 +1148,29 @@ export default function Messages() {
                             </div>
                           )}
                           
+                          {/* Reply Preview */}
+                          {message.replyToMessageId && (
+                            <div className={`mb-2 border-l-4 pl-3 py-2 rounded-r ${
+                              isCurrentUser 
+                                ? 'border-white/30 bg-white/10' 
+                                : 'border-gray-300 bg-gray-100'
+                            }`}>
+                              <div className={`text-xs font-medium mb-1 ${
+                                isCurrentUser ? 'text-white/70' : 'text-gray-600'
+                              }`}>
+                                {message.replyToSenderName}
+                              </div>
+                              <div className={`text-xs ${
+                                isCurrentUser ? 'text-white/80' : 'text-gray-700'
+                              }`}>
+                                {message.replyToMessageText && message.replyToMessageText.length > 100
+                                  ? `${message.replyToMessageText.substring(0, 100)}...`
+                                  : message.replyToMessageText
+                                }
+                              </div>
+                            </div>
+                          )}
+                          
                           <div className="break-words">
                             <p className="text-sm leading-relaxed break-words pr-15">
                               {isMatchingSearch && messageSearchQuery ? (
@@ -1136,6 +1241,29 @@ export default function Messages() {
 
               {/* Message Input */}
               <div className="p-4 border-t border-gray-200 bg-[#f7f7f7]">
+                {/* Reply Preview */}
+                {replyToMessage && (
+                  <div className="mb-3 p-3 bg-gray-100 rounded-lg border-l-4 border-[#A6292A]">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-medium text-gray-600">
+                        Replying to {replyToMessage.senderId === currentUser?.id ? 'yourself' : selectedConversation?.user.nickname}
+                      </span>
+                      <button
+                        onClick={() => {
+                          setReplyToMessage(null);
+                          setNewMessage('');
+                        }}
+                        className="p-1 rounded-full hover:bg-gray-200 transition-colors"
+                      >
+                        <FiX className="w-3 h-3 text-gray-500" />
+                      </button>
+                    </div>
+                    <p className="text-sm text-gray-700 truncate">
+                      {replyToMessage.content}
+                    </p>
+                  </div>
+                )}
+                
                 <div className="flex items-center space-x-2">
                   <button
                     type="button"

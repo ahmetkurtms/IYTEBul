@@ -28,4 +28,7 @@ public interface DeletedMessagesRepository extends JpaRepository<DeletedMessages
     List<DeletedMessages> getDeletedMessagesBetweenUsersForUser(@Param("user") User user, 
                                                                @Param("user1") User user1, 
                                                                @Param("user2") User user2);
+    
+    // Find deleted message records by message
+    List<DeletedMessages> findByMessage(Messages message);
 } 

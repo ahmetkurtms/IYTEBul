@@ -39,6 +39,11 @@ public class Messages {
     @JoinColumn(name = "referenced_item_id", nullable = true)
     private Item referencedItem;
     
+    // Reply referansı - bu mesajın hangi mesaja yanıt olduğunu belirtir
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "reply_to_message_id", nullable = true)
+    private Messages replyToMessage;
+    
     @PrePersist
     protected void onCreate() {
         sentAt = LocalDateTime.now();
