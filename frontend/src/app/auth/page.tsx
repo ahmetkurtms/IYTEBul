@@ -11,8 +11,8 @@ import { FiEye, FiEyeOff } from 'react-icons/fi';
 const loginSchema = Yup.object().shape({
   identifier: Yup.string()
     .matches(
-      /@std\.iyte\.edu\.tr$/,
-      'Only IYTE student email addresses are allowed'
+      /@(std\.)?iyte\.edu\.tr$/,
+      'Only IYTE email addresses (@iyte.edu.tr or @std.iyte.edu.tr) are allowed'
     )
     .required('Email is required'),
   password: Yup.string()
@@ -30,8 +30,8 @@ const registerSchema = Yup.object().shape({
     .required('Nickname is required'),
   uniMail: Yup.string()
     .matches(
-      /@std\.iyte\.edu\.tr$/,
-      'Only IYTE student email addresses are allowed'
+      /@(std\.)?iyte\.edu\.tr$/,
+      'Only IYTE email addresses (@iyte.edu.tr or @std.iyte.edu.tr) are allowed'
     )
     .required('Email is required'),
   password: Yup.string()
@@ -299,7 +299,7 @@ export default function Auth() {
                       <Field
                         name="uniMail"
                         type="email"
-                        placeholder="Email (@std.iyte.edu.tr)"
+                        placeholder="Email (@iyte.edu.tr or @std.iyte.edu.tr)"
                         className="w-full p-2 border rounded-lg bg-white text-gray-800 text-base transition-all duration-300 focus:ring-2 focus:ring-[#9a0e20] focus:border-[#9a0e20] outline-none hover:border-[#9a0e20]"
                         onChange={(e: React.ChangeEvent<any>) => { handleChange(e); setStatus(''); }}
                       />
@@ -317,7 +317,7 @@ export default function Auth() {
                     <Field
                       name='identifier'
                       type='email'
-                      placeholder='IYTE Email (@std.iyte.edu.tr)'
+                      placeholder='IYTE Email (@iyte.edu.tr or @std.iyte.edu.tr)'
                       className='w-full p-2 border rounded-lg bg-white text-gray-800 text-base transition-all duration-300 focus:ring-2 focus:ring-[#9a0e20] focus:border-[#9a0e20] outline-none hover:border-[#9a0e20]'
                       onChange={(e: React.ChangeEvent<any>) => { handleChange(e); setStatus(''); }}
                     />
