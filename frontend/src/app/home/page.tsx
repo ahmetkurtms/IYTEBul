@@ -7,7 +7,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Navbar from '@/components/ui/Navbar';
 import { formatDistanceToNow } from 'date-fns';
 import { enUS } from 'date-fns/locale';
@@ -76,6 +76,7 @@ export default function Home() {
   const [dateEnd, setDateEnd] = useState('');
   const calendarRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [filterPopoverOpen, setFilterPopoverOpen] = useState(false);
   const filterRef = useRef<HTMLDivElement>(null);
   const [filterSearch, setFilterSearch] = useState('');
@@ -88,6 +89,9 @@ export default function Home() {
   const [sortSelectedOnOpen, setSortSelectedOnOpen] = useState(false);
   const [sortPopoverOpen, setSortPopoverOpen] = useState(false); // Sort popover'ı kapatma
   const sortRef = useRef<HTMLDivElement>(null);
+  
+  // Highlighted item from URL parameter
+  const [highlightedItemId, setHighlightedItemId] = useState<number | null>(null);
 
   // Report modal states
   const [showReportModal, setShowReportModal] = useState(false);
@@ -491,6 +495,32 @@ export default function Home() {
     return () => document.removeEventListener('mousedown', handleClick);
   }, [sortPopoverOpen]);
 
+  // Handle highlightItem URL parameter
+  useEffect(() => {
+    const highlightItemParam = searchParams.get('highlightItem');
+    if (highlightItemParam) {
+      const itemId = parseInt(highlightItemParam);
+      setHighlightedItemId(itemId);
+      
+      // Scroll to the highlighted item after posts are loaded
+      setTimeout(() => {
+        const itemElement = document.querySelector(`[data-post-id="${itemId}"]`);
+        if (itemElement) {
+          itemElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 500);
+      
+      // Clear the URL parameter after 3 seconds and remove highlight
+      setTimeout(() => {
+        setHighlightedItemId(null);
+        // Remove the URL parameter without affecting browser history
+        const url = new URL(window.location.href);
+        url.searchParams.delete('highlightItem');
+        window.history.replaceState({}, document.title, url.toString());
+      }, 3000);
+    }
+  }, [searchParams]);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-100 via-gray-50 to-slate-200">
       {/* Hamburger Menu Icon */}
@@ -566,6 +596,7 @@ export default function Home() {
                   onToggleMessageForm={handleToggleMessageForm}
                   onSendMessageText={handleSendMessageText}
                   viewMode={viewMode}
+                  isHighlighted={highlightedItemId === post.id}
                 />
               ))}
             </div>

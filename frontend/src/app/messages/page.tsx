@@ -1046,7 +1046,7 @@ export default function Messages() {
                                 </div>
                                 <div className="flex-shrink-0">
                                   <button
-                                    onClick={() => router.push('/home')}
+                                    onClick={() => router.push(`/home?highlightItem=${message.referencedItemId}`)}
                                     className="text-xs text-blue-600 hover:text-blue-800 font-medium"
                                   >
                                     View

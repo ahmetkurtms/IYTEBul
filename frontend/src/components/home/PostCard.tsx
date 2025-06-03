@@ -29,6 +29,7 @@ interface PostCardProps {
   onToggleMessageForm?: (postId: number) => void;
   onSendMessageText?: (userId: number, userName: string, message: string, postId?: number) => void;
   viewMode?: 'quad' | 'double' | 'single';
+  isHighlighted?: boolean;
 }
 
 export default function PostCard({ 
@@ -41,6 +42,7 @@ export default function PostCard({
   onToggleMessageForm,
   onSendMessageText,
   viewMode = 'double',
+  isHighlighted,
 }: PostCardProps) {
   const [showMenu, setShowMenu] = useState(false);
   const [messageText, setMessageText] = useState('');
@@ -94,7 +96,12 @@ export default function PostCard({
   const truncatedTitle = post.title && post.title.length > 31 ? post.title.substring(0, 31) : (post.title || 'Untitled');
 
   return (
-    <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow relative h-full flex flex-col">
+    <div 
+      data-post-id={post.id}
+      className={`bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow relative h-full flex flex-col ${
+        isHighlighted ? 'ring-4 ring-blue-500 ring-opacity-50 shadow-2xl transform scale-105 transition-all duration-1000' : ''
+      }`}
+    >
       {/* 3-Dot Menu - Only in top right corner */}
       <div className="absolute top-3 right-3 z-10" ref={menuRef}>
         <button
