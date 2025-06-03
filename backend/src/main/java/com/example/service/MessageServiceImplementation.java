@@ -10,7 +10,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.ArrayList;
+import java.util.HashMap;
 
 @Service
 public class MessageServiceImplementation implements MessageService {
@@ -49,7 +52,46 @@ public class MessageServiceImplementation implements MessageService {
     
     @Override
     public List<Messages> getConversationsForUserExcludingDeleted(User user) {
-        return messageRepository.findLatestConversationsExcludingDeleted(user);
+        try {
+            List<Messages> allMessages = messageRepository.findLatestConversationsExcludingDeleted(user);
+            
+            if (allMessages == null || allMessages.isEmpty()) {
+                return new ArrayList<>();
+            }
+            
+            // Group messages by conversation partner and get the latest message for each
+            Map<Long, Messages> latestMessagesMap = new HashMap<>();
+            
+            for (Messages message : allMessages) {
+                if (message == null) continue;
+                
+                if (message.getSender() == null || message.getReceiver() == null) {
+                    System.out.println("WARNING: Message with null sender or receiver, skipping message ID: " + message.getMessageId());
+                    continue;
+                }
+                
+                Long otherUserId = message.getSender().getUser_id().equals(user.getUser_id()) 
+                    ? message.getReceiver().getUser_id() 
+                    : message.getSender().getUser_id();
+                
+                if (otherUserId == null) {
+                    System.out.println("WARNING: Could not determine other user ID for message: " + message.getMessageId());
+                    continue;
+                }
+                
+                if (!latestMessagesMap.containsKey(otherUserId) || 
+                    (message.getSentAt() != null && latestMessagesMap.get(otherUserId).getSentAt() != null &&
+                     message.getSentAt().isAfter(latestMessagesMap.get(otherUserId).getSentAt()))) {
+                    latestMessagesMap.put(otherUserId, message);
+                }
+            }
+            
+            return new ArrayList<>(latestMessagesMap.values());
+        } catch (Exception e) {
+            System.out.println("Error in getConversationsForUserExcludingDeleted: " + e.getMessage());
+            e.printStackTrace();
+            return new ArrayList<>();
+        }
     }
     
     @Override

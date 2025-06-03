@@ -2,6 +2,7 @@ package com.example.repository;
 
 import com.example.models.Messages;
 import com.example.models.User;
+import com.example.models.DeletedMessages;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
