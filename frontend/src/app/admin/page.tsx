@@ -22,6 +22,7 @@ import {
 import { BsCheckCircle, BsXCircle } from 'react-icons/bs';
 import { FaSort } from 'react-icons/fa6';
 import Image from 'next/image';
+import ConfirmationModal from '@/components/ConfirmationModal';
 
 interface User {
   id: number;
@@ -371,47 +372,43 @@ export default function AdminPanel() {
     closeBanModal();
   };
 
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<{ type: 'user' | 'post', id: number, name: string } | null>(null);
+
   const handleDeleteUser = async (userId: number) => {
     const user = users.find(u => u.id === userId);
     if (!user) return;
 
-    if (!confirm(`Are you sure you want to delete ${user.nickname || user.name}? This action cannot be undone.`)) {
-      return;
-    }
-    
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:8080/api/v1/admin/users/${userId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-      
-      if (response.ok) {
-        // Update local state
-        setUsers(prev => prev.filter(user => user.id !== userId));
-        showNotification('success', `${user.nickname || user.name} has been deleted successfully`);
-      } else {
-        showNotification('error', 'Failed to delete user');
-      }
-    } catch (error) {
-      console.error('Error deleting user:', error);
-      showNotification('error', 'An error occurred while deleting user');
-    }
+    setItemToDelete({
+      type: 'user',
+      id: userId,
+      name: user.nickname || user.name
+    });
+    setShowDeleteConfirm(true);
   };
 
   const handleDeletePost = async (postId: number) => {
     const post = posts.find(p => p.id === postId);
     if (!post) return;
 
-    if (!confirm(`Are you sure you want to delete the post "${post.title}"?`)) {
-      return;
-    }
-    
+    setItemToDelete({
+      type: 'post',
+      id: postId,
+      name: post.title
+    });
+    setShowDeleteConfirm(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!itemToDelete) return;
+
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:8080/api/v1/admin/posts/${postId}`, {
+      const endpoint = itemToDelete.type === 'user' 
+        ? `http://localhost:8080/api/v1/admin/users/${itemToDelete.id}`
+        : `http://localhost:8080/api/v1/admin/posts/${itemToDelete.id}`;
+
+      const response = await fetch(endpoint, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -420,15 +417,23 @@ export default function AdminPanel() {
       
       if (response.ok) {
         // Update local state
-        setPosts(prev => prev.filter(post => post.id !== postId));
-        showNotification('success', `Post "${post.title}" has been deleted successfully`);
+        if (itemToDelete.type === 'user') {
+          setUsers(prev => prev.filter(user => user.id !== itemToDelete.id));
+          showNotification('success', `${itemToDelete.name} has been deleted successfully`);
+        } else {
+          setPosts(prev => prev.filter(post => post.id !== itemToDelete.id));
+          showNotification('success', `Post "${itemToDelete.name}" has been deleted successfully`);
+        }
       } else {
-        showNotification('error', 'Failed to delete post');
+        showNotification('error', `Failed to delete ${itemToDelete.type}`);
       }
     } catch (error) {
-      console.error('Error deleting post:', error);
-      showNotification('error', 'An error occurred while deleting post');
+      console.error(`Error deleting ${itemToDelete.type}:`, error);
+      showNotification('error', `An error occurred while deleting ${itemToDelete.type}`);
     }
+
+    setShowDeleteConfirm(false);
+    setItemToDelete(null);
   };
 
   const handleViewPost = (post: Post) => {
@@ -628,6 +633,21 @@ export default function AdminPanel() {
     if (!report.status) return false;
     return matchesSearch && (report.status.toUpperCase() === backendStatus.toUpperCase());
   });
+
+  function getDefaultImageForCategory(category: string) {
+    switch (category?.toLowerCase()) {
+      case 'clothing':
+        return '/assets/clothes.jpeg';
+      case 'accessories':
+        return '/assets/accessories.jpeg';
+      case 'cards':
+        return '/assets/wallet.png';
+      default:
+        return '/assets/others.jpeg';
+      case 'electronic':
+        return '/assets/electronic.jpeg';
+    }
+  }
 
   if (loading) {
     return (
@@ -1170,8 +1190,11 @@ export default function AdminPanel() {
                       </div>
                     ) : (
                       <div className="relative w-full h-96 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
-                        <FiFileText className="w-16 h-16 text-gray-400" />
-                        <span className="text-gray-500 text-sm ml-2">No image available</span>
+                        <img
+                          src={getDefaultImageForCategory(selectedPost.category)}
+                          alt="No image available"
+                          className="w-32 h-32 object-contain opacity-60"
+                        />
                       </div>
                     )}
                   </div>
@@ -1652,6 +1675,21 @@ export default function AdminPanel() {
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showDeleteConfirm}
+        onClose={() => {
+          setShowDeleteConfirm(false);
+          setItemToDelete(null);
+        }}
+        onConfirm={handleDeleteConfirm}
+        title={`Delete ${itemToDelete?.type === 'user' ? 'User' : 'Post'}`}
+        message={`Are you sure you want to delete ${itemToDelete?.type === 'user' ? 'user' : 'post'} "${itemToDelete?.name}"? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
+      />
     </>
   );
 }

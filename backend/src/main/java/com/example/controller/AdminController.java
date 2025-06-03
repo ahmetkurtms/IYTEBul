@@ -221,14 +221,26 @@ public class AdminController {
     @DeleteMapping("/posts/{postId}")
     public ResponseEntity<ApiResponse> deletePost(@PathVariable Long postId, @RequestHeader("Authorization") String jwt) {
         try {
-            validateAdmin(jwt);
+            User admin = validateAdmin(jwt);
             
             Item post = itemService.findItemById(postId);
+            
+            // Update all reports for this post to ACTION_TAKEN status
+            List<Report> reports = reportRepository.findByPostId(postId);
+            for (Report report : reports) {
+                report.setStatus(Report.ReportStatus.ACTION_TAKEN);
+                report.setReviewedAt(LocalDateTime.now());
+                report.setReviewedBy(admin);
+                reportRepository.save(report);
+            }
+            
+            // Delete the post
             itemRepository.delete(post);
             
             return ResponseEntity.ok(new ApiResponse("Post deleted successfully", true));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ApiResponse(e.getMessage(), false));
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(new ApiResponse(e.getMessage(), false));
         }
     }
 
