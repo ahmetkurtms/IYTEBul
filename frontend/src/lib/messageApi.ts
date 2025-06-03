@@ -14,6 +14,13 @@ export interface MessageResponse {
   sentAt: string;
   isRead: boolean;
   imageBase64List?: string[];
+  
+  // Referenced item/post information
+  referencedItemId?: number;
+  referencedItemTitle?: string;
+  referencedItemImage?: string;
+  referencedItemCategory?: string;
+  referencedItemType?: string;
 }
 
 export interface ConversationResponse {
@@ -178,11 +185,21 @@ export const messageApi = {
   },
 
   // Send a message
-  sendMessage: async ({ receiverId, messageText, imageBase64List }: { receiverId: number, messageText: string, imageBase64List: string[] }) => {
+  sendMessage: async ({ 
+    receiverId, 
+    messageText, 
+    imageBase64List, 
+    referencedItemId 
+  }: { 
+    receiverId: number, 
+    messageText: string, 
+    imageBase64List: string[], 
+    referencedItemId?: number 
+  }) => {
     const token = localStorage.getItem('token');
     if (!token) throw new Error('No token found');
 
-    console.log('Calling sendMessage API:', { receiverId, messageText, imageBase64List });
+    console.log('Calling sendMessage API:', { receiverId, messageText, imageBase64List, referencedItemId });
     try {
       const response = await fetch(`${API_BASE_URL}/send`, {
         method: 'POST',
@@ -194,6 +211,7 @@ export const messageApi = {
           receiverId,
           messageText,
           imageBase64List,
+          referencedItemId,
         }),
       });
 

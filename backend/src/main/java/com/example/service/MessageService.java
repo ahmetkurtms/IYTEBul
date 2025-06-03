@@ -2,6 +2,7 @@ package com.example.service;
 
 import com.example.models.Messages;
 import com.example.models.User;
+import com.example.models.Item;
 
 import java.util.List;
 
@@ -9,6 +10,9 @@ public interface MessageService {
     
     // Send a new message
     Messages sendMessage(User sender, User receiver, String messageText);
+    
+    // Send a new message with referenced item
+    Messages sendMessage(User sender, User receiver, String messageText, Item referencedItem);
     
     // Get all messages between two users
     List<Messages> getMessagesBetweenUsers(User user1, User user2);

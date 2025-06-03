@@ -27,7 +27,7 @@ interface PostCardProps {
   highlightText: (text: string, searchTerm: string) => React.ReactNode;
   showMessageForm?: boolean;
   onToggleMessageForm?: (postId: number) => void;
-  onSendMessageText?: (userId: number, userName: string, message: string) => void;
+  onSendMessageText?: (userId: number, userName: string, message: string, postId?: number) => void;
   viewMode?: 'quad' | 'double' | 'single';
 }
 
@@ -75,7 +75,7 @@ export default function PostCard({
 
   const handleSendMessageText = () => {
     if (messageText.trim() && onSendMessageText) {
-      onSendMessageText(post.userId, post.userName, messageText.trim());
+      onSendMessageText(post.userId, post.userName, messageText.trim(), post.id);
       setMessageText('');
       if (onToggleMessageForm) {
         onToggleMessageForm(post.id);

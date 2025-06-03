@@ -29,6 +29,13 @@ interface Message {
   isRead: boolean;
   isSent: boolean;
   imageBase64List?: string[];
+  
+  // Referenced item information
+  referencedItemId?: number;
+  referencedItemTitle?: string;
+  referencedItemImage?: string;
+  referencedItemCategory?: string;
+  referencedItemType?: string;
 }
 
 interface Conversation {
@@ -391,7 +398,14 @@ export default function Messages() {
             timestamp: msg.sentAt,
             isRead: msg.isRead,
             isSent: true,
-            imageBase64List: msg.imageBase64List || []
+            imageBase64List: msg.imageBase64List || [],
+            
+            // Referenced item information
+            referencedItemId: msg.referencedItemId,
+            referencedItemTitle: msg.referencedItemTitle,
+            referencedItemImage: msg.referencedItemImage,
+            referencedItemCategory: msg.referencedItemCategory,
+            referencedItemType: msg.referencedItemType
           }));
 
           setMessages(convertedMessages);
@@ -450,7 +464,8 @@ export default function Messages() {
       await messageApi.sendMessage({
         receiverId: selectedConversation.user.id,
         messageText: newMessage,
-        imageBase64List: base64List
+        imageBase64List: base64List,
+        referencedItemId: undefined
       });
       const message = {
         id: Date.now(),
@@ -460,7 +475,14 @@ export default function Messages() {
         timestamp: new Date().toISOString(),
         isRead: false,
         isSent: true,
-        imageBase64List: base64List
+        imageBase64List: base64List,
+        
+        // Referenced item information
+        referencedItemId: undefined,
+        referencedItemTitle: undefined,
+        referencedItemImage: undefined,
+        referencedItemCategory: undefined,
+        referencedItemType: undefined
       };
       setMessages(prev => [...prev, message]);
       setNewMessage('');
@@ -489,7 +511,8 @@ export default function Messages() {
       await messageApi.sendMessage({
         receiverId: selectedConversation.user.id,
         messageText: newMessage.trim(),
-        imageBase64List: []
+        imageBase64List: [],
+        referencedItemId: undefined
       });
 
       // Add message to local state immediately for better UX
@@ -500,7 +523,14 @@ export default function Messages() {
         content: newMessage.trim(),
         timestamp: new Date().toISOString(),
         isRead: false,
-        isSent: true
+        isSent: true,
+        
+        // Referenced item information
+        referencedItemId: undefined,
+        referencedItemTitle: undefined,
+        referencedItemImage: undefined,
+        referencedItemCategory: undefined,
+        referencedItemType: undefined
       };
 
       console.log('Sending message:', message);
@@ -970,42 +1000,100 @@ export default function Messages() {
                         }`}
                       >
                         <div className="relative">
-                          <p className="text-sm leading-relaxed break-words pr-15">
-                            {isMatchingSearch && messageSearchQuery ? (
-                              // Highlight search terms
-                              message.content.split(new RegExp(`(${messageSearchQuery})`, 'gi')).map((part, index) =>
-                                part.toLowerCase() === messageSearchQuery.toLowerCase() ? (
-                                  <mark
-                                    key={index}
-                                    className={`rounded px-1 ${
-                                      isCurrentSearchResult
-                                        ? 'bg-yellow-400 text-gray-900 font-semibold'
-                                        : 'bg-yellow-300 text-gray-900'
-                                    }`}
+                          <div className="text-xs text-gray-500 mb-1">
+                            {isCurrentUser ? 'You' : selectedConversation?.user.nickname}
+                          </div>
+                          
+                          {/* Referenced Item Preview */}
+                          {message.referencedItemId && (
+                            <div className="mb-3 border border-gray-200 rounded-lg overflow-hidden bg-gray-50">
+                              <div className="flex items-center p-3 space-x-3">
+                                <div className="flex-shrink-0">
+                                  <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100">
+                                    {message.referencedItemImage ? (
+                                      <img
+                                        src={`data:image/jpeg;base64,${message.referencedItemImage}`}
+                                        alt={message.referencedItemTitle || 'Item'}
+                                        className="w-full h-full object-cover"
+                                      />
+                                    ) : (
+                                      <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                                        <span className="text-gray-400 text-xs">📷</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-xs font-medium text-gray-900 truncate">
+                                    {message.referencedItemTitle || 'Item'}
+                                  </div>
+                                  <div className="flex items-center space-x-2 mt-1">
+                                    {message.referencedItemType && (
+                                      <span className={`inline-block px-2 py-0.5 text-xs font-medium rounded ${
+                                        message.referencedItemType.toUpperCase() === 'LOST' 
+                                          ? 'bg-red-100 text-red-800' 
+                                          : 'bg-green-100 text-green-800'
+                                      }`}>
+                                        {message.referencedItemType}
+                                      </span>
+                                    )}
+                                    {message.referencedItemCategory && (
+                                      <span className="text-xs text-gray-500">
+                                        {message.referencedItemCategory}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="flex-shrink-0">
+                                  <button
+                                    onClick={() => router.push('/home')}
+                                    className="text-xs text-blue-600 hover:text-blue-800 font-medium"
                                   >
-                                    {part}
-                                  </mark>
-                                ) : (
-                                  part
-                                )
-                              )
-                            ) : (
-                              message.content
-                            )}
-                          </p>
-                          {Array.isArray(message.imageBase64List) && message.imageBase64List.length > 0 && (
-                            <div className="flex flex-wrap gap-2 mt-2">
-                              {message.imageBase64List.map((base64, idx) => (
-                                <img
-                                  key={idx}
-                                  src={`data:image/jpeg;base64,${base64}`}
-                                  alt="Mesaj fotoğrafı"
-                                  className="w-32 h-32 object-cover rounded-lg border"
-                                  style={{ maxWidth: '100%', height: 'auto' }}
-                                />
-                              ))}
+                                    View
+                                  </button>
+                                </div>
+                              </div>
                             </div>
                           )}
+                          
+                          <div className="break-words">
+                            <p className="text-sm leading-relaxed break-words pr-15">
+                              {isMatchingSearch && messageSearchQuery ? (
+                                // Highlight search terms
+                                message.content.split(new RegExp(`(${messageSearchQuery})`, 'gi')).map((part, index) =>
+                                  part.toLowerCase() === messageSearchQuery.toLowerCase() ? (
+                                    <mark
+                                      key={index}
+                                      className={`rounded px-1 ${
+                                        isCurrentSearchResult
+                                          ? 'bg-yellow-400 text-gray-900 font-semibold'
+                                          : 'bg-yellow-300 text-gray-900'
+                                      }`}
+                                    >
+                                      {part}
+                                    </mark>
+                                  ) : (
+                                    part
+                                  )
+                                )
+                              ) : (
+                                message.content
+                              )}
+                            </p>
+                            {Array.isArray(message.imageBase64List) && message.imageBase64List.length > 0 && (
+                              <div className="flex flex-wrap gap-2 mt-2">
+                                {message.imageBase64List.map((base64, idx) => (
+                                  <img
+                                    key={idx}
+                                    src={`data:image/jpeg;base64,${base64}`}
+                                    alt="Mesaj fotoğrafı"
+                                    className="w-32 h-32 object-cover rounded-lg border"
+                                    style={{ maxWidth: '100%', height: 'auto' }}
+                                  />
+                                ))}
+                              </div>
+                            )}
+                          </div>
                           <div className="absolute right-[-4px] bottom-[-2px] flex items-center gap-1 text-xs text-gray-400">
                             <span>
                               {new Date(message.timestamp).toLocaleTimeString('tr-TR', {

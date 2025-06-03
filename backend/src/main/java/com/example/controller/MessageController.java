@@ -3,6 +3,7 @@ package com.example.controller;
 import com.example.models.Messages;
 import com.example.models.User;
 import com.example.models.MessageImage;
+import com.example.models.Item;
 import com.example.request.SendMessageRequest;
 import com.example.response.ApiResponse;
 import com.example.response.ConversationResponse;
@@ -10,6 +11,7 @@ import com.example.response.MessageResponse;
 import com.example.repository.MessageImageRepository;
 import com.example.service.MessageService;
 import com.example.service.UserService;
+import com.example.service.ItemService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -33,6 +35,8 @@ public class MessageController {
     private UserService userService;
     @Autowired
     private MessageImageRepository messageImageRepository;
+    @Autowired
+    private ItemService itemService;
     
     // Health check endpoint
     @GetMapping("/health")
@@ -70,7 +74,21 @@ public class MessageController {
                     .body(new ApiResponse("Receiver not found", false));
             }
             
-            Messages message = messageService.sendMessage(sender, receiver, request.getMessageText());
+            Messages message;
+            Item referencedItem = null;
+            
+            // Check if there's a referenced item/post
+            if (request.getReferencedItemId() != null) {
+                try {
+                    referencedItem = itemService.findItemById(request.getReferencedItemId());
+                    System.out.println("Referenced item found: " + referencedItem.getTitle());
+                } catch (Exception e) {
+                    System.out.println("Referenced item not found for ID: " + request.getReferencedItemId());
+                    // Continue without referenced item rather than failing
+                }
+            }
+            
+            message = messageService.sendMessage(sender, receiver, request.getMessageText(), referencedItem);
             System.out.println("Message sent successfully: " + message.getMessageId());
             // Save images if present
             if (request.getImageBase64List() != null) {
@@ -326,6 +344,16 @@ public class MessageController {
             response.setMessageText(message.getMessageText());
             response.setSentAt(message.getSentAt());
             response.setIsRead(message.getIsRead());
+            
+            // Add referenced item information if present
+            if (message.getReferencedItem() != null) {
+                Item referencedItem = message.getReferencedItem();
+                response.setReferencedItemId(referencedItem.getItem_id());
+                response.setReferencedItemTitle(referencedItem.getTitle());
+                response.setReferencedItemImage(referencedItem.getImage());
+                response.setReferencedItemCategory(referencedItem.getCategory().toString());
+                response.setReferencedItemType(referencedItem.getType().toString());
+            }
             
             List<MessageImage> images = messageImageRepository.findByMessage(message);
             List<String> imageBase64List = new ArrayList<>();

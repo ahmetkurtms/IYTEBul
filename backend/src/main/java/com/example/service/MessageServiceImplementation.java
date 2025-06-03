@@ -3,6 +3,7 @@ package com.example.service;
 import com.example.models.DeletedMessages;
 import com.example.models.Messages;
 import com.example.models.User;
+import com.example.models.Item;
 import com.example.repository.DeletedMessagesRepository;
 import com.example.repository.MessageRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,11 +27,17 @@ public class MessageServiceImplementation implements MessageService {
     
     @Override
     public Messages sendMessage(User sender, User receiver, String messageText) {
+        return sendMessage(sender, receiver, messageText, null);
+    }
+    
+    @Override
+    public Messages sendMessage(User sender, User receiver, String messageText, Item referencedItem) {
         Messages message = new Messages();
         message.setSender(sender);
         message.setReceiver(receiver);
         message.setMessageText(messageText);
         message.setIsRead(false);
+        message.setReferencedItem(referencedItem);
         
         return messageRepository.save(message);
     }

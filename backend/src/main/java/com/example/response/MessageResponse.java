@@ -23,4 +23,11 @@ public class MessageResponse {
     private LocalDateTime sentAt;
     private Boolean isRead;
     private List<String> imageBase64List;
+    
+    // Referenced item/post information
+    private Long referencedItemId;
+    private String referencedItemTitle;
+    private String referencedItemImage;
+    private String referencedItemCategory;
+    private String referencedItemType;
 } 

@@ -34,6 +34,11 @@ public class Messages {
     @Column(name = "is_read")
     private Boolean isRead = false;
     
+    // Item referansı - mesajın hangi post hakkında olduğunu belirtir
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "referenced_item_id", nullable = true)
+    private Item referencedItem;
+    
     @PrePersist
     protected void onCreate() {
         sentAt = LocalDateTime.now();

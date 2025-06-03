@@ -129,12 +129,13 @@ export default function Home() {
   };
 
   // Handle sending message text (for now just show alert, later integrate with backend)
-  const handleSendMessageText = async (userId: number, userName: string, message: string) => {
+  const handleSendMessageText = async (userId: number, userName: string, message: string, postId?: number) => {
     try {
       await messageApi.sendMessage({
         receiverId: userId,
         messageText: message,
-        imageBase64List: []
+        imageBase64List: [],
+        referencedItemId: postId
       });
       showNotification('success', `Message sent to ${userName}`);
       // İsteğe bağlı: mesajlar sayfasına yönlendir
