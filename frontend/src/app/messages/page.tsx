@@ -1012,7 +1012,17 @@ export default function Messages() {
                                   <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100">
                                     {message.referencedItemImage ? (
                                       <img
-                                        src={`data:image/jpeg;base64,${message.referencedItemImage}`}
+                                        src={
+                                          message.referencedItemImage.startsWith('default_') 
+                                            ? (
+                                                message.referencedItemImage === 'default_electronic' ? '/assets/electronic.jpeg' :
+                                                message.referencedItemImage === 'default_clothing' ? '/assets/clothes.jpeg' :
+                                                message.referencedItemImage === 'default_cards' ? '/assets/wallet.jpeg' :
+                                                message.referencedItemImage === 'default_accessories' ? '/assets/accessories.jpeg' :
+                                                '/assets/others.jpeg'
+                                              )
+                                            : `data:image/jpeg;base64,${message.referencedItemImage}`
+                                        }
                                         alt={message.referencedItemTitle || 'Item'}
                                         className="w-full h-full object-cover"
                                       />

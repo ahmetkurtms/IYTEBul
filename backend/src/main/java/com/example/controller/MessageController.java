@@ -350,7 +350,32 @@ public class MessageController {
                 Item referencedItem = message.getReferencedItem();
                 response.setReferencedItemId(referencedItem.getItem_id());
                 response.setReferencedItemTitle(referencedItem.getTitle());
-                response.setReferencedItemImage(referencedItem.getImage());
+                
+                // If item has no image, use default category image
+                String itemImage = referencedItem.getImage();
+                if (itemImage == null || itemImage.trim().isEmpty()) {
+                    // Use default category images based on category
+                    String category = referencedItem.getCategory().toString();
+                    switch (category) {
+                        case "Electronics":
+                            itemImage = "default_electronic";
+                            break;
+                        case "Clothing":
+                            itemImage = "default_clothing";
+                            break;
+                        case "Cards":
+                            itemImage = "default_cards";
+                            break;
+                        case "Accessories":
+                            itemImage = "default_accessories";
+                            break;
+                        default:
+                            itemImage = "default_other";
+                            break;
+                    }
+                }
+                response.setReferencedItemImage(itemImage);
+                
                 response.setReferencedItemCategory(referencedItem.getCategory().toString());
                 response.setReferencedItemType(referencedItem.getType().toString());
             }

@@ -502,6 +502,9 @@ export default function Home() {
       const itemId = parseInt(highlightItemParam);
       setHighlightedItemId(itemId);
       
+      // Switch to quad view when highlighting an item
+      setViewMode('quad');
+      
       // Scroll to the highlighted item after posts are loaded
       setTimeout(() => {
         const itemElement = document.querySelector(`[data-post-id="${itemId}"]`);
