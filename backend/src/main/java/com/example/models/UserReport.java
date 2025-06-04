@@ -46,6 +46,11 @@ public class UserReport {
     @JoinColumn(name = "reviewed_by")
     private User reviewedBy;
 
+    @ElementCollection
+    @CollectionTable(name = "user_reported_message_ids", joinColumns = @JoinColumn(name = "user_report_id"))
+    @Column(name = "message_id")
+    private java.util.List<Long> reportedMessageIds;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();

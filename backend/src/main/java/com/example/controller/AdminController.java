@@ -18,6 +18,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.example.repository.MessageRepository;
+import com.example.models.Messages;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -38,6 +40,7 @@ public class AdminController {
     private final UserService userService;
     private final ItemService itemService;
     private final EmailService emailService;
+    private final MessageRepository messageRepository;
 
     // Check if user is admin
     private User validateAdmin(String jwt) throws Exception {
@@ -317,6 +320,21 @@ public class AdminController {
                 if (report.getReviewedBy() != null) {
                     reportMap.put("reviewedBy", report.getReviewedBy().getNickname());
                 }
+                // Eğer reportedMessageIds varsa, mesaj içeriklerini de ekle
+                if (report.getReportedMessageIds() != null && !report.getReportedMessageIds().isEmpty()) {
+                    List<Messages> reportedMessages = messageRepository.findByMessageIdIn(report.getReportedMessageIds());
+                    List<Map<String, Object>> messageSummaries = new ArrayList<>();
+                    for (Messages msg : reportedMessages) {
+                        Map<String, Object> msgMap = new HashMap<>();
+                        msgMap.put("id", msg.getMessageId());
+                        msgMap.put("senderId", msg.getSender().getUser_id());
+                        msgMap.put("receiverId", msg.getReceiver().getUser_id());
+                        msgMap.put("content", msg.getMessageText());
+                        msgMap.put("sentAt", msg.getSentAt());
+                        messageSummaries.add(msgMap);
+                    }
+                    reportMap.put("reportedMessages", messageSummaries);
+                }
                 response.add(reportMap);
             }
             // Hepsini birleştirip tarihe göre sırala (en yeni en üstte)
@@ -334,23 +352,29 @@ public class AdminController {
             @RequestBody Map<String, String> statusRequest) {
         try {
             User admin = validateAdmin(jwt);
-            
             Report report = reportRepository.findById(reportId).orElse(null);
-            if (report == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(new ApiResponse("Report not found", false));
+            if (report != null) {
+                String statusStr = statusRequest.get("status");
+                Report.ReportStatus newStatus = Report.ReportStatus.valueOf(statusStr.toUpperCase());
+                report.setStatus(newStatus);
+                report.setReviewedAt(LocalDateTime.now());
+                report.setReviewedBy(admin);
+                reportRepository.save(report);
+                return ResponseEntity.ok(new ApiResponse("Report status updated successfully", true));
+            } else {
+                UserReport userReport = userReportRepository.findById(reportId).orElse(null);
+                if (userReport == null) {
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(new ApiResponse("Report not found", false));
+                }
+                String statusStr = statusRequest.get("status");
+                UserReport.ReportStatus newStatus = UserReport.ReportStatus.valueOf(statusStr.toUpperCase());
+                userReport.setStatus(newStatus);
+                userReport.setReviewedAt(LocalDateTime.now());
+                userReport.setReviewedBy(admin);
+                userReportRepository.save(userReport);
+                return ResponseEntity.ok(new ApiResponse("User report status updated successfully", true));
             }
-            
-            String statusStr = statusRequest.get("status");
-            Report.ReportStatus newStatus = Report.ReportStatus.valueOf(statusStr.toUpperCase());
-            
-            report.setStatus(newStatus);
-            report.setReviewedAt(LocalDateTime.now());
-            report.setReviewedBy(admin);
-            
-            reportRepository.save(report);
-            
-            return ResponseEntity.ok(new ApiResponse("Report status updated successfully", true));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(new ApiResponse(e.getMessage(), false));

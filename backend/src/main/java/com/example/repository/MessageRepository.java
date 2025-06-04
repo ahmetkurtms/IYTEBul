@@ -66,4 +66,6 @@ public interface MessageRepository extends JpaRepository<Messages, Long> {
            "(m.sender = :user1 AND m.receiver = :user2) OR " +
            "(m.sender = :user2 AND m.receiver = :user1)")
     void deleteMessagesBetweenUsers(@Param("user1") User user1, @Param("user2") User user2);
+
+    List<Messages> findByMessageIdIn(List<Long> ids);
 } 

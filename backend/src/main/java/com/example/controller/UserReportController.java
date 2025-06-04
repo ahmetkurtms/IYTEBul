@@ -59,6 +59,20 @@ public class UserReportController {
                 report.setDescription(reportRequest.get("description").toString());
             }
 
+            // Yeni eklenen alan: reportedMessageIds
+            if (reportRequest.get("reportedMessageIds") != null) {
+                Object idsObj = reportRequest.get("reportedMessageIds");
+                java.util.List<Long> ids = new java.util.ArrayList<>();
+                if (idsObj instanceof java.util.List<?>) {
+                    for (Object id : (java.util.List<?>) idsObj) {
+                        try {
+                            ids.add(Long.valueOf(id.toString()));
+                        } catch (Exception ignore) {}
+                    }
+                }
+                report.setReportedMessageIds(ids);
+            }
+
             userReportRepository.save(report);
 
             return ResponseEntity.ok(new ApiResponse("User report submitted successfully", true));

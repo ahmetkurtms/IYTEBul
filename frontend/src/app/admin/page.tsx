@@ -77,6 +77,7 @@ interface Report {
   createdAt: string;
   reviewedAt?: string;
   reviewedBy?: string;
+  reportedMessages?: { id: number; senderId?: number; content: string; sentAt?: string }[];
 }
 
 type TabType = 'users' | 'posts' | 'reports';
@@ -343,11 +344,14 @@ export default function AdminPanel() {
     }
   };
 
-  const openBanModal = (user: User) => {
+  const [activeReportIdForBan, setActiveReportIdForBan] = useState<number | null>(null);
+
+  const openBanModal = (user: User, reportId?: number) => {
     setSelectedUser(user);
     setBanDuration('1h');
     setBanReason('');
     setShowBanModal(true);
+    setActiveReportIdForBan(reportId ?? null);
   };
 
   const closeBanModal = () => {
@@ -355,19 +359,19 @@ export default function AdminPanel() {
     setSelectedUser(null);
     setBanDuration('1h');
     setBanReason('');
+    setActiveReportIdForBan(null);
   };
 
   const confirmBanUser = async () => {
     if (!selectedUser) return;
-    
     if (selectedUser.isBanned) {
-      // Unban user
       await handleBanUser(selectedUser.id);
     } else {
-      // Ban user with duration and reason
       await handleBanUser(selectedUser.id, banDuration, banReason);
+      if (activeReportIdForBan) {
+        await handleReportAction(activeReportIdForBan, 'approve');
+      }
     }
-    
     closeBanModal();
   };
 
@@ -419,9 +423,19 @@ export default function AdminPanel() {
         if (itemToDelete.type === 'user') {
           setUsers(prev => prev.filter(user => user.id !== itemToDelete.id));
           showNotification('success', `${itemToDelete.name} has been deleted successfully`);
+          // User silindiyse, ilgili user reportların status'unu hem frontend'de hem backend'de ACTION_TAKEN yap
+          const relatedUserReports = reports.filter(r => r.type === 'user' && r.userId === itemToDelete.id && r.status !== 'ACTION_TAKEN');
+          for (const report of relatedUserReports) {
+            await handleReportAction(report.id, 'approve');
+          }
         } else {
           setPosts(prev => prev.filter(post => post.id !== itemToDelete.id));
           showNotification('success', `Post "${itemToDelete.name}" has been deleted successfully`);
+          // Post silindiyse, ilgili raporların status'unu hem frontend'de hem backend'de ACTION_TAKEN yap
+          const relatedReports = reports.filter(r => r.type === 'post' && r.postId === itemToDelete.id && r.status !== 'ACTION_TAKEN');
+          for (const report of relatedReports) {
+            await handleReportAction(report.id, 'approve');
+          }
         }
       } else {
         showNotification('error', `Failed to delete ${itemToDelete.type}`);
@@ -494,6 +508,23 @@ export default function AdminPanel() {
       if (!token) {
         router.push('/auth');
         return;
+      }
+
+      // Önce raporun status'unu "REVIEWED" olarak güncelle (eğer PENDING ise)
+      const report = reports.find(r => r.id === reportId);
+      if (report && report.status === 'PENDING') {
+        const statusResponse = await fetch(`http://localhost:8080/api/v1/admin/reports/${reportId}/status`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({ status: 'REVIEWED' }),
+        });
+        if (statusResponse.ok) {
+          // Raporun status'unu state'de güncelle
+          setReports(prev => prev.map(r => r.id === reportId ? { ...r, status: 'REVIEWED' } : r));
+        }
       }
 
       // Find the post in posts array first
@@ -575,6 +606,13 @@ export default function AdminPanel() {
     { value: "harassment", label: "Harassment" },
     { value: "other", label: "Other" }
   ];
+
+  const STATUS_LABELS: Record<string, string> = {
+    PENDING: 'Pending',
+    REVIEWED: 'Reviewed',
+    DISMISSED: 'Rejected',
+    ACTION_TAKEN: 'Action Taken'
+  };
 
   const filteredUsers = users.filter(user => {
     const matchesSearch = (user.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -752,7 +790,7 @@ export default function AdminPanel() {
                     <option value="all">All Statuses</option>
                     <option value="pending">Pending</option>
                     <option value="reviewed">Reviewed</option>
-                    <option value="dismissed">Dismissed</option>
+                    <option value="dismissed">Rejected</option>
                     <option value="action_taken">Action Taken</option>
                   </select>
                   <select
@@ -927,10 +965,11 @@ export default function AdminPanel() {
               {/* Reports Tab */}
               {activeTab === 'reports' && (
                 <div className="space-y-4">
-                  {filteredReports.map((report) => {
+                  {filteredReports.map((report, idx) => {
                     const reasonLabel = REPORT_REASONS.find(r => r.value === report.reason)?.label || report.reason;
                     return (
-                      <div key={`${report.type}-${report.id}`} className="bg-gray-50 rounded-lg p-4">
+                      <div key={`${report.type}-${report.id}`}
+                        className={`bg-gray-50 rounded-lg p-4${idx !== filteredReports.length - 1 ? ' border-b border-gray-300' : ''}`}>
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
                             <div className="flex items-center space-x-2 mb-2">
@@ -944,7 +983,7 @@ export default function AdminPanel() {
                                   ? 'bg-red-100 text-red-800'
                                   : 'bg-green-100 text-green-800'
                               }`}>
-                                {report.status}
+                                {STATUS_LABELS[report.status] || report.status}
                               </span>
                               <span className="px-2 py-1 text-xs rounded-full bg-gray-200 text-gray-700">
                                 {report.type === 'post' ? 'Post Report' : 'User Report'}
@@ -967,6 +1006,19 @@ export default function AdminPanel() {
                               )}
                               <span>{formatDistanceToNow(new Date(report.createdAt), { addSuffix: true, locale: enUS })}</span>
                             </div>
+                            {report.type === 'user' && report.reportedMessages && report.reportedMessages.length > 0 && (
+                              <div className="mt-2 bg-gray-100 rounded p-2">
+                                <div className="font-semibold text-xs text-gray-700 mb-1">Reported Messages:</div>
+                                <ul className="text-xs text-gray-800 space-y-1">
+                                  {report.reportedMessages.map((msg: any) => (
+                                    <li key={msg.id} className="border-b border-gray-200 pb-1 mb-1 last:border-b-0 last:mb-0">
+                                      <span className="font-medium">{msg.content}</span>
+                                      <span className="ml-2 text-gray-500">({new Date(msg.sentAt).toLocaleString()})</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
                           </div>
                           <div className="flex items-center space-x-2 ml-4">
                             {report.type === 'post' && (
@@ -980,22 +1032,15 @@ export default function AdminPanel() {
                             )}
                             {report.type === 'user' && (
                               <button
-                                onClick={() => handleViewReportedUser(report.userId!)}
+                                onClick={() => openBanModal(users.find(u => u.id === report.userId)!, report.id)}
                                 className="p-2 rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors cursor-pointer"
                                 title="View Reported User"
                               >
                                 <FiEye className="w-4 h-4" />
                               </button>
                             )}
-                            {report.status === 'PENDING' && (
+                            {(report.status === 'PENDING' || report.status === 'REVIEWED') && (
                               <>
-                                <button
-                                  onClick={() => handleReportAction(report.id, 'approve')}
-                                  className="p-2 rounded-lg bg-green-100 text-green-600 hover:bg-green-200 transition-colors cursor-pointer"
-                                  title="Approve Report"
-                                >
-                                  <BsCheckCircle className="w-4 h-4" />
-                                </button>
                                 <button
                                   onClick={() => handleReportAction(report.id, 'reject')}
                                   className="p-2 rounded-lg bg-red-100 text-red-600 hover:bg-red-200 transition-colors cursor-pointer"

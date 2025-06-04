@@ -87,6 +87,11 @@ export default function Messages() {
   const [hoveredMessageId, setHoveredMessageId] = useState<number | null>(null);
   const [replyToMessage, setReplyToMessage] = useState<Message | null>(null);
 
+  // State ekle
+  const [selectedReportMessageIds, setSelectedReportMessageIds] = useState<number[]>([]);
+  const [isSelectingMessagesForReport, setIsSelectingMessagesForReport] = useState(false);
+  const [isReportModalMinimized, setIsReportModalMinimized] = useState(false);
+
   // Fix hydration issues
   useEffect(() => {
     setIsMounted(true);
@@ -1233,6 +1238,21 @@ export default function Messages() {
                           <span className="absolute left-0 top-0 w-0 h-0 border-t-[16px] border-t-transparent border-r-[16px] border-r-[#f1f0f0] rotate-180"></span>
                         )}
                       </div>
+                      {!isCurrentUser && isSelectingMessagesForReport && (
+                        <input
+                          type="checkbox"
+                          className="mr-2 align-middle"
+                          checked={selectedReportMessageIds.includes(message.id)}
+                          onChange={e => {
+                            if (e.target.checked) {
+                              setSelectedReportMessageIds(prev => [...prev, message.id]);
+                            } else {
+                              setSelectedReportMessageIds(prev => prev.filter(id => id !== message.id));
+                            }
+                          }}
+                          title="Bu mesajı rapora ekle"
+                        />
+                      )}
                     </div>
                   );
                 })}
@@ -1360,7 +1380,7 @@ export default function Messages() {
       />
 
       {/* User Report Modal */}
-      {showUserReportModal && (
+      {showUserReportModal && !isReportModalMinimized && (
         <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg max-w-md w-full">
             <div className="flex justify-between items-center p-6 border-b border-gray-200">
@@ -1398,13 +1418,42 @@ export default function Messages() {
                 value={reportDescription}
                 onChange={e => setReportDescription(e.target.value)}
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9a0e20] focus:border-transparent resize-none mb-4"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9a0e20] focus:border-transparent resize-none mb-4 text-gray-900"
                 placeholder="Provide additional details about why you're reporting this user..."
               />
               {userReportError && <p className="text-red-600 text-sm mb-2">{userReportError}</p>}
+              <div className="flex items-center gap-2 mb-4">
+                <button
+                  className="px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 text-xs"
+                  onClick={() => {
+                    setIsSelectingMessagesForReport(true);
+                    setIsReportModalMinimized(true);
+                  }}
+                  type="button"
+                >
+                  Choose Message(s)
+                </button>
+              </div>
+              {selectedReportMessageIds.length > 0 && (
+                <div className="mb-4">
+                  <label className="block text-sm font-semibold text-gray-800 mb-1">Selected Messages</label>
+                  <ul className="bg-gray-100 rounded p-2 max-h-32 overflow-y-auto text-xs">
+                    {messages.filter(m => selectedReportMessageIds.includes(Number(m.id))).map(m => (
+                      <li key={m.id} className="mb-1 text-gray-900">{m.content}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               <div className="flex justify-end gap-2">
                 <button
-                  onClick={() => setShowUserReportModal(false)}
+                  onClick={() => {
+                    setShowUserReportModal(false);
+                    setReportReason('');
+                    setReportDescription('');
+                    setSelectedReportMessageIds([]);
+                    setIsSelectingMessagesForReport(false);
+                    setIsReportModalMinimized(false);
+                  }}
                   className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors cursor-pointer"
                 >
                   Cancel
@@ -1427,12 +1476,16 @@ export default function Messages() {
                           userId: selectedConversation.user.id,
                           reason: reportReason,
                           description: reportDescription.trim() || null,
+                          reportedMessageIds: selectedReportMessageIds,
                         }),
                       });
                       if (response.ok) {
                         setShowUserReportModal(false);
                         setReportReason('');
                         setReportDescription('');
+                        setSelectedReportMessageIds([]);
+                        setIsSelectingMessagesForReport(false);
+                        setIsReportModalMinimized(false);
                         showNotification('success', 'User report submitted successfully');
                       } else {
                         const errorText = await response.text();
@@ -1494,6 +1547,21 @@ export default function Messages() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Floating Continue Report Button */}
+      {isReportModalMinimized && (
+        <button
+          className="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-red-600 text-white rounded-full shadow-lg px-5 py-3 hover:bg-red-700 transition-all"
+          onClick={() => {
+            setIsReportModalMinimized(false);
+            setIsSelectingMessagesForReport(false);
+          }}
+          style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.15)' }}
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          <span className="font-semibold">Continue Report</span>
+        </button>
       )}
     </div>
   );

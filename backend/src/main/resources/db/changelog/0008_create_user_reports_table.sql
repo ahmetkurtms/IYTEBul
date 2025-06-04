@@ -15,4 +15,7 @@ CREATE TABLE user_reports (
     FOREIGN KEY (user_id) REFERENCES users(users_id) ON DELETE CASCADE,
     FOREIGN KEY (reporter_id) REFERENCES users(users_id) ON DELETE CASCADE,
     FOREIGN KEY (reviewed_by) REFERENCES users(users_id) ON DELETE SET NULL
-); 
+);
+
+--changeset system:8b
+ALTER TABLE user_reports ADD COLUMN reported_message_ids TEXT; 
