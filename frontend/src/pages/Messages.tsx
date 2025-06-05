@@ -29,14 +29,14 @@ interface Message {
   isRead: boolean;
   isSent: boolean;
   imageBase64List?: string[];
-  
+
   // Referenced item information
   referencedItemId?: number;
   referencedItemTitle?: string;
   referencedItemImage?: string;
   referencedItemCategory?: string;
   referencedItemType?: string;
-  
+
   // Reply information
   replyToMessageId?: number;
   replyToMessageText?: string;
@@ -62,7 +62,7 @@ export default function Messages() {
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
-  
+
   // Message hover states
   const [hoveredMessageId, setHoveredMessageId] = useState<number | null>(null);
   const [replyToMessage, setReplyToMessage] = useState<Message | null>(null);
@@ -88,13 +88,13 @@ export default function Messages() {
 
     try {
       await messageApi.sendMessage(
-        selectedConversation.user.id, 
-        newMessage, 
+        selectedConversation.user.id,
+        newMessage,
         undefined, // images
         undefined, // referencedItemId
         replyToMessage ? replyToMessage.id : undefined
       );
-      
+
       setNewMessage('');
       setReplyToMessage(null);
       // Refresh messages here...
@@ -107,15 +107,15 @@ export default function Messages() {
   const handleDeleteMessage = async (messageId: number) => {
     try {
       console.log('Deleting message:', messageId);
-      
+
       // Call backend API to delete message
       await messageApi.deleteMessage(messageId);
-      
+
       // Remove message from local state
       setMessages(prev => prev.filter(msg => msg.id !== messageId));
-      
+
       console.log('Message deleted successfully');
-      
+
     } catch (error) {
       console.error('Error deleting message:', error);
     }
@@ -138,7 +138,7 @@ export default function Messages() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
-      
+
       <div className="flex h-[calc(100vh-80px)]">
         {/* Conversations List */}
         <div className="w-80 bg-[#f7f7f7] border-r border-gray-200 flex flex-col">
@@ -179,7 +179,7 @@ export default function Messages() {
               <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-white">
                 {messages.map((message) => {
                   const isCurrentUser = message.senderId === currentUser?.id;
-                  
+
                   return (
                     <div
                       key={message.id}
@@ -206,29 +206,25 @@ export default function Messages() {
                           </button>
                         </div>
                       )}
-                      
+
                       <div
-                        className={`relative max-w-xs lg:max-w-md px-4 py-2 shadow transition-all duration-300 ${
-                          isCurrentUser
+                        className={`relative max-w-xs lg:max-w-md px-4 py-2 shadow transition-all duration-300 ${isCurrentUser
                             ? 'bg-[#A6292A] text-white self-end rounded-tl-lg rounded-tr-2xl rounded-bl-lg rounded-br-md order-2'
                             : 'bg-[#f1f0f0] text-gray-900 self-start rounded-tl-2xl rounded-tr-lg rounded-br-lg rounded-bl-2xl order-1'
-                        }`}
+                          }`}
                       >
                         {/* Reply Preview */}
                         {message.replyToMessageId && (
-                          <div className={`mb-2 border-l-4 pl-3 py-2 rounded-r ${
-                            isCurrentUser 
-                              ? 'border-white/30 bg-white/10' 
+                          <div className={`mb-2 border-l-4 pl-3 py-2 rounded-r ${isCurrentUser
+                              ? 'border-white/30 bg-white/10'
                               : 'border-gray-300 bg-gray-100'
-                          }`}>
-                            <div className={`text-xs font-medium mb-1 ${
-                              isCurrentUser ? 'text-white/70' : 'text-gray-600'
                             }`}>
+                            <div className={`text-xs font-medium mb-1 ${isCurrentUser ? 'text-white/70' : 'text-gray-600'
+                              }`}>
                               {message.replyToSenderName}
                             </div>
-                            <div className={`text-xs ${
-                              isCurrentUser ? 'text-white/80' : 'text-gray-700'
-                            }`}>
+                            <div className={`text-xs ${isCurrentUser ? 'text-white/80' : 'text-gray-700'
+                              }`}>
                               {message.replyToMessageText && message.replyToMessageText.length > 100
                                 ? `${message.replyToMessageText.substring(0, 100)}...`
                                 : message.replyToMessageText
@@ -236,11 +232,11 @@ export default function Messages() {
                             </div>
                           </div>
                         )}
-                        
+
                         <p className="text-sm leading-relaxed break-words">
                           {message.content}
                         </p>
-                        
+
                         <div className="text-xs text-gray-400 mt-1">
                           {new Date(message.timestamp).toLocaleTimeString('tr-TR', {
                             hour: '2-digit',
@@ -275,7 +271,7 @@ export default function Messages() {
                     </p>
                   </div>
                 )}
-                
+
                 <div className="flex items-center space-x-2">
                   <div className="flex-1">
                     <input
@@ -295,11 +291,10 @@ export default function Messages() {
                   <button
                     onClick={handleSendMessage}
                     disabled={!newMessage.trim()}
-                    className={`p-2 rounded-full ml-2 transition-colors ${
-                      newMessage.trim()
+                    className={`p-2 rounded-full ml-2 transition-colors ${newMessage.trim()
                         ? 'bg-[#A6292A] text-white hover:bg-[#8a1f1f] cursor-pointer'
                         : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                    }`}
+                      }`}
                     aria-label="Send message"
                   >
                     <FiSend className="w-5 h-5" />
