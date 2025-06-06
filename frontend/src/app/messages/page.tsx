@@ -398,6 +398,12 @@ export default function Messages() {
     loadConversations();
   }, [router, searchParams, isMounted]);
 
+  // Clear reply state when conversation changes
+  useEffect(() => {
+    setReplyToMessage(null);
+    setNewMessage('');
+  }, [selectedConversation?.user.id]);
+
   // Load messages when conversation is selected
   useEffect(() => {
     if (selectedConversation) {
@@ -513,7 +519,7 @@ export default function Messages() {
         // Reply information
         replyToMessageId: replyToMessage ? replyToMessage.id : undefined,
         replyToMessageText: replyToMessage ? replyToMessage.content : undefined,
-        replyToSenderName: replyToMessage ? (replyToMessage.senderId === currentUser.id ? currentUser.name : selectedConversation.user.name) : undefined,
+        replyToSenderName: replyToMessage ? (replyToMessage.senderId === currentUser.id ? currentUser.nickname : selectedConversation.user.nickname) : undefined,
         replyToMessageImages: replyToMessage ? replyToMessage.imageBase64List || [] : undefined
       };
       setMessages(prev => [...prev, message]);
@@ -569,7 +575,7 @@ export default function Messages() {
         // Reply information
         replyToMessageId: replyToMessage ? replyToMessage.id : undefined,
         replyToMessageText: replyToMessage ? replyToMessage.content : undefined,
-        replyToSenderName: replyToMessage ? (replyToMessage.senderId === currentUser.id ? currentUser.name : selectedConversation.user.name) : undefined,
+        replyToSenderName: replyToMessage ? (replyToMessage.senderId === currentUser.id ? currentUser.nickname : selectedConversation.user.nickname) : undefined,
         replyToMessageImages: replyToMessage ? replyToMessage.imageBase64List || [] : undefined
       };
 
@@ -1192,7 +1198,7 @@ export default function Messages() {
                             </div>
                           )}
                           
-                          {/* Reply Preview */}
+                          {/* Reply Preview - MESSAGE BUBBLE VERSION WITHOUT X BUTTON */}
                           {message.replyToMessageId && (
                             <div 
                               className="mb-3 p-3 bg-gray-100 rounded-lg border-l-4 border-[#A6292A] cursor-pointer hover:bg-gray-200 transition-colors"
@@ -1203,23 +1209,21 @@ export default function Messages() {
                                 }
                               }}
                             >
-                              <div className="flex items-center justify-between mb-1">
-                                <span className="text-xs font-medium text-gray-600">
-                                  Replying to {message.replyToSenderName}
+                              <div className="mb-1">
+                                <span className="text-xs font-semibold text-gray-600">
+                                  Replying to {(() => {
+                                    // Find the original message to get sender info
+                                    const originalMessage = messages.find(m => m.id === message.replyToMessageId);
+                                    if (originalMessage) {
+                                      return originalMessage.senderId === currentUser?.id ? 'yourself' : (selectedConversation?.user.nickname || selectedConversation?.user.name || 'Unknown');
+                                    }
+                                    // Fallback to backend data
+                                    return message.replyToSenderName || 'Unknown';
+                                  })()}
                                 </span>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation(); // Div'in onClick'ini tetiklememek için
-                                    setReplyToMessage(null);
-                                    setNewMessage('');
-                                  }}
-                                  className="p-1 rounded-full hover:bg-gray-300 transition-colors"
-                                >
-                                  <FiX className="w-3 h-3 text-gray-500" />
-                                </button>
                               </div>
                               
-                              {/* Reply message images */}
+                              {/* Images for message bubble reply preview */}
                               {message.replyToMessageImages && message.replyToMessageImages.length > 0 && (
                                 <div className="flex gap-1 mb-2">
                                   {message.replyToMessageImages.slice(0, 3).map((base64, idx) => (
@@ -1237,6 +1241,17 @@ export default function Messages() {
                                   )}
                                 </div>
                               )}
+                              
+                              <p className="text-sm text-gray-700 truncate">
+                                {message.replyToMessageText || (
+                                  message.replyToMessageImages && message.replyToMessageImages.length > 0 && (
+                                    <span className="flex items-center gap-1 text-gray-600">
+                                      <FiCamera className="inline-block w-3 h-3" />
+                                      {message.replyToMessageImages.length > 1 ? 'Photos' : 'Photo'}
+                                    </span>
+                                  )
+                                )}
+                              </p>
                             </div>
                           )}
                           
@@ -1325,49 +1340,69 @@ export default function Messages() {
 
               {/* Message Input */}
               <div className="p-4 border-t border-gray-200 bg-[#f7f7f7]">
-                {/* Reply Preview */}
+                {/* Reply Preview - INPUT VERSION WITH X BUTTON */}
                 {replyToMessage && (
                   <div 
-                    className="mb-3 p-3 bg-gray-100 rounded-lg border-l-4 border-[#A6292A] cursor-pointer hover:bg-gray-200 transition-colors"
+                    className="mb-3 p-3 bg-blue-50 rounded-lg border-l-4 border-blue-500 cursor-pointer hover:bg-blue-100 transition-colors input-reply-preview"
                     onClick={() => {
                       // Reply mesajına scroll et
                       scrollToMessage(replyToMessage.id);
                     }}
                   >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs font-medium text-gray-600">
-                        Replying to {replyToMessage.senderId === currentUser?.id ? 'yourself' : selectedConversation?.user.nickname}
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-semibold text-blue-700">
+                        Replying to {(() => {
+                          // Find the original message to get sender info
+                          const originalMessage = messages.find(m => m.id === replyToMessage.replyToMessageId);
+                          if (originalMessage) {
+                            return originalMessage.senderId === currentUser?.id ? 'yourself' : (selectedConversation?.user.nickname || selectedConversation?.user.name || 'Unknown');
+                          }
+                          // Fallback to backend data
+                          return replyToMessage.replyToSenderName || 'Unknown';
+                        })()}
                       </span>
                       <button
                         onClick={(e) => {
-                          e.stopPropagation(); // Div'in onClick'ini tetiklememek için
+                          e.stopPropagation();
                           setReplyToMessage(null);
                           setNewMessage('');
                         }}
-                        className="p-1 rounded-full hover:bg-gray-300 transition-colors"
+                        className="p-1 rounded-full hover:bg-blue-200 transition-colors"
+                        title="Cancel reply"
                       >
-                        <FiX className="w-3 h-3 text-gray-500" />
+                        <FiX className="w-3 h-3 text-blue-600" />
                       </button>
                     </div>
                     
-                    {/* Reply message images */}
-                    {replyToMessage.imageBase64List && replyToMessage.imageBase64List.length > 0 && (
+                    {/* Images for input reply preview */}
+                    {replyToMessage.replyToMessageImages && replyToMessage.replyToMessageImages.length > 0 && (
                       <div className="flex gap-1 mb-2">
-                        {replyToMessage.imageBase64List.slice(0, 3).map((base64, idx) => (
+                        {replyToMessage.replyToMessageImages.slice(0, 3).map((base64, idx) => (
                           <img
                             key={idx}
                             src={`data:image/jpeg;base64,${base64}`}
                             alt="Reply image"
-                            className="w-10 h-10 object-cover rounded"
+                            className="w-8 h-8 object-cover rounded border"
                           />
                         ))}
-                        {replyToMessage.imageBase64List.length > 3 && (
-                          <div className="w-10 h-10 rounded bg-gray-300 flex items-center justify-center text-xs text-gray-600">
-                            +{replyToMessage.imageBase64List.length - 3}
+                        {replyToMessage.replyToMessageImages.length > 3 && (
+                          <div className="w-8 h-8 rounded bg-blue-200 flex items-center justify-center text-xs text-blue-700 font-semibold">
+                            +{replyToMessage.replyToMessageImages.length - 3}
                           </div>
                         )}
                       </div>
                     )}
+                    
+                    <div className="text-sm text-blue-800 truncate font-medium">
+                      {replyToMessage.replyToMessageText || (
+                        replyToMessage.replyToMessageImages && replyToMessage.replyToMessageImages.length > 0 && (
+                          <span className="flex items-center gap-1 text-blue-700">
+                            <FiCamera className="inline-block w-3 h-3" />
+                            {replyToMessage.replyToMessageImages.length > 1 ? 'Photos' : 'Photo'}
+                          </span>
+                        )
+                      )}
+                    </div>
                   </div>
                 )}
                 
@@ -1477,9 +1512,7 @@ export default function Messages() {
                 onClick={() => setShowUserReportModal(false)}
                 className="p-2 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
               >
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                </svg>
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
               </button>
             </div>
             <div className="p-6">
