@@ -463,17 +463,6 @@ export default function Home() {
       .catch(() => {});
   }, []);
 
-  // Close popover on outside click
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (datePopoverOpen && calendarRef.current && !calendarRef.current.contains(e.target as Node)) {
-        setDatePopoverOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [datePopoverOpen]);
-
   // Close filter popover on outside click
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -585,7 +574,7 @@ export default function Home() {
               viewMode === 'quad' 
                 ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
                 : viewMode === 'double' 
-                  ? "grid grid-cols-1 md:grid-cols-2 gap-6"
+                  ? "grid grid-cols-2 gap-6"
                   : "flex flex-col space-y-6 max-w-2xl mx-auto"
             }>
               {posts.map((post) => (
