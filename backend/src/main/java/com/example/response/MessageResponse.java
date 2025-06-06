@@ -35,4 +35,5 @@ public class MessageResponse {
     private Long replyToMessageId;
     private String replyToMessageText;
     private String replyToSenderName;
+    private List<String> replyToMessageImages;
 } 

@@ -44,6 +44,7 @@ export interface MessageResponse {
   replyToMessageId?: number;
   replyToMessageText?: string;
   replyToSenderName?: string;
+  replyToMessageImages?: string[];
 }
 
 export interface ConversationResponse {

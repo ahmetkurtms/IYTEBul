@@ -41,6 +41,7 @@ interface Message {
   replyToMessageId?: number;
   replyToMessageText?: string;
   replyToSenderName?: string;
+  replyToMessageImages?: string[]; // Reply mesajının image'ları
 }
 
 interface Conversation {
@@ -72,6 +73,7 @@ export default function Messages() {
   const messageRefs = useRef<{ [key: number]: HTMLDivElement }>({});
   const [currentSearchIndex, setCurrentSearchIndex] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const messageInputRef = useRef<HTMLInputElement>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [fileSendLoading, setFileSendLoading] = useState(false);
@@ -307,7 +309,7 @@ export default function Messages() {
         setConversations(uniqueConversations);
         
         // Check if we need to start a conversation with a specific user
-        const startWithUserId = searchParams.get('startWith');
+        const startWithUserId = searchParams?.get('startWith');
         console.log('StartWith parameter:', startWithUserId);
         
         if (startWithUserId) {
@@ -424,12 +426,12 @@ export default function Messages() {
             // Reply information
             replyToMessageId: msg.replyToMessageId,
             replyToMessageText: msg.replyToMessageText,
-            replyToSenderName: msg.replyToSenderName
+            replyToSenderName: msg.replyToSenderName,
+            replyToMessageImages: msg.replyToMessageImages || []
           }));
 
           setMessages(convertedMessages);
           console.log('Messages loaded:', convertedMessages);
-          console.log('Current user ID for comparison:', currentUser?.id);
         } catch (error) {
           console.error('Error loading messages:', error);
         }
@@ -437,7 +439,7 @@ export default function Messages() {
 
       loadMessages();
     }
-  }, [selectedConversation, currentUser]);
+  }, [selectedConversation]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -511,7 +513,8 @@ export default function Messages() {
         // Reply information
         replyToMessageId: replyToMessage ? replyToMessage.id : undefined,
         replyToMessageText: replyToMessage ? replyToMessage.content : undefined,
-        replyToSenderName: replyToMessage ? (replyToMessage.senderId === currentUser.id ? currentUser.name : selectedConversation.user.name) : undefined
+        replyToSenderName: replyToMessage ? (replyToMessage.senderId === currentUser.id ? currentUser.name : selectedConversation.user.name) : undefined,
+        replyToMessageImages: replyToMessage ? replyToMessage.imageBase64List || [] : undefined
       };
       setMessages(prev => [...prev, message]);
       setNewMessage('');
@@ -566,7 +569,8 @@ export default function Messages() {
         // Reply information
         replyToMessageId: replyToMessage ? replyToMessage.id : undefined,
         replyToMessageText: replyToMessage ? replyToMessage.content : undefined,
-        replyToSenderName: replyToMessage ? (replyToMessage.senderId === currentUser.id ? currentUser.name : selectedConversation.user.name) : undefined
+        replyToSenderName: replyToMessage ? (replyToMessage.senderId === currentUser.id ? currentUser.name : selectedConversation.user.name) : undefined,
+        replyToMessageImages: replyToMessage ? replyToMessage.imageBase64List || [] : undefined
       };
 
       console.log('Sending message:', message);
@@ -632,8 +636,10 @@ export default function Messages() {
         block: 'center' 
       });
       setHighlightedMessageId(messageId);
-      // Remove highlight after 3 seconds
-      setTimeout(() => setHighlightedMessageId(null), 3000);
+      // Otomatik olarak 3 saniye sonra fade-out
+      setTimeout(() => {
+        setHighlightedMessageId(null);
+      }, 3000);
     }
   };
 
@@ -699,16 +705,44 @@ export default function Messages() {
     try {
       console.log('Deleting message:', messageId);
       
-      // Call backend API to delete message
+      // Backend cascade delete'i hallediyor, sadece ana mesajı silmemiz yeterli
       await messageApi.deleteMessage(messageId);
       
-      // Remove message from local state
-      setMessages(prev => prev.filter(msg => msg.id !== messageId));
+      // Frontend'te de tüm reply'ları bul ve kaldır
+      const findAllRepliesToDelete = (msgId: number, allMessages: typeof messages): number[] => {
+        const directReplies = allMessages.filter(msg => msg.replyToMessageId === msgId);
+        let allReplies: number[] = directReplies.map(msg => msg.id);
+        
+        // Recursive olarak nested reply'ları da bul
+        directReplies.forEach(reply => {
+          const nestedReplies = findAllRepliesToDelete(reply.id, allMessages);
+          allReplies = [...allReplies, ...nestedReplies];
+        });
+        
+        return allReplies;
+      };
       
-      // Refresh conversations to update the conversation list
+      const repliesToDelete = findAllRepliesToDelete(messageId, messages);
+      const allMessagesToDelete = [messageId, ...repliesToDelete];
+      
+      // Local state'ten kaldır
+      setMessages(prev => prev.filter(msg => !allMessagesToDelete.includes(msg.id)));
+      
+      // Reply state'i temizle
+      if (replyToMessage && allMessagesToDelete.includes(replyToMessage.id)) {
+        setReplyToMessage(null);
+        setNewMessage('');
+      }
+      
+      // Conversations'ı yenile
       await refreshConversations();
       
-      showNotification('success', 'Message deleted successfully');
+      const deletedCount = allMessagesToDelete.length;
+      showNotification('success', 
+        deletedCount === 1 
+          ? 'Message deleted successfully' 
+          : `Message and ${deletedCount - 1} replies deleted successfully`
+      );
       
     } catch (error) {
       console.error('Error deleting message:', error);
@@ -719,7 +753,13 @@ export default function Messages() {
   // Handle replying to a message
   const handleReplyToMessage = (message: Message) => {
     setReplyToMessage(message);
-    setNewMessage(`@${selectedConversation?.user.nickname} `);
+    
+    // Text input'a focus yap - setTimeout ile biraz bekle ki state update olsun
+    setTimeout(() => {
+      if (messageInputRef.current) {
+        messageInputRef.current.focus();
+      }
+    }, 100);
   };
 
   if (loading || !isMounted) {
@@ -1048,9 +1088,8 @@ export default function Messages() {
                       ref={(el) => {
                         if (el) messageRefs.current[message.id] = el;
                       }}
-                      className={`flex ${isCurrentUser ? 'justify-end' : 'justify-start'} transition-all duration-300 ${
-                        isHighlighted ? 'scale-105' : ''
-                      } group`}
+                      data-message-id={message.id}
+                      className={`flex ${isCurrentUser ? 'justify-end' : 'justify-start'} transition-all duration-1000 group`}
                       onMouseEnter={() => setHoveredMessageId(message.id)}
                       onMouseLeave={() => setHoveredMessageId(null)}
                     >
@@ -1075,12 +1114,12 @@ export default function Messages() {
                       )}
                       
                       <div
-                        className={`relative max-w-xs lg:max-w-md px-2 py-1 shadow transition-all duration-300 ${
+                        className={`relative max-w-xs lg:max-w-md px-2 py-1 shadow transition-all duration-1000 ${
                           isCurrentUser
                             ? 'bg-[#A6292A] text-white self-end rounded-tl-lg rounded-tr-2xl rounded-bl-lg rounded-br-md order-2'
                             : 'bg-[#f1f0f0] text-gray-900 self-start rounded-tl-2xl rounded-tr-lg rounded-br-lg rounded-bl-2xl order-1'
                         } ${
-                          isCurrentSearchResult ? 'ring-4 ring-[#A6292A]/40 ring-offset-2 scale-105' : 
+                          isCurrentSearchResult ? 'ring-4 ring-[#A6292A]/40 ring-offset-2' : 
                           isHighlighted ? 'ring-4 ring-[#A6292A]/30 ring-offset-2' : ''
                         } ${
                           isMatchingSearch && !isCurrentSearchResult && !isHighlighted ? 'ring-2 ring-yellow-400/30' : ''
@@ -1155,24 +1194,49 @@ export default function Messages() {
                           
                           {/* Reply Preview */}
                           {message.replyToMessageId && (
-                            <div className={`mb-2 border-l-4 pl-3 py-2 rounded-r ${
-                              isCurrentUser 
-                                ? 'border-white/30 bg-white/10' 
-                                : 'border-gray-300 bg-gray-100'
-                            }`}>
-                              <div className={`text-xs font-medium mb-1 ${
-                                isCurrentUser ? 'text-white/70' : 'text-gray-600'
-                              }`}>
-                                {message.replyToSenderName}
-                              </div>
-                              <div className={`text-xs ${
-                                isCurrentUser ? 'text-white/80' : 'text-gray-700'
-                              }`}>
-                                {message.replyToMessageText && message.replyToMessageText.length > 100
-                                  ? `${message.replyToMessageText.substring(0, 100)}...`
-                                  : message.replyToMessageText
+                            <div 
+                              className="mb-3 p-3 bg-gray-100 rounded-lg border-l-4 border-[#A6292A] cursor-pointer hover:bg-gray-200 transition-colors"
+                              onClick={() => {
+                                // Reply mesajına scroll et
+                                if (message.replyToMessageId) {
+                                  scrollToMessage(message.replyToMessageId);
                                 }
+                              }}
+                            >
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-xs font-medium text-gray-600">
+                                  Replying to {message.replyToSenderName}
+                                </span>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation(); // Div'in onClick'ini tetiklememek için
+                                    setReplyToMessage(null);
+                                    setNewMessage('');
+                                  }}
+                                  className="p-1 rounded-full hover:bg-gray-300 transition-colors"
+                                >
+                                  <FiX className="w-3 h-3 text-gray-500" />
+                                </button>
                               </div>
+                              
+                              {/* Reply message images */}
+                              {message.replyToMessageImages && message.replyToMessageImages.length > 0 && (
+                                <div className="flex gap-1 mb-2">
+                                  {message.replyToMessageImages.slice(0, 3).map((base64, idx) => (
+                                    <img
+                                      key={idx}
+                                      src={`data:image/jpeg;base64,${base64}`}
+                                      alt="Reply image"
+                                      className="w-10 h-10 object-cover rounded"
+                                    />
+                                  ))}
+                                  {message.replyToMessageImages.length > 3 && (
+                                    <div className="w-10 h-10 rounded bg-gray-300 flex items-center justify-center text-xs text-gray-600">
+                                      +{message.replyToMessageImages.length - 3}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           )}
                           
@@ -1263,24 +1327,47 @@ export default function Messages() {
               <div className="p-4 border-t border-gray-200 bg-[#f7f7f7]">
                 {/* Reply Preview */}
                 {replyToMessage && (
-                  <div className="mb-3 p-3 bg-gray-100 rounded-lg border-l-4 border-[#A6292A]">
+                  <div 
+                    className="mb-3 p-3 bg-gray-100 rounded-lg border-l-4 border-[#A6292A] cursor-pointer hover:bg-gray-200 transition-colors"
+                    onClick={() => {
+                      // Reply mesajına scroll et
+                      scrollToMessage(replyToMessage.id);
+                    }}
+                  >
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-xs font-medium text-gray-600">
                         Replying to {replyToMessage.senderId === currentUser?.id ? 'yourself' : selectedConversation?.user.nickname}
                       </span>
                       <button
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation(); // Div'in onClick'ini tetiklememek için
                           setReplyToMessage(null);
                           setNewMessage('');
                         }}
-                        className="p-1 rounded-full hover:bg-gray-200 transition-colors"
+                        className="p-1 rounded-full hover:bg-gray-300 transition-colors"
                       >
                         <FiX className="w-3 h-3 text-gray-500" />
                       </button>
                     </div>
-                    <p className="text-sm text-gray-700 truncate">
-                      {replyToMessage.content}
-                    </p>
+                    
+                    {/* Reply message images */}
+                    {replyToMessage.imageBase64List && replyToMessage.imageBase64List.length > 0 && (
+                      <div className="flex gap-1 mb-2">
+                        {replyToMessage.imageBase64List.slice(0, 3).map((base64, idx) => (
+                          <img
+                            key={idx}
+                            src={`data:image/jpeg;base64,${base64}`}
+                            alt="Reply image"
+                            className="w-10 h-10 object-cover rounded"
+                          />
+                        ))}
+                        {replyToMessage.imageBase64List.length > 3 && (
+                          <div className="w-10 h-10 rounded bg-gray-300 flex items-center justify-center text-xs text-gray-600">
+                            +{replyToMessage.imageBase64List.length - 3}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
                 
@@ -1321,6 +1408,7 @@ export default function Messages() {
                   )}
                   <div className="flex-1">
                     <input
+                      ref={messageInputRef}
                       type="text"
                       value={newMessage}
                       onChange={(e) => setNewMessage(e.target.value)}

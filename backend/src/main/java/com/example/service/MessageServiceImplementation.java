@@ -169,26 +169,52 @@ public class MessageServiceImplementation implements MessageService {
             
             System.out.println("Deleting message ID: " + messageId + " by user: " + currentUser.getName());
             
-            // First delete any related message images
-            List<MessageImage> images = messageImageRepository.findByMessage(message);
-            for (MessageImage img : images) {
-                messageImageRepository.delete(img);
-            }
+            // Recursive function to delete all replies to this message
+            deleteMessageWithReplies(messageId);
             
-            // Delete from deleted_messages table if exists
-            List<DeletedMessages> deletedRecords = deletedMessagesRepository.findByMessage(message);
-            for (DeletedMessages deleted : deletedRecords) {
-                deletedMessagesRepository.delete(deleted);
-            }
-            
-            // Hard delete the message (removes from both sides)
-            messageRepository.delete(message);
-            
-            System.out.println("Message deleted successfully");
+            System.out.println("Message and all replies deleted successfully");
             
         } catch (Exception e) {
             System.out.println("Error deleting message: " + e.getMessage());
             e.printStackTrace();
+            throw new RuntimeException("Error deleting message: " + e.getMessage());
+        }
+    }
+    
+    private void deleteMessageWithReplies(Long messageId) {
+        try {
+            // Find all replies to this message
+            List<Messages> replies = messageRepository.findRepliesByMessageId(messageId);
+            
+            // Recursively delete all replies first
+            for (Messages reply : replies) {
+                deleteMessageWithReplies(reply.getMessageId());
+            }
+            
+            // Now delete the original message
+            Messages message = messageRepository.findById(messageId).orElse(null);
+            if (message != null) {
+                // Delete any related message images
+                List<MessageImage> images = messageImageRepository.findByMessage(message);
+                for (MessageImage img : images) {
+                    messageImageRepository.delete(img);
+                }
+                
+                // Delete from deleted_messages table if exists
+                List<DeletedMessages> deletedRecords = deletedMessagesRepository.findByMessage(message);
+                for (DeletedMessages deleted : deletedRecords) {
+                    deletedMessagesRepository.delete(deleted);
+                }
+                
+                // Hard delete the message
+                messageRepository.delete(message);
+                
+                System.out.println("Deleted message ID: " + messageId);
+            }
+            
+        } catch (Exception e) {
+            System.out.println("Error in deleteMessageWithReplies for message ID " + messageId + ": " + e.getMessage());
+            throw e;
         }
     }
 } 

@@ -178,7 +178,14 @@ public class MessageController {
                         unreadCount = 0L;
                     }
                     
-                    MessageResponse lastMessageResponse = convertToMessageResponse(message, new ArrayList<>());
+                    // Fetch images for the last message
+                    List<MessageImage> messageImages = messageImageRepository.findByMessage(message);
+                    List<String> imageBase64List = new ArrayList<>();
+                    for (MessageImage img : messageImages) {
+                        imageBase64List.add(img.getImageBase64());
+                    }
+                    
+                    MessageResponse lastMessageResponse = convertToMessageResponse(message, imageBase64List);
                     
                     if (lastMessageResponse == null) {
                         System.out.println("WARNING: Failed to convert message to response for message ID: " + message.getMessageId());
@@ -238,7 +245,14 @@ public class MessageController {
             List<MessageResponse> messageResponses = new ArrayList<>();
             
             for (Messages message : messages) {
-                messageResponses.add(convertToMessageResponse(message, new ArrayList<>()));
+                // Fetch images for this message
+                List<MessageImage> messageImages = messageImageRepository.findByMessage(message);
+                List<String> imageBase64List = new ArrayList<>();
+                for (MessageImage img : messageImages) {
+                    imageBase64List.add(img.getImageBase64());
+                }
+                
+                messageResponses.add(convertToMessageResponse(message, imageBase64List));
             }
             
             // Mark messages as read
@@ -417,6 +431,14 @@ public class MessageController {
             if (replyMessage.getSender() != null) {
                 response.setReplyToSenderName(replyMessage.getSender().getName());
             }
+            
+            // Fetch images for reply message
+            List<MessageImage> replyMessageImages = messageImageRepository.findByMessage(replyMessage);
+            List<String> replyImageBase64List = new ArrayList<>();
+            for (MessageImage img : replyMessageImages) {
+                replyImageBase64List.add(img.getImageBase64());
+            }
+            response.setReplyToMessageImages(replyImageBase64List);
         }
         
         return response;

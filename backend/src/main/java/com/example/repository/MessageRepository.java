@@ -68,4 +68,8 @@ public interface MessageRepository extends JpaRepository<Messages, Long> {
     void deleteMessagesBetweenUsers(@Param("user1") User user1, @Param("user2") User user2);
 
     List<Messages> findByMessageIdIn(List<Long> ids);
+    
+    // Find all messages that reply to a specific message
+    @Query("SELECT m FROM Messages m WHERE m.replyToMessage.messageId = :messageId")
+    List<Messages> findRepliesByMessageId(@Param("messageId") Long messageId);
 } 
