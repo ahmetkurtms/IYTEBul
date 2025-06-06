@@ -75,7 +75,12 @@ public class ItemServiceImplementation implements ItemService {
     public Item findItemById(Long itemId) throws  Exception{
         Optional<Item> item = itemRepository.findById(itemId);
         if(item.isPresent()) {
-            return item.get();
+            Item foundItem = item.get();
+            // Check if the item is deleted
+            if (foundItem.getDeleted() != null && foundItem.getDeleted()) {
+                throw new Exception("Item is deleted and not available");
+            }
+            return foundItem;
         }
         throw new Exception("item not exist with itemid " + itemId);
     }

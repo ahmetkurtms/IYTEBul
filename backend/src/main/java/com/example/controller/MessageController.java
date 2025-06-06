@@ -78,15 +78,10 @@ public class MessageController {
             if (request.getReferencedItemId() != null) {
                 try {
                     referencedItem = itemService.findItemById(request.getReferencedItemId());
-                    if (referencedItem == null) {
-                        System.out.println("Referenced item not found for ID: " + request.getReferencedItemId());
-                        return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                            .body(new ApiResponse("Referenced item not found", false));
-                    }
                 } catch (Exception e) {
-                    System.out.println("Referenced item not found for ID: " + request.getReferencedItemId());
-                    return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(new ApiResponse("Referenced item not found", false));
+                    System.out.println("Referenced item not found or deleted for ID: " + request.getReferencedItemId() + " - " + e.getMessage());
+                    // Continue with referencedItem as null instead of returning error
+                    referencedItem = null;
                 }
             }
             

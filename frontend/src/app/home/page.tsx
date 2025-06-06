@@ -135,12 +135,13 @@ export default function Home() {
   // Handle sending message text (for now just show alert, later integrate with backend)
   const handleSendMessageText = async (userId: number, userName: string, message: string, postId?: number) => {
     try {
-      await messageApi.sendMessage({
-        receiverId: userId,
-        messageText: message,
-        imageBase64List: [],
-        referencedItemId: postId
-      });
+      await messageApi.sendMessage(
+        userId,
+        message,
+        undefined, // images
+        postId, // referencedItemId
+        undefined // replyToMessageId
+      );
       showNotification('success', `Message sent to ${userName}`);
       // İsteğe bağlı: mesajlar sayfasına yönlendir
       // router.push(`/messages?startWith=${userId}`);
@@ -497,7 +498,7 @@ export default function Home() {
 
   // Handle highlightItem URL parameter
   useEffect(() => {
-    const highlightItemParam = searchParams.get('highlightItem');
+    const highlightItemParam = searchParams?.get('highlightItem');
     if (highlightItemParam) {
       const itemId = parseInt(highlightItemParam);
       setHighlightedItemId(itemId);
