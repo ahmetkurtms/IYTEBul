@@ -28,7 +28,7 @@ export default function Navbar() {
         const token = localStorage.getItem('token');
         if (!token) return;
 
-        const response = await fetch('http://localhost:8080/api/v1/admin/users', {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/users`, {
           headers: {
             'Authorization': `Bearer ${token}`,
           },
@@ -52,7 +52,7 @@ export default function Navbar() {
         const token = localStorage.getItem('token');
         if (!token) return;
 
-        const response = await fetch('http://localhost:8080/api/v1/users/profile', {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/users/profile`, {
           headers: {
             'Authorization': `Bearer ${token}`,
           },

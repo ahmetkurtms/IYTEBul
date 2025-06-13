@@ -22,7 +22,7 @@ export default function ForgotPassword() {
     }
     setStatus('Sending verification code...');
     try {
-      const response = await fetch('http://localhost:8080/auth/forgot-password', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/forgot-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
@@ -51,7 +51,7 @@ export default function ForgotPassword() {
     }
     setStatus('Checking code...');
     try {
-      const response = await fetch('http://localhost:8080/auth/reset-password', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/reset-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, code, newPassword: '' }),
@@ -85,7 +85,7 @@ export default function ForgotPassword() {
     }
     setStatus('Resetting password...');
     try {
-      const response = await fetch('http://localhost:8080/auth/reset-password', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/reset-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, code, newPassword }),

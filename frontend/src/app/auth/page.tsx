@@ -58,7 +58,7 @@ export default function Auth() {
   const handleSubmit = async (values: any, { setSubmitting, setStatus }: any) => {
     try {
       const endpoint = isLogin ? '/auth/login' : '/auth/pre-register';
-      const baseUrl = 'http://localhost:8080';
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
       let requestBody;
       if (isLogin) {
@@ -151,7 +151,7 @@ export default function Auth() {
           
           // Admin kontrolü yap
           try {
-            const adminCheckResponse = await fetch('http://localhost:8080/api/v1/admin/users', {
+            const adminCheckResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/users`, {
               headers: {
                 'Authorization': `Bearer ${token}`,
               },

@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://localhost:8080/api/messages';
+const API_BASE_URL = `${process.env.NEXT_PUBLIC_API_URL}/api/messages`;
 
 // Utility function to convert File to base64
 const convertFileToBase64 = (file: File): Promise<string> => {
@@ -106,7 +106,7 @@ export const messageApi = {
     console.log('Calling getCurrentUser API...');
     
     try {
-      const response = await fetch('http://localhost:8080/api/v1/users/profile', {
+      const response = await fetch(process.env.NEXT_PUBLIC_API_URL + '/api/v1/users/profile', {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -144,7 +144,7 @@ export const messageApi = {
     console.log('Calling getUserById API for user:', userId);
     
     try {
-      const response = await fetch(`http://localhost:8080/api/users/${userId}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/users/${userId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -182,7 +182,7 @@ export const messageApi = {
     console.log('Calling getConversations API...');
     
     try {
-      const response = await fetch(`${API_BASE_URL}/conversations`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/messages/conversations`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -214,7 +214,7 @@ export const messageApi = {
     console.log('Calling getMessagesWithUser API for user:', userId);
     
     try {
-      const response = await fetch(`${API_BASE_URL}/conversation/${userId}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/messages/conversation/${userId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -250,7 +250,7 @@ export const messageApi = {
         }
       }
 
-      const response = await fetch(`${API_BASE_URL}/send`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/messages/send`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -288,7 +288,7 @@ export const messageApi = {
     console.log('Calling startConversation API:', { userId, messageText });
     
     try {
-      const response = await fetch(`${API_BASE_URL}/start-conversation/${userId}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/messages/start-conversation/${userId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -356,7 +356,7 @@ export const messageApi = {
     console.log('Calling deleteMessage API for message:', messageId);
     
     try {
-      const response = await fetch(`${API_BASE_URL}/${messageId}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/messages/${messageId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -446,7 +446,7 @@ export const messageApi = {
     console.log('Calling blockUser API for user:', userId);
     
     try {
-      const response = await fetch(`http://localhost:8080/api/v1/users/block/${userId}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/users/block/${userId}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -476,7 +476,7 @@ export const messageApi = {
     console.log('Calling unblockUser API for user:', userId);
     
     try {
-      const response = await fetch(`http://localhost:8080/api/v1/users/unblock/${userId}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/users/unblock/${userId}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -506,7 +506,7 @@ export const messageApi = {
     console.log('Calling isUserBlocked API for user:', userId);
     
     try {
-      const response = await fetch(`http://localhost:8080/api/v1/users/is-blocked/${userId}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/users/is-blocked/${userId}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -537,7 +537,7 @@ export const messageApi = {
     console.log('Calling amIBlockedByUser API for user:', userId);
     
     try {
-      const response = await fetch(`http://localhost:8080/api/v1/users/am-i-blocked-by/${userId}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/users/am-i-blocked-by/${userId}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -568,7 +568,7 @@ export const messageApi = {
     console.log('Calling getBlockedUsers API');
     
     try {
-      const response = await fetch(`http://localhost:8080/api/v1/users/blocked-users`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/users/blocked-users`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,

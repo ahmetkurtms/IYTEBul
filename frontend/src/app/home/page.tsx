@@ -182,7 +182,7 @@ export default function Home() {
 
       console.log('Submitting report for post:', reportPostId, 'with reason:', reportReason);
 
-      const response = await fetch('http://localhost:8080/api/v1/reports', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/reports`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -322,7 +322,7 @@ export default function Home() {
       }
 
       // Backend'den fresh user bilgisi çek
-      const response = await fetch('http://localhost:8080/api/v1/users/profile', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/users/profile`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -379,7 +379,7 @@ export default function Home() {
           return;
         }
 
-        const response = await fetch('http://localhost:8080/api/v1/admin/users', {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/users`, {
           headers: {
             'Authorization': `Bearer ${token}`,
           },
@@ -417,7 +417,7 @@ export default function Home() {
         if (dateEnd.trim()) params.append('dateEnd', dateEnd.trim());
         
         const response = await fetch(
-          `http://localhost:8080/api/v1/posts?${params.toString()}`,
+          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/posts?${params.toString()}`,
           {
             headers: {
               'Authorization': `Bearer ${token}`,
@@ -460,7 +460,7 @@ export default function Home() {
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) return;
-    fetch('http://localhost:8080/api/v1/locations', {
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/locations`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
       .then(res => res.json())

@@ -118,7 +118,7 @@ export default function Messages() {
         }
 
         // Fresh user bilgisini çek ve ban kontrolü yap
-        const profileResponse = await fetch('http://localhost:8080/api/v1/users/profile', {
+        const profileResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/users/profile`, {
           headers: {
             'Authorization': `Bearer ${token}`,
           },
@@ -151,7 +151,7 @@ export default function Messages() {
         }
 
         // Admin kontrolü yap
-        const response = await fetch('http://localhost:8080/api/v1/admin/users', {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/users`, {
           headers: {
             'Authorization': `Bearer ${token}`,
           },
@@ -1822,7 +1822,7 @@ export default function Messages() {
                     try {
                       const token = localStorage.getItem('token');
                       if (!token) throw new Error('Not authenticated');
-                      const response = await fetch('http://localhost:8080/api/v1/user-reports', {
+                      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/user-reports`, {
                         method: 'POST',
                         headers: {
                           'Content-Type': 'application/json',

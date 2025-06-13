@@ -29,7 +29,7 @@ export default function VerifyRegistration() {
     }
     setStatus('Sending verification code...');
     try {
-      const response = await fetch('http://localhost:8080/auth/pre-register', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/pre-register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ uniMail: email }),
@@ -58,7 +58,7 @@ export default function VerifyRegistration() {
     }
     setStatus('Verifying...');
     try {
-      const response = await fetch('http://localhost:8080/auth/verify', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, code }),
@@ -79,7 +79,7 @@ export default function VerifyRegistration() {
     console.log("Send Again tıklandı, email:", email);
     setStatus('Resending code...');
     try {
-      const response = await fetch('http://localhost:8080/auth/resend-verification', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/resend-verification`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),

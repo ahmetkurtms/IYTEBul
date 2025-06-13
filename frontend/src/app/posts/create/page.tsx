@@ -53,7 +53,7 @@ export default function CreatePost() {
     const checkAdminStatus = async () => {
       try {
         // Fresh user bilgisini çek ve ban kontrolü yap
-        const profileResponse = await fetch('http://localhost:8080/api/v1/users/profile', {
+        const profileResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/users/profile`, {
           headers: {
             'Authorization': `Bearer ${token}`,
           },
@@ -86,7 +86,7 @@ export default function CreatePost() {
         }
 
         // Admin kontrolü yap
-        const response = await fetch('http://localhost:8080/api/v1/admin/users', {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/users`, {
           headers: {
             'Authorization': `Bearer ${token}`,
           },
@@ -108,10 +108,10 @@ export default function CreatePost() {
     const fetchData = async () => {
       try {
         const [categoriesRes, locationsRes] = await Promise.all([
-          fetch('http://localhost:8080/api/v1/categories', {
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/categories`, {
             headers: { 'Authorization': `Bearer ${token}` }
           }),
-          fetch('http://localhost:8080/api/v1/locations', {
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/locations`, {
             headers: { 'Authorization': `Bearer ${token}` }
           })
         ]);
@@ -253,7 +253,7 @@ export default function CreatePost() {
         image: imageBase64
       };
 
-      const response = await fetch('http://localhost:8080/api/v1/posts', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/posts`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

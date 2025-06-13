@@ -75,7 +75,7 @@ export default function ProfilePage() {
         }
 
         // Profil bilgisini çek ve ban kontrolü yap
-        const profileResponse = await fetch('http://localhost:8080/api/v1/users/profile', {
+        const profileResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/users/profile`, {
           headers: {
             'Authorization': `Bearer ${token}`,
           },
@@ -108,7 +108,7 @@ export default function ProfilePage() {
         }
 
         // Admin kontrolü yap
-        const response = await fetch('http://localhost:8080/api/v1/admin/users', {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/users`, {
           headers: {
             'Authorization': `Bearer ${token}`,
           },
@@ -135,7 +135,7 @@ export default function ProfilePage() {
         return
       }
 
-      const response = await fetch("http://localhost:8080/api/v1/users/profile", {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/users/profile`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -171,7 +171,7 @@ export default function ProfilePage() {
         return
       }
 
-      const response = await fetch(`http://localhost:8080/api/v1/items/user/id/${profile.id}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/items/user/id/${profile.id}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -215,7 +215,7 @@ export default function ProfilePage() {
         return
       }
 
-      const response = await fetch(`http://localhost:8080/api/v1/items/${postId}/user/${profile.id}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/items/${postId}/user/${profile.id}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -337,7 +337,7 @@ export default function ProfilePage() {
         updateData.studentId = editedProfile.studentId
       }
 
-      const response = await fetch("http://localhost:8080/api/v1/users/profile", {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/users/profile`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -387,7 +387,7 @@ export default function ProfilePage() {
 
       const newValue = !profile.emailNotifications
       
-      const response = await fetch("http://localhost:8080/api/v1/users/profile/email-notifications", {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/users/profile/email-notifications`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -431,7 +431,7 @@ export default function ProfilePage() {
 
       const newValue = !profile.postNotifications
       
-      const response = await fetch("http://localhost:8080/api/v1/users/profile/post-notifications", {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/users/profile/post-notifications`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -496,7 +496,7 @@ export default function ProfilePage() {
       const formData = new FormData()
       formData.append('profilePhoto', file)
 
-      const response = await fetch("http://localhost:8080/api/v1/users/profile/photo", {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/users/profile/photo`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
