@@ -146,7 +146,12 @@ export default function Home() {
       // İsteğe bağlı: mesajlar sayfasına yönlendir
       // router.push(`/messages?startWith=${userId}`);
     } catch (error) {
-      showNotification('error', 'Failed to send message');
+      console.error('Error sending message from home:', error);
+      if (error instanceof Error && error.message.includes('blocked')) {
+        showNotification('error', 'Cannot send message - you or the other user may have blocked each other');
+      } else {
+        showNotification('error', 'Failed to send message');
+      }
     }
   };
 

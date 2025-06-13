@@ -59,6 +59,27 @@ public class User {
 
     // Email notification preference (default true)
     private Boolean emailNotifications = true;
+    
+    // Post interaction notification preference (default true)
+    private Boolean postNotifications = true;
+
+    // Blocked users relationship - users that this user has blocked
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+        name = "user_blocks",
+        joinColumns = @JoinColumn(name = "blocker_id"),
+        inverseJoinColumns = @JoinColumn(name = "blocked_id")
+    )
+    private java.util.Set<User> blockedUsers = new java.util.HashSet<>();
+
+    // Getter and setter for blocked users
+    public java.util.Set<User> getBlockedUsers() {
+        return blockedUsers;
+    }
+
+    public void setBlockedUsers(java.util.Set<User> blockedUsers) {
+        this.blockedUsers = blockedUsers;
+    }
 
     // Helper method to check if user is currently banned
     public boolean isCurrentlyBanned() {

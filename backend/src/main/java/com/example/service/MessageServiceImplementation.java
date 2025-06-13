@@ -1,13 +1,15 @@
 package com.example.service;
 
-import com.example.models.DeletedMessages;
 import com.example.models.Messages;
 import com.example.models.User;
 import com.example.models.Item;
 import com.example.models.MessageImage;
-import com.example.repository.DeletedMessagesRepository;
+import com.example.models.UserReport;
 import com.example.repository.MessageRepository;
 import com.example.repository.MessageImageRepository;
+import com.example.repository.UserReportRepository;
+import com.example.service.EmailService;
+import com.example.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,10 +27,16 @@ public class MessageServiceImplementation implements MessageService {
     private MessageRepository messageRepository;
     
     @Autowired
-    private DeletedMessagesRepository deletedMessagesRepository;
+    private MessageImageRepository messageImageRepository;
     
     @Autowired
-    private MessageImageRepository messageImageRepository;
+    private UserReportRepository userReportRepository;
+    
+    @Autowired
+    private EmailService emailService;
+    
+    @Autowired
+    private UserService userService;
     
     @Override
     public Messages sendMessage(User sender, User receiver, String messageText) {
@@ -42,6 +50,35 @@ public class MessageServiceImplementation implements MessageService {
     
     @Override
     public Messages sendMessage(User sender, User receiver, String messageText, Item referencedItem, Messages replyToMessage) {
+        // Check if either user has blocked the other
+        try {
+            System.out.println("=== BLOCK CHECK DEBUG ===");
+            System.out.println("Sender ID: " + sender.getUser_id() + " (" + sender.getNickname() + ")");
+            System.out.println("Receiver ID: " + receiver.getUser_id() + " (" + receiver.getNickname() + ")");
+            
+            boolean senderBlockedReceiver = userService.isUserBlocked(sender.getUser_id(), receiver.getUser_id());
+            boolean receiverBlockedSender = userService.isUserBlocked(receiver.getUser_id(), sender.getUser_id());
+            
+            System.out.println("Sender blocked receiver: " + senderBlockedReceiver);
+            System.out.println("Receiver blocked sender: " + receiverBlockedSender);
+            
+            if (senderBlockedReceiver || receiverBlockedSender) {
+                System.out.println("BLOCKING MESSAGE - users have blocked each other");
+                throw new RuntimeException("Cannot send message - users have blocked each other");
+            }
+            
+            System.out.println("Block check passed - allowing message");
+        } catch (RuntimeException e) {
+            if (e.getMessage().contains("Cannot send message")) {
+                throw e; // Re-throw block exceptions
+            }
+            System.err.println("Error checking block status: " + e.getMessage());
+            // Continue with message sending if block check fails
+        } catch (Exception e) {
+            System.err.println("Error checking block status: " + e.getMessage());
+            // Continue with message sending if block check fails
+        }
+        
         Messages message = new Messages();
         message.setSender(sender);
         message.setReceiver(receiver);
@@ -50,7 +87,37 @@ public class MessageServiceImplementation implements MessageService {
         message.setReferencedItem(referencedItem);
         message.setReplyToMessage(replyToMessage);
         
-        return messageRepository.save(message);
+        Messages savedMessage = messageRepository.save(message);
+        
+        // Send email notification if this is about a post and receiver has notifications enabled
+        System.out.println("=== EMAIL NOTIFICATION DEBUG ===");
+        System.out.println("referencedItem: " + (referencedItem != null ? referencedItem.getTitle() : "null"));
+        System.out.println("receiver.getPostNotifications(): " + (receiver.getPostNotifications()));
+        System.out.println("receiver.getUniMail(): " + receiver.getUniMail());
+        System.out.println("sender.getNickname(): " + sender.getNickname());
+        
+        if (referencedItem != null && receiver.getPostNotifications() != null && receiver.getPostNotifications()) {
+            try {
+                System.out.println("Attempting to send post message notification email...");
+                emailService.sendPostMessageNotification(
+                    receiver.getUniMail(), 
+                    sender.getNickname(), 
+                    referencedItem.getTitle(), 
+                    messageText
+                );
+                System.out.println("✅ Post message notification email sent successfully to: " + receiver.getUniMail());
+            } catch (Exception e) {
+                System.err.println("❌ Failed to send post message notification email: " + e.getMessage());
+                e.printStackTrace();
+                // Don't fail the message sending if email fails
+            }
+        } else {
+            System.out.println("❌ Email notification not sent. Reasons:");
+            if (referencedItem == null) System.out.println("  - No referenced item (not about a post)");
+            if (receiver.getPostNotifications() == null || !receiver.getPostNotifications()) System.out.println("  - User has post notifications disabled");
+        }
+        
+        return savedMessage;
     }
     
     @Override
@@ -60,7 +127,8 @@ public class MessageServiceImplementation implements MessageService {
     
     @Override
     public List<Messages> getMessagesBetweenUsersExcludingDeleted(User user1, User user2, User currentUser) {
-        return messageRepository.findMessagesBetweenUsersExcludingDeleted(user1, user2, currentUser);
+        // Use the new method that considers the new delete flags
+        return messageRepository.findMessagesBetweenUsersExcludingDeletedForUser(user1, user2, currentUser);
     }
     
     @Override
@@ -96,6 +164,8 @@ public class MessageServiceImplementation implements MessageService {
                     System.out.println("WARNING: Could not determine other user ID for message: " + message.getMessageId());
                     continue;
                 }
+                
+                // Block kontrolü kaldırıldı - mesajlar görünmeli, sadece yeni mesaj atılamamalı
                 
                 if (!latestMessagesMap.containsKey(otherUserId) || 
                     (message.getSentAt() != null && latestMessagesMap.get(otherUserId).getSentAt() != null &&
@@ -140,12 +210,27 @@ public class MessageServiceImplementation implements MessageService {
         // Get all messages between the two users
         List<Messages> messages = messageRepository.findMessagesBetweenUsers(currentUser, otherUser);
         
-        // Mark each message as deleted for the current user (soft delete)
+        // Mark each message as deleted for the current user using new flag system
         for (Messages message : messages) {
-            // Check if this message is already marked as deleted for this user
-            if (!deletedMessagesRepository.isMessageDeletedForUser(message, currentUser)) {
-                DeletedMessages deletedMessage = new DeletedMessages(message, currentUser);
-                deletedMessagesRepository.save(deletedMessage);
+            boolean isAlreadyDeleted = false;
+            
+            // Check if current user is sender or receiver and if already deleted
+            if (message.getSender().getUser_id().equals(currentUser.getUser_id())) {
+                isAlreadyDeleted = message.getDeletedForSender();
+                if (!isAlreadyDeleted) {
+                    message.setDeletedForSender(true);
+                    message.setDeletedAt(java.time.LocalDateTime.now());
+                }
+            } else if (message.getReceiver().getUser_id().equals(currentUser.getUser_id())) {
+                isAlreadyDeleted = message.getDeletedForReceiver();
+                if (!isAlreadyDeleted) {
+                    message.setDeletedForReceiver(true);
+                    message.setDeletedAt(java.time.LocalDateTime.now());
+                }
+            }
+            
+            if (!isAlreadyDeleted) {
+                messageRepository.save(message);
             }
         }
     }
@@ -153,6 +238,13 @@ public class MessageServiceImplementation implements MessageService {
     @Override
     @Transactional
     public void deleteMessage(Long messageId, User currentUser) {
+        // Keep the existing implementation for backward compatibility
+        deleteMessageForEveryone(messageId, currentUser);
+    }
+    
+    @Override
+    @Transactional
+    public void deleteMessageForSelf(Long messageId, User currentUser) {
         try {
             Messages message = messageRepository.findById(messageId).orElse(null);
             if (message == null) {
@@ -167,54 +259,139 @@ public class MessageServiceImplementation implements MessageService {
                 return;
             }
             
-            System.out.println("Deleting message ID: " + messageId + " by user: " + currentUser.getName());
+            System.out.println("Deleting message for self ID: " + messageId + " by user: " + currentUser.getName());
+            
+            // Mark message as deleted for current user
+            if (message.getSender().getUser_id().equals(currentUser.getUser_id())) {
+                message.setDeletedForSender(true);
+            } else {
+                message.setDeletedForReceiver(true);
+            }
+            message.setDeletedAt(java.time.LocalDateTime.now());
+            
+            messageRepository.save(message);
+            
+            // Also delete replies for this user
+            deleteRepliesForSelf(messageId, currentUser);
+            
+            System.out.println("Message deleted for self successfully");
+            
+        } catch (Exception e) {
+            System.out.println("Error deleting message for self: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("Error deleting message for self: " + e.getMessage());
+        }
+    }
+    
+    @Override
+    @Transactional
+    public void deleteMessageForEveryone(Long messageId, User currentUser) {
+        try {
+            Messages message = messageRepository.findById(messageId).orElse(null);
+            if (message == null) {
+                System.out.println("Message not found for ID: " + messageId);
+                return;
+            }
+            
+            // Check if current user is the sender (only sender can delete for everyone)
+            if (!message.getSender().getUser_id().equals(currentUser.getUser_id())) {
+                System.out.println("Only sender can delete message for everyone");
+                return;
+            }
+            
+            System.out.println("Deleting message for everyone ID: " + messageId + " by user: " + currentUser.getName());
             
             // Recursive function to delete all replies to this message
             deleteMessageWithReplies(messageId);
             
-            System.out.println("Message and all replies deleted successfully");
+            System.out.println("Message and all replies deleted for everyone successfully");
             
         } catch (Exception e) {
-            System.out.println("Error deleting message: " + e.getMessage());
+            System.out.println("Error deleting message for everyone: " + e.getMessage());
             e.printStackTrace();
-            throw new RuntimeException("Error deleting message: " + e.getMessage());
+            throw new RuntimeException("Error deleting message for everyone: " + e.getMessage());
         }
     }
     
+    private void deleteRepliesForSelf(Long messageId, User currentUser) {
+        try {
+            // Find all replies to this message
+            List<Messages> replies = messageRepository.findRepliesByMessageId(messageId);
+            
+            // Mark all replies as deleted for current user
+            for (Messages reply : replies) {
+                if (reply.getSender().getUser_id().equals(currentUser.getUser_id())) {
+                    reply.setDeletedForSender(true);
+                } else {
+                    reply.setDeletedForReceiver(true);
+                }
+                reply.setDeletedAt(java.time.LocalDateTime.now());
+                messageRepository.save(reply);
+                
+                // Recursively delete nested replies
+                deleteRepliesForSelf(reply.getMessageId(), currentUser);
+            }
+            
+        } catch (Exception e) {
+            System.out.println("Error in deleteRepliesForSelf for message ID " + messageId + ": " + e.getMessage());
+            throw e;
+        }
+    }
+
     private void deleteMessageWithReplies(Long messageId) {
         try {
             // Find all replies to this message
             List<Messages> replies = messageRepository.findRepliesByMessageId(messageId);
             
-            // Recursively delete all replies first
+            // Recursively soft-delete all replies first
             for (Messages reply : replies) {
                 deleteMessageWithReplies(reply.getMessageId());
             }
             
-            // Now delete the original message
+            // Now handle the original message
             Messages message = messageRepository.findById(messageId).orElse(null);
             if (message != null) {
-                // Delete any related message images
-                List<MessageImage> images = messageImageRepository.findByMessage(message);
-                for (MessageImage img : images) {
-                    messageImageRepository.delete(img);
+                // Check if this message is reported - if so, use soft delete
+                boolean isReported = isMessageReported(messageId);
+                
+                if (isReported) {
+                    System.out.println("Message " + messageId + " is reported - using soft delete for admin visibility");
+                    // Soft delete: Mark as deleted completely but keep in database
+                    message.setIsDeletedCompletely(true);
+                    message.setDeletedForSender(true);
+                    message.setDeletedForReceiver(true);
+                    message.setDeletedAt(java.time.LocalDateTime.now());
+                    messageRepository.save(message);
+                } else {
+                    System.out.println("Message " + messageId + " is not reported - using hard delete");
+                    // Delete any related message images
+                    List<MessageImage> images = messageImageRepository.findByMessage(message);
+                    for (MessageImage img : images) {
+                        messageImageRepository.delete(img);
+                    }
+                    
+                    // Hard delete the message
+                    messageRepository.delete(message);
                 }
                 
-                // Delete from deleted_messages table if exists
-                List<DeletedMessages> deletedRecords = deletedMessagesRepository.findByMessage(message);
-                for (DeletedMessages deleted : deletedRecords) {
-                    deletedMessagesRepository.delete(deleted);
-                }
-                
-                // Hard delete the message
-                messageRepository.delete(message);
-                
-                System.out.println("Deleted message ID: " + messageId);
+                System.out.println("Processed message ID: " + messageId + " (reported: " + isReported + ")");
             }
             
         } catch (Exception e) {
             System.out.println("Error in deleteMessageWithReplies for message ID " + messageId + ": " + e.getMessage());
             throw e;
+        }
+    }
+    
+    private boolean isMessageReported(Long messageId) {
+        try {
+            // Use the efficient repository method to check if message is reported
+            boolean isReported = userReportRepository.existsByReportedMessageId(messageId);
+            System.out.println("Message " + messageId + " reported status: " + isReported);
+            return isReported;
+        } catch (Exception e) {
+            System.out.println("Error checking if message is reported: " + e.getMessage());
+            return false;
         }
     }
 } 

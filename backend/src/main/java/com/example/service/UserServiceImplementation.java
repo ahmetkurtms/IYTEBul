@@ -160,6 +160,9 @@ public class UserServiceImplementation implements UserService {
         // Add email notification preference
         response.setEmailNotifications(user.getEmailNotifications());
         
+        // Add post notification preference
+        response.setPostNotifications(user.getPostNotifications());
+        
         return response;
     }
 
@@ -183,10 +186,49 @@ public class UserServiceImplementation implements UserService {
         if (request.getEmailNotifications() != null) {
             user.setEmailNotifications(request.getEmailNotifications());
         }
+        if (request.getPostNotifications() != null) {
+            user.setPostNotifications(request.getPostNotifications());
+        }
         
         User updatedUser = userRepository.save(user);
         
         // Return updated profile
         return getUserProfile(jwt);
+    }
+
+    @Override
+    public void blockUser(String jwt, Long userIdToBlock) throws Exception {
+        User blocker = findUserByJwt(jwt);
+        User userToBlock = findUserById(userIdToBlock);
+        
+        if (blocker.getUser_id().equals(userIdToBlock)) {
+            throw new Exception("You cannot block yourself");
+        }
+        
+        // Add to blocked users set
+        blocker.getBlockedUsers().add(userToBlock);
+        userRepository.save(blocker);
+        
+        System.out.println("User " + blocker.getNickname() + " blocked user " + userToBlock.getNickname());
+    }
+
+    @Override
+    public void unblockUser(String jwt, Long userIdToUnblock) throws Exception {
+        User blocker = findUserByJwt(jwt);
+        User userToUnblock = findUserById(userIdToUnblock);
+        
+        // Remove from blocked users set
+        blocker.getBlockedUsers().remove(userToUnblock);
+        userRepository.save(blocker);
+        
+        System.out.println("User " + blocker.getNickname() + " unblocked user " + userToUnblock.getNickname());
+    }
+
+    @Override
+    public boolean isUserBlocked(Long blockerId, Long blockedId) throws Exception {
+        User blocker = findUserById(blockerId);
+        User blocked = findUserById(blockedId);
+        
+        return blocker.getBlockedUsers().contains(blocked);
     }
 }

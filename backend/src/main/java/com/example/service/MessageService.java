@@ -46,4 +46,10 @@ public interface MessageService {
     
     // Delete a specific message by ID (hard delete - removes from both sides)
     void deleteMessage(Long messageId, User currentUser);
+    
+    // Delete message for current user only (soft delete)
+    void deleteMessageForSelf(Long messageId, User currentUser);
+    
+    // Delete message for everyone (hard delete)
+    void deleteMessageForEveryone(Long messageId, User currentUser);
 } 

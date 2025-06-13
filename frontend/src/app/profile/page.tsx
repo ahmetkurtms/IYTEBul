@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import Navbar from "@/components/ui/Navbar"
+import { messageApi } from "@/lib/messageApi"
 import { FaCamera, FaMapMarkerAlt, FaCalendarAlt, FaPhone, FaEnvelope, FaEdit, FaCheck, FaTimes, FaTrash, FaEye, FaIdCard } from "react-icons/fa"
 
 
@@ -20,6 +21,14 @@ interface UserProfile {
   bio?: string
   nickname?: string
   emailNotifications?: boolean
+  postNotifications?: boolean
+}
+
+interface BlockedUser {
+  id: number
+  nickname: string
+  name: string
+  profilePhotoUrl?: string
 }
 
 interface UserPost {
@@ -49,6 +58,9 @@ export default function ProfilePage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [postToDelete, setPostToDelete] = useState<UserPost | null>(null)
   const [updatingNotifications, setUpdatingNotifications] = useState(false)
+  const [blockedUsers, setBlockedUsers] = useState<BlockedUser[]>([])
+  const [loadingBlockedUsers, setLoadingBlockedUsers] = useState(false)
+  const [unblockingUserId, setUnblockingUserId] = useState<number | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
 
@@ -263,9 +275,41 @@ export default function ProfilePage() {
     fetchProfile()
   }, [router])
 
+  // Fetch blocked users
+  const fetchBlockedUsers = async () => {
+    setLoadingBlockedUsers(true)
+    try {
+      const blockedUsersData = await messageApi.getBlockedUsers()
+      setBlockedUsers(blockedUsersData)
+    } catch (error) {
+      console.error("Error fetching blocked users:", error)
+    } finally {
+      setLoadingBlockedUsers(false)
+    }
+  }
+
+  // Handle unblocking a user
+  const handleUnblockUser = async (userId: number, userNickname: string) => {
+    setUnblockingUserId(userId)
+    try {
+      await messageApi.unblockUser(userId)
+      // Remove user from blocked users list
+      setBlockedUsers(prevUsers => prevUsers.filter(user => user.id !== userId))
+      // Show success message (you can add a toast notification here)
+      console.log(`Successfully unblocked ${userNickname}`)
+    } catch (error) {
+      console.error("Error unblocking user:", error)
+      // Show error message (you can add a toast notification here)
+    } finally {
+      setUnblockingUserId(null)
+    }
+  }
+
   useEffect(() => {
     if (profile?.id && activeTab === "posts") {
       fetchUserPosts()
+    } else if (activeTab === "settings") {
+      fetchBlockedUsers()
     }
   }, [profile?.id, activeTab])
 
@@ -367,6 +411,50 @@ export default function ProfilePage() {
     } catch (error) {
       console.error("Email notification ayarı güncellenirken hata:", error)
       setError(error instanceof Error ? error.message : "Email notification ayarı güncellenirken bir hata oluştu")
+    } finally {
+      setUpdatingNotifications(false)
+    }
+  }
+
+  const handlePostNotificationToggle = async () => {
+    if (!profile) return
+
+    setUpdatingNotifications(true)
+    setError("")
+
+    try {
+      const token = localStorage.getItem("token")
+      if (!token) {
+        router.push("/auth")
+        return
+      }
+
+      const newValue = !profile.postNotifications
+      
+      const response = await fetch("http://localhost:8080/api/v1/users/profile/post-notifications", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ postNotifications: newValue }),
+      })
+
+      if (response.ok) {
+        const updatedProfile = { ...profile, postNotifications: newValue }
+        setProfile(updatedProfile)
+        setEditedProfile(updatedProfile)
+        console.log("Post notifications updated successfully")
+      } else if (response.status === 401) {
+        localStorage.removeItem("token")
+        router.push("/auth")
+      } else {
+        throw new Error(`Failed to update post notifications: ${response.status}`)
+      }
+
+    } catch (error) {
+      console.error("Post notification ayarı güncellenirken hata:", error)
+      setError(error instanceof Error ? error.message : "Post notification ayarı güncellenirken bir hata oluştu")
     } finally {
       setUpdatingNotifications(false)
     }
@@ -993,6 +1081,89 @@ export default function ProfilePage() {
                         )}
                       </label>
                     </div>
+
+                    {/* Post Notifications */}
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-900">Post Message Notifications</h4>
+                        <p className="text-sm text-gray-500">Receive emails when someone sends a message about your posts</p>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          className="sr-only peer" 
+                          checked={profile?.postNotifications ?? true}
+                          onChange={handlePostNotificationToggle}
+                          disabled={updatingNotifications}
+                        />
+                        <div className={`w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[#9a0e20]/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#9a0e20] ${updatingNotifications ? 'opacity-50 cursor-not-allowed' : ''}`}></div>
+                        {updatingNotifications && (
+                          <div className="ml-2 w-4 h-4 border-2 border-[#9a0e20] border-t-transparent rounded-full animate-spin"></div>
+                        )}
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Blocked Users Section */}
+                  <div className="border-t border-gray-200 pt-6 mt-6">
+                    <div className="mb-4">
+                      <h3 className="text-lg font-semibold text-gray-900">Blocked Users</h3>
+                      <p className="text-sm text-gray-600 mt-1">Manage users you have blocked from messaging you</p>
+                    </div>
+
+                    {loadingBlockedUsers ? (
+                      <div className="flex justify-center items-center py-8">
+                        <div className="w-6 h-6 border-2 border-[#9a0e20] border-t-transparent rounded-full animate-spin"></div>
+                        <span className="ml-2 text-gray-600">Loading blocked users...</span>
+                      </div>
+                    ) : blockedUsers.length === 0 ? (
+                      <div className="text-center py-8 bg-gray-50 rounded-lg">
+                        <div className="w-16 h-16 mx-auto mb-4 bg-gray-200 rounded-full flex items-center justify-center">
+                          <FaTimes className="w-6 h-6 text-gray-400" />
+                        </div>
+                        <h4 className="text-lg font-medium text-gray-900 mb-2">No blocked users</h4>
+                        <p className="text-gray-600">You haven't blocked anyone yet.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {blockedUsers.map((blockedUser) => (
+                          <div key={blockedUser.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border">
+                            <div className="flex items-center space-x-3">
+                              <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center">
+                                <Image
+                                  src={blockedUser.profilePhotoUrl || "/assets/default_avatar.png"}
+                                  alt={blockedUser.nickname}
+                                  width={40}
+                                  height={40}
+                                  className="object-cover rounded-full"
+                                />
+                              </div>
+                              <div>
+                                <h4 className="font-medium text-gray-900">{blockedUser.nickname}</h4>
+                                <p className="text-sm text-gray-600">{blockedUser.name}</p>
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => handleUnblockUser(blockedUser.id, blockedUser.nickname)}
+                              disabled={unblockingUserId === blockedUser.id}
+                              className="px-4 py-2 bg-[#9a0e20] text-white rounded-lg hover:bg-[#7a0b19] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                            >
+                              {unblockingUserId === blockedUser.id ? (
+                                <>
+                                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                  <span>Unblocking...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <FaCheck className="w-4 h-4" />
+                                  <span>Unblock</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

@@ -13,4 +13,5 @@ public class UpdateProfileRequest {
     private String bio;
     private String studentId;
     private Boolean emailNotifications;
+    private Boolean postNotifications;
 } 

@@ -2,7 +2,6 @@ package com.example.repository;
 
 import com.example.models.Messages;
 import com.example.models.User;
-import com.example.models.DeletedMessages;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -15,7 +14,7 @@ import java.util.List;
 @Repository
 public interface MessageRepository extends JpaRepository<Messages, Long> {
     
-    // Get all messages between two users, ordered by sent time
+    // Get all messages between two users, ordered by sent time (including deleted ones)
     @Query("SELECT m FROM Messages m WHERE " +
            "(m.sender = :user1 AND m.receiver = :user2) OR " +
            "(m.sender = :user2 AND m.receiver = :user1) " +
@@ -26,7 +25,21 @@ public interface MessageRepository extends JpaRepository<Messages, Long> {
     @Query("SELECT m FROM Messages m WHERE " +
            "((m.sender = :user1 AND m.receiver = :user2) OR " +
            "(m.sender = :user2 AND m.receiver = :user1)) AND " +
-           "m.messageId NOT IN (SELECT dm.message.messageId FROM DeletedMessages dm WHERE dm.user = :currentUser) " +
+           "m.isDeletedCompletely = false AND " +
+           "NOT ((m.sender = :currentUser AND m.deletedForSender = true) OR " +
+           "(m.receiver = :currentUser AND m.deletedForReceiver = true)) " +
+           "ORDER BY m.sentAt ASC")
+    List<Messages> findMessagesBetweenUsersExcludingDeletedForUser(@Param("user1") User user1, 
+                                                                  @Param("user2") User user2, 
+                                                                  @Param("currentUser") User currentUser);
+    
+    // Get messages between two users excluding deleted ones for current user (legacy - use new method instead)
+    @Query("SELECT m FROM Messages m WHERE " +
+           "((m.sender = :user1 AND m.receiver = :user2) OR " +
+           "(m.sender = :user2 AND m.receiver = :user1)) AND " +
+           "m.isDeletedCompletely = false AND " +
+           "NOT ((m.sender = :currentUser AND m.deletedForSender = true) OR " +
+           "(m.receiver = :currentUser AND m.deletedForReceiver = true)) " +
            "ORDER BY m.sentAt ASC")
     List<Messages> findMessagesBetweenUsersExcludingDeleted(@Param("user1") User user1, 
                                                            @Param("user2") User user2, 
@@ -39,7 +52,9 @@ public interface MessageRepository extends JpaRepository<Messages, Long> {
     // Get conversations excluding deleted messages for current user
     @Query("SELECT m FROM Messages m WHERE " +
            "(m.sender = :user OR m.receiver = :user) AND " +
-           "m.messageId NOT IN (SELECT dm.message.messageId FROM DeletedMessages dm WHERE dm.user = :user) " +
+           "m.isDeletedCompletely = false AND " +
+           "NOT ((m.sender = :user AND m.deletedForSender = true) OR " +
+           "(m.receiver = :user AND m.deletedForReceiver = true)) " +
            "ORDER BY m.sentAt DESC")
     List<Messages> findLatestConversationsExcludingDeleted(@Param("user") User user);
     
@@ -50,7 +65,7 @@ public interface MessageRepository extends JpaRepository<Messages, Long> {
     // Count unread messages excluding deleted ones
     @Query("SELECT COUNT(m) FROM Messages m WHERE " +
            "m.receiver = :receiver AND m.sender = :sender AND m.isRead = false AND " +
-           "m.messageId NOT IN (SELECT dm.message.messageId FROM DeletedMessages dm WHERE dm.user = :receiver)")
+           "m.isDeletedCompletely = false AND m.deletedForReceiver = false")
     Long countUnreadMessagesExcludingDeleted(@Param("receiver") User receiver, @Param("sender") User sender);
     
     // Mark messages as read
@@ -72,4 +87,14 @@ public interface MessageRepository extends JpaRepository<Messages, Long> {
     // Find all messages that reply to a specific message
     @Query("SELECT m FROM Messages m WHERE m.replyToMessage.messageId = :messageId")
     List<Messages> findRepliesByMessageId(@Param("messageId") Long messageId);
+    
+    // Admin methods - show all messages including deleted ones
+    @Query("SELECT m FROM Messages m WHERE " +
+           "(m.sender = :user1 AND m.receiver = :user2) OR " +
+           "(m.sender = :user2 AND m.receiver = :user1) " +
+           "ORDER BY m.sentAt ASC")
+    List<Messages> findAllMessagesBetweenUsersForAdmin(@Param("user1") User user1, @Param("user2") User user2);
+    
+    @Query("SELECT m FROM Messages m WHERE m.isDeletedCompletely = true ORDER BY m.deletedAt DESC")
+    List<Messages> findAllDeletedMessages();
 } 

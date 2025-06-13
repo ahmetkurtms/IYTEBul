@@ -97,8 +97,18 @@ public class MessageController {
             }
             
             // Send the message
-            Messages message = messageService.sendMessage(sender, receiver, request.getMessageText(), referencedItem, replyToMessage);
-            System.out.println("Message sent successfully: " + message.getMessageId());
+            Messages message;
+            try {
+                message = messageService.sendMessage(sender, receiver, request.getMessageText(), referencedItem, replyToMessage);
+                System.out.println("Message sent successfully: " + message.getMessageId());
+            } catch (RuntimeException e) {
+                if (e.getMessage().contains("blocked")) {
+                    System.out.println("Message blocked due to user blocking: " + e.getMessage());
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(new ApiResponse("Cannot send message - user blocked", false));
+                }
+                throw e; // Re-throw if it's not a blocking issue
+            }
             // Save images if present
             if (request.getImageBase64List() != null) {
                 for (String base64 : request.getImageBase64List()) {
@@ -287,7 +297,17 @@ public class MessageController {
             }
             
             // Send the initial message
-            Messages message = messageService.sendMessage(sender, receiver, request.getMessageText());
+            Messages message;
+            try {
+                message = messageService.sendMessage(sender, receiver, request.getMessageText());
+            } catch (RuntimeException e) {
+                if (e.getMessage().contains("blocked")) {
+                    System.out.println("Conversation start blocked due to user blocking: " + e.getMessage());
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(new ApiResponse("Cannot start conversation - user blocked", false));
+                }
+                throw e; // Re-throw if it's not a blocking issue
+            }
             
             return ResponseEntity.ok(new ApiResponse("Conversation started successfully", true));
             
@@ -336,11 +356,71 @@ public class MessageController {
         }
     }
     
-    // Delete a specific message
+    // Delete a specific message for current user only (soft delete)
+    @DeleteMapping("/{messageId}/self")
+    public ResponseEntity<ApiResponse> deleteMessageForSelf(@PathVariable Long messageId) {
+        try {
+            System.out.println("=== DELETE MESSAGE FOR SELF REQUEST ===");
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            String currentUserEmail = authentication.getName();
+            User currentUser = userService.findUserByEmail(currentUserEmail);
+            
+            if (currentUser == null) {
+                System.out.println("Current user not found for email: " + currentUserEmail);
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ApiResponse("User not found", false));
+            }
+            
+            System.out.println("Deleting message for self ID: " + messageId + " by user: " + currentUser.getName());
+            
+            // Delete the message for current user only
+            messageService.deleteMessageForSelf(messageId, currentUser);
+            
+            return ResponseEntity.ok(new ApiResponse("Message deleted for you successfully", true));
+            
+        } catch (Exception e) {
+            System.out.println("Error in deleteMessageForSelf: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ApiResponse("Error deleting message for self: " + e.getMessage(), false));
+        }
+    }
+
+    // Delete a specific message for everyone (hard delete - only sender can do this)
+    @DeleteMapping("/{messageId}/everyone")
+    public ResponseEntity<ApiResponse> deleteMessageForEveryone(@PathVariable Long messageId) {
+        try {
+            System.out.println("=== DELETE MESSAGE FOR EVERYONE REQUEST ===");
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            String currentUserEmail = authentication.getName();
+            User currentUser = userService.findUserByEmail(currentUserEmail);
+            
+            if (currentUser == null) {
+                System.out.println("Current user not found for email: " + currentUserEmail);
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ApiResponse("User not found", false));
+            }
+            
+            System.out.println("Deleting message for everyone ID: " + messageId + " by user: " + currentUser.getName());
+            
+            // Delete the message for everyone
+            messageService.deleteMessageForEveryone(messageId, currentUser);
+            
+            return ResponseEntity.ok(new ApiResponse("Message deleted for everyone successfully", true));
+            
+        } catch (Exception e) {
+            System.out.println("Error in deleteMessageForEveryone: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ApiResponse("Error deleting message for everyone: " + e.getMessage(), false));
+        }
+    }
+
+    // Delete a specific message (backward compatibility - defaults to delete for everyone)
     @DeleteMapping("/{messageId}")
     public ResponseEntity<ApiResponse> deleteMessage(@PathVariable Long messageId) {
         try {
-            System.out.println("=== DELETE MESSAGE REQUEST ===");
+            System.out.println("=== DELETE MESSAGE REQUEST (LEGACY) ===");
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
             String currentUserEmail = authentication.getName();
             User currentUser = userService.findUserByEmail(currentUserEmail);
@@ -353,7 +433,7 @@ public class MessageController {
             
             System.out.println("Deleting message ID: " + messageId + " by user: " + currentUser.getName());
             
-            // Delete the message
+            // Delete the message (defaults to delete for everyone for backward compatibility)
             messageService.deleteMessage(messageId, currentUser);
             
             return ResponseEntity.ok(new ApiResponse("Message deleted successfully", true));

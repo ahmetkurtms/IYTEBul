@@ -14,6 +14,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -112,6 +113,21 @@ public class UserController {
         }
     }
 
+    @PutMapping("/api/v1/users/profile/post-notifications")
+    public ResponseEntity<UserProfileResponse> updatePostNotifications(
+            @RequestHeader("Authorization") String jwt,
+            @RequestBody Map<String, Boolean> request) {
+        try {
+            UpdateProfileRequest updateRequest = new UpdateProfileRequest();
+            updateRequest.setPostNotifications(request.get("postNotifications"));
+            
+            UserProfileResponse updatedProfile = userService.updateUserProfile(jwt, updateRequest);
+            return ResponseEntity.ok(updatedProfile);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
+        }
+    }
+
     @PostMapping("/api/v1/users/profile/photo")
     public ResponseEntity<UserProfileResponse> updateProfilePhoto(
             @RequestHeader("Authorization") String jwt,
@@ -169,6 +185,95 @@ public class UserController {
             System.err.println("Error updating profile photo: " + e.getMessage());
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
+    }
+
+    @PostMapping("/api/v1/users/block/{userId}")
+    public ResponseEntity<Map<String, String>> blockUser(
+            @RequestHeader("Authorization") String jwt,
+            @PathVariable Long userId) {
+        try {
+            userService.blockUser(jwt, userId);
+            Map<String, String> response = new HashMap<>();
+            response.put("message", "User blocked successfully");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, String> response = new HashMap<>();
+            response.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+        }
+    }
+
+    @PostMapping("/api/v1/users/unblock/{userId}")
+    public ResponseEntity<Map<String, String>> unblockUser(
+            @RequestHeader("Authorization") String jwt,
+            @PathVariable Long userId) {
+        try {
+            userService.unblockUser(jwt, userId);
+            Map<String, String> response = new HashMap<>();
+            response.put("message", "User unblocked successfully");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, String> response = new HashMap<>();
+            response.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+        }
+    }
+
+    @GetMapping("/api/v1/users/is-blocked/{userId}")
+    public ResponseEntity<Map<String, Boolean>> isUserBlocked(
+            @RequestHeader("Authorization") String jwt,
+            @PathVariable Long userId) {
+        try {
+            User currentUser = userService.findUserByJwt(jwt);
+            boolean isBlocked = userService.isUserBlocked(currentUser.getUser_id(), userId);
+            Map<String, Boolean> response = new HashMap<>();
+            response.put("isBlocked", isBlocked);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Boolean> response = new HashMap<>();
+            response.put("isBlocked", false);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+        }
+    }
+
+    @GetMapping("/api/v1/users/am-i-blocked-by/{userId}")
+    public ResponseEntity<Map<String, Boolean>> amIBlockedByUser(
+            @RequestHeader("Authorization") String jwt,
+            @PathVariable Long userId) {
+        try {
+            User currentUser = userService.findUserByJwt(jwt);
+            // Check if the other user has blocked me (reverse check)
+            boolean isBlocked = userService.isUserBlocked(userId, currentUser.getUser_id());
+            Map<String, Boolean> response = new HashMap<>();
+            response.put("isBlocked", isBlocked);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Boolean> response = new HashMap<>();
+            response.put("isBlocked", false);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+        }
+    }
+
+    @GetMapping("/api/v1/users/blocked-users")
+    public ResponseEntity<List<Map<String, Object>>> getBlockedUsers(
+            @RequestHeader("Authorization") String jwt) {
+        try {
+            User currentUser = userService.findUserByJwt(jwt);
+            List<Map<String, Object>> blockedUsers = new ArrayList<>();
+            
+            for (User blockedUser : currentUser.getBlockedUsers()) {
+                Map<String, Object> userInfo = new HashMap<>();
+                userInfo.put("id", blockedUser.getUser_id());
+                userInfo.put("nickname", blockedUser.getNickname());
+                userInfo.put("name", blockedUser.getName() + " " + blockedUser.getSurname());
+                userInfo.put("profilePhotoUrl", blockedUser.getProfilePhotoUrl());
+                blockedUsers.add(userInfo);
+            }
+            
+            return ResponseEntity.ok(blockedUsers);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ArrayList<>());
         }
     }
 

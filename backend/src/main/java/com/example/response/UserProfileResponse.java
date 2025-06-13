@@ -24,4 +24,5 @@ public class UserProfileResponse {
     private LocalDateTime banExpiresAt;
     private String banReason;
     private Boolean emailNotifications;
+    private Boolean postNotifications;
 } 

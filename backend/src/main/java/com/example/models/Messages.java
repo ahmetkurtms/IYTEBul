@@ -34,6 +34,19 @@ public class Messages {
     @Column(name = "is_read")
     private Boolean isRead = false;
     
+    // Delete tracking fields
+    @Column(name = "deleted_for_sender")
+    private Boolean deletedForSender = false;
+    
+    @Column(name = "deleted_for_receiver")
+    private Boolean deletedForReceiver = false;
+    
+    @Column(name = "is_deleted_completely")
+    private Boolean isDeletedCompletely = false;
+    
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+    
     // Item referansı - mesajın hangi post hakkında olduğunu belirtir
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "referenced_item_id", nullable = true)

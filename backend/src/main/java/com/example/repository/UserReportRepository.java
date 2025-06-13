@@ -20,4 +20,7 @@ public interface UserReportRepository extends JpaRepository<UserReport, Long> {
 
     @Query("SELECT r FROM UserReport r WHERE r.user.user_id = :userId ORDER BY r.createdAt DESC")
     List<UserReport> findByUserId(@Param("userId") Long userId);
+    
+    @Query("SELECT COUNT(r) > 0 FROM UserReport r WHERE :messageId MEMBER OF r.reportedMessageIds")
+    boolean existsByReportedMessageId(@Param("messageId") Long messageId);
 } 

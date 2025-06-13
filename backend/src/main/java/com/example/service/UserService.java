@@ -15,4 +15,9 @@ public interface UserService{
     User findUserByJwt(String jwt) throws Exception;
     UserProfileResponse getUserProfile(String jwt) throws Exception;
     UserProfileResponse updateUserProfile(String jwt, UpdateProfileRequest request) throws Exception;
+    
+    // Block/Unblock methods
+    void blockUser(String jwt, Long userIdToBlock) throws Exception;
+    void unblockUser(String jwt, Long userIdToUnblock) throws Exception;
+    boolean isUserBlocked(Long blockerId, Long blockedId) throws Exception;
 }

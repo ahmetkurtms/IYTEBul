@@ -12,5 +12,10 @@
     <include file="db/changelog/0005_update_messages_table.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/0006_add_email_notifications.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/0007_create_reports_table.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/0008_create_user_reports_table.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/0009_update_messages_for_delete_types.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/0010_remove_deleted_messages_table.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/0011_add_post_notifications.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/0012_create_user_blocks_table.sql" relativeToChangelogFile="false"/>
 
 </databaseChangeLog>

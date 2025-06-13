@@ -85,9 +85,17 @@ export default function Messages() {
   const [userReportError, setUserReportError] = useState('');
   const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null);
   
+  // Block/Unblock states
+  const [showBlockModal, setShowBlockModal] = useState(false);
+  const [isUserBlocked, setIsUserBlocked] = useState(false);
+  const [isBlockedByUser, setIsBlockedByUser] = useState(false);
+  const [blockLoading, setBlockLoading] = useState(false);
+  
   // Message hover states
   const [hoveredMessageId, setHoveredMessageId] = useState<number | null>(null);
   const [replyToMessage, setReplyToMessage] = useState<Message | null>(null);
+  const [deleteMenuMessageId, setDeleteMenuMessageId] = useState<number | null>(null);
+  const deleteMenuRef = useRef<HTMLDivElement>(null);
 
   // State ekle
   const [selectedReportMessageIds, setSelectedReportMessageIds] = useState<number[]>([]);
@@ -224,17 +232,21 @@ export default function Messages() {
       // Clear messages in local state
       setMessages([]);
       
-      // Refresh conversations to update the conversation list
-      await refreshConversations();
+      // Remove the conversation from the conversations list
+      const clearedUserId = selectedConversation.user.id;
+      setConversations(prev => prev.filter(conv => conv.user.id !== clearedUserId));
       
       // Exit the chat by clearing selected conversation
       setSelectedConversation(null);
       
-      console.log('Messages cleared successfully and exited chat');
+      // Show success notification
+      showNotification('success', `Messages with ${selectedConversation.user.nickname} cleared from your view`);
+      
+      console.log('Messages cleared successfully, conversation removed from list, and exited chat');
       
     } catch (error) {
       console.error('Error clearing messages:', error);
-      alert('Failed to clear messages. Please try again.');
+      showNotification('error', 'Failed to clear messages. Please try again.');
     }
   };
 
@@ -404,6 +416,27 @@ export default function Messages() {
     setNewMessage('');
   }, [selectedConversation?.user.id]);
 
+  // Check if user is blocked when conversation changes
+  useEffect(() => {
+    if (selectedConversation) {
+      const checkBlockStatus = async () => {
+        try {
+          const [blocked, blockedByUser] = await Promise.all([
+            messageApi.isUserBlocked(selectedConversation.user.id),
+            messageApi.amIBlockedByUser(selectedConversation.user.id)
+          ]);
+          setIsUserBlocked(blocked);
+          setIsBlockedByUser(blockedByUser);
+        } catch (error) {
+          console.error('Error checking block status:', error);
+          setIsUserBlocked(false);
+          setIsBlockedByUser(false);
+        }
+      };
+      checkBlockStatus();
+    }
+  }, [selectedConversation?.user.id]);
+
   // Load messages when conversation is selected
   useEffect(() => {
     if (selectedConversation) {
@@ -477,6 +510,15 @@ export default function Messages() {
   // Send message with multiple images
   const handleSend = async () => {
     if (!selectedConversation || !currentUser) return;
+    
+    // Check if user is blocked
+    if (isUserBlocked || isBlockedByUser) {
+      showNotification('error', isUserBlocked 
+        ? 'You cannot send messages to a blocked user' 
+        : 'You cannot send messages - you have been blocked');
+      return;
+    }
+    
     setFileSendLoading(true);
     setFileSendError(null);
     try {
@@ -536,7 +578,13 @@ export default function Messages() {
       ));
       await refreshConversations();
     } catch (error) {
-      setFileSendError('Mesaj gönderilemedi. Lütfen tekrar deneyin.');
+      console.error('Error sending message with files:', error);
+      if (error instanceof Error && error.message.includes('blocked')) {
+        showNotification('error', 'Cannot send message - you or the other user may have blocked each other');
+        setFileSendError('Cannot send - user blocked');
+      } else {
+        setFileSendError('Mesaj gönderilemedi. Lütfen tekrar deneyin.');
+      }
     } finally {
       setFileSendLoading(false);
     }
@@ -544,6 +592,14 @@ export default function Messages() {
 
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !selectedConversation || !currentUser) return;
+
+    // Check if user is blocked
+    if (isUserBlocked || isBlockedByUser) {
+      showNotification('error', isUserBlocked 
+        ? 'You cannot send messages to a blocked user' 
+        : 'You cannot send messages - you have been blocked');
+      return;
+    }
 
     try {
       // Send message to backend using the correct format
@@ -598,7 +654,11 @@ export default function Messages() {
 
     } catch (error) {
       console.error('Error sending message:', error);
-      alert('Failed to send message. Please try again.');
+      if (error instanceof Error && error.message.includes('blocked')) {
+        showNotification('error', 'Cannot send message - you or the other user may have blocked each other');
+      } else {
+        showNotification('error', 'Failed to send message. Please try again.');
+      }
     }
   };
 
@@ -627,6 +687,17 @@ export default function Messages() {
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, [showOptionsMenu]);
+
+  // Close delete menu on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (deleteMenuMessageId && deleteMenuRef.current && !deleteMenuRef.current.contains(e.target as Node)) {
+        setDeleteMenuMessageId(null);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [deleteMenuMessageId]);
 
   // Filter messages based on search query (reverse order - newest first)
   const filteredMessages = messages
@@ -706,13 +777,47 @@ export default function Messages() {
     setTimeout(() => setNotification(null), 5000);
   };
 
-  // Handle deleting a specific message
-  const handleDeleteMessage = async (messageId: number) => {
+  // Handle block user
+  const handleBlockUser = async () => {
+    if (!selectedConversation) return;
+    
+    setBlockLoading(true);
     try {
-      console.log('Deleting message:', messageId);
+      await messageApi.blockUser(selectedConversation.user.id);
+      setIsUserBlocked(true);
+      setShowBlockModal(false);
+      showNotification('success', `${selectedConversation.user.nickname} has been blocked`);
+    } catch (error) {
+      console.error('Error blocking user:', error);
+      showNotification('error', 'Failed to block user');
+    } finally {
+      setBlockLoading(false);
+    }
+  };
+
+  // Handle unblock user
+  const handleUnblockUser = async () => {
+    if (!selectedConversation) return;
+    
+    setBlockLoading(true);
+    try {
+      await messageApi.unblockUser(selectedConversation.user.id);
+      setIsUserBlocked(false);
+      showNotification('success', `${selectedConversation.user.nickname} has been unblocked`);
+    } catch (error) {
+      console.error('Error unblocking user:', error);
+      showNotification('error', 'Failed to unblock user');
+    } finally {
+      setBlockLoading(false);
+    }
+  };
+
+  // Handle deleting a specific message for current user only
+  const handleDeleteMessageForSelf = async (messageId: number) => {
+    try {
+      console.log('Deleting message for self:', messageId);
       
-      // Backend cascade delete'i hallediyor, sadece ana mesajı silmemiz yeterli
-      await messageApi.deleteMessage(messageId);
+      await messageApi.deleteMessageForSelf(messageId);
       
       // Frontend'te de tüm reply'ları bul ve kaldır
       const findAllRepliesToDelete = (msgId: number, allMessages: typeof messages): number[] => {
@@ -746,14 +851,69 @@ export default function Messages() {
       const deletedCount = allMessagesToDelete.length;
       showNotification('success', 
         deletedCount === 1 
-          ? 'Message deleted successfully' 
-          : `Message and ${deletedCount - 1} replies deleted successfully`
+          ? 'Message deleted for you' 
+          : `Message and ${deletedCount - 1} replies deleted for you`
       );
       
     } catch (error) {
-      console.error('Error deleting message:', error);
+      console.error('Error deleting message for self:', error);
       showNotification('error', 'Failed to delete message');
     }
+  };
+
+  // Handle deleting a specific message for everyone
+  const handleDeleteMessageForEveryone = async (messageId: number) => {
+    try {
+      console.log('Deleting message for everyone:', messageId);
+      
+      await messageApi.deleteMessageForEveryone(messageId);
+      
+      // Frontend'te de tüm reply'ları bul ve kaldır
+      const findAllRepliesToDelete = (msgId: number, allMessages: typeof messages): number[] => {
+        const directReplies = allMessages.filter(msg => msg.replyToMessageId === msgId);
+        let allReplies: number[] = directReplies.map(msg => msg.id);
+        
+        // Recursive olarak nested reply'ları da bul
+        directReplies.forEach(reply => {
+          const nestedReplies = findAllRepliesToDelete(reply.id, allMessages);
+          allReplies = [...allReplies, ...nestedReplies];
+        });
+        
+        return allReplies;
+      };
+      
+      const repliesToDelete = findAllRepliesToDelete(messageId, messages);
+      const allMessagesToDelete = [messageId, ...repliesToDelete];
+      
+      // Local state'ten kaldır
+      setMessages(prev => prev.filter(msg => !allMessagesToDelete.includes(msg.id)));
+      
+      // Reply state'i temizle
+      if (replyToMessage && allMessagesToDelete.includes(replyToMessage.id)) {
+        setReplyToMessage(null);
+        setNewMessage('');
+      }
+      
+      // Conversations'ı yenile
+      await refreshConversations();
+      
+      const deletedCount = allMessagesToDelete.length;
+      showNotification('success', 
+        deletedCount === 1 
+          ? 'Message deleted for everyone' 
+          : `Message and ${deletedCount - 1} replies deleted for everyone`
+      );
+      
+    } catch (error) {
+      console.error('Error deleting message for everyone:', error);
+      showNotification('error', 'Failed to delete message for everyone');
+    }
+  };
+
+  // Handle delete button click - show delete menu
+  const handleDeleteButtonClick = (messageId: number, event: React.MouseEvent) => {
+    event.stopPropagation();
+    setDeleteMenuMessageId(deleteMenuMessageId === messageId ? null : messageId);
   };
 
   // Handle replying to a message
@@ -970,16 +1130,30 @@ export default function Messages() {
                           <span>🗑️</span>
                           <span>Clear Messages</span>
                         </button>
-                        <button
-                          onClick={() => {
-                            alert(`${selectedConversation?.user.nickname} has been blocked`);
-                            setShowOptionsMenu(false);
-                          }}
-                          className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center space-x-2 cursor-pointer"
-                        >
-                          <span>🚫</span>
-                          <span>Block User</span>
-                        </button>
+                        {isUserBlocked ? (
+                          <button
+                            onClick={() => {
+                              handleUnblockUser();
+                              setShowOptionsMenu(false);
+                            }}
+                            disabled={blockLoading}
+                            className="w-full px-4 py-2 text-left text-sm text-green-600 hover:bg-green-50 transition-colors flex items-center space-x-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <span>✅</span>
+                            <span>{blockLoading ? 'Unblocking...' : 'Unblock User'}</span>
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => {
+                              setShowBlockModal(true);
+                              setShowOptionsMenu(false);
+                            }}
+                            className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center space-x-2 cursor-pointer"
+                          >
+                            <span>🚫</span>
+                            <span>Block User</span>
+                          </button>
+                        )}
                         <hr className="my-1 border-gray-200" />
                         <button
                           onClick={() => {
@@ -1109,13 +1283,46 @@ export default function Messages() {
                           >
                             <FiCornerUpLeft className="w-3 h-3 text-gray-600" />
                           </button>
-                          <button
-                            onClick={() => handleDeleteMessage(message.id)}
-                            className="p-1.5 rounded-full bg-red-100 hover:bg-red-200 transition-colors opacity-0 group-hover:opacity-100"
-                            title="Delete"
-                          >
-                            <FiTrash2 className="w-3 h-3 text-red-600" />
-                          </button>
+                          <div className="relative">
+                            <button
+                              onClick={(e) => handleDeleteButtonClick(message.id, e)}
+                              className="p-1.5 rounded-full bg-red-100 hover:bg-red-200 transition-colors opacity-0 group-hover:opacity-100"
+                              title="Delete"
+                            >
+                              <FiTrash2 className="w-3 h-3 text-red-600" />
+                            </button>
+                            
+                            {/* Delete options dropdown */}
+                            {deleteMenuMessageId === message.id && (
+                              <div 
+                                ref={deleteMenuRef}
+                                className="absolute top-full left-0 mt-1 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20 min-w-[160px]"
+                              >
+                                <button
+                                  onClick={() => {
+                                    handleDeleteMessageForSelf(message.id);
+                                    setDeleteMenuMessageId(null);
+                                  }}
+                                  className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 transition-colors flex items-center space-x-2"
+                                >
+                                  <span>🗑️</span>
+                                  <span>Delete for me</span>
+                                </button>
+                                {message.senderId === currentUser?.id && (
+                                  <button
+                                    onClick={() => {
+                                      handleDeleteMessageForEveryone(message.id);
+                                      setDeleteMenuMessageId(null);
+                                    }}
+                                    className="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center space-x-2"
+                                  >
+                                    <span>❌</span>
+                                    <span>Delete for everyone</span>
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       )}
                       
@@ -1218,7 +1425,7 @@ export default function Messages() {
                                       return originalMessage.senderId === currentUser?.id ? 'yourself' : (selectedConversation?.user.nickname || selectedConversation?.user.name || 'Unknown');
                                     }
                                     // Fallback to backend data
-                                    return message.replyToSenderName || 'Unknown';
+                                    return message.replyToSenderName || (selectedConversation?.user.nickname || selectedConversation?.user.name || 'Unknown');
                                   })()}
                                 </span>
                               </div>
@@ -1340,6 +1547,20 @@ export default function Messages() {
 
               {/* Message Input */}
               <div className="p-4 border-t border-gray-200 bg-[#f7f7f7]">
+                {/* Block Warning */}
+                {(isUserBlocked || isBlockedByUser) && (
+                  <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <div className="flex items-center space-x-2">
+                      <span>🚫</span>
+                      <span className="text-sm text-red-800 font-medium">
+                        {isUserBlocked 
+                          ? `You have blocked ${selectedConversation?.user.nickname}. Unblock them to send messages.`
+                          : `${selectedConversation?.user.nickname} has blocked you. You cannot send messages.`
+                        }
+                      </span>
+                    </div>
+                  </div>
+                )}
                 {/* Reply Preview - INPUT VERSION WITH X BUTTON */}
                 {replyToMessage && (
                   <div 
@@ -1352,13 +1573,8 @@ export default function Messages() {
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-xs font-semibold text-blue-700">
                         Replying to {(() => {
-                          // Find the original message to get sender info
-                          const originalMessage = messages.find(m => m.id === replyToMessage.replyToMessageId);
-                          if (originalMessage) {
-                            return originalMessage.senderId === currentUser?.id ? 'yourself' : (selectedConversation?.user.nickname || selectedConversation?.user.name || 'Unknown');
-                          }
-                          // Fallback to backend data
-                          return replyToMessage.replyToSenderName || 'Unknown';
+                          // The replyToMessage is the message we're replying to, so check its sender
+                          return replyToMessage.senderId === currentUser?.id ? 'yourself' : (selectedConversation?.user.nickname || selectedConversation?.user.name || 'Unknown');
                         })()}
                       </span>
                       <button
@@ -1375,9 +1591,9 @@ export default function Messages() {
                     </div>
                     
                     {/* Images for input reply preview */}
-                    {replyToMessage.replyToMessageImages && replyToMessage.replyToMessageImages.length > 0 && (
+                    {replyToMessage.imageBase64List && replyToMessage.imageBase64List.length > 0 && (
                       <div className="flex gap-1 mb-2">
-                        {replyToMessage.replyToMessageImages.slice(0, 3).map((base64, idx) => (
+                        {replyToMessage.imageBase64List.slice(0, 3).map((base64, idx) => (
                           <img
                             key={idx}
                             src={`data:image/jpeg;base64,${base64}`}
@@ -1385,20 +1601,20 @@ export default function Messages() {
                             className="w-8 h-8 object-cover rounded border"
                           />
                         ))}
-                        {replyToMessage.replyToMessageImages.length > 3 && (
+                        {replyToMessage.imageBase64List.length > 3 && (
                           <div className="w-8 h-8 rounded bg-blue-200 flex items-center justify-center text-xs text-blue-700 font-semibold">
-                            +{replyToMessage.replyToMessageImages.length - 3}
+                            +{replyToMessage.imageBase64List.length - 3}
                           </div>
                         )}
                       </div>
                     )}
                     
                     <div className="text-sm text-blue-800 truncate font-medium">
-                      {replyToMessage.replyToMessageText || (
-                        replyToMessage.replyToMessageImages && replyToMessage.replyToMessageImages.length > 0 && (
+                      {replyToMessage.content || (
+                        replyToMessage.imageBase64List && replyToMessage.imageBase64List.length > 0 && (
                           <span className="flex items-center gap-1 text-blue-700">
                             <FiCamera className="inline-block w-3 h-3" />
-                            {replyToMessage.replyToMessageImages.length > 1 ? 'Photos' : 'Photo'}
+                            {replyToMessage.imageBase64List.length > 1 ? 'Photos' : 'Photo'}
                           </span>
                         )
                       )}
@@ -1409,8 +1625,13 @@ export default function Messages() {
                 <div className="flex items-center space-x-2">
                   <button
                     type="button"
-                    className="p-2 rounded-full hover:bg-gray-200 transition-colors cursor-pointer"
-                    onClick={handleAttachmentClick}
+                    className={`p-2 rounded-full transition-colors ${
+                      (isUserBlocked || isBlockedByUser)
+                        ? 'opacity-50 cursor-not-allowed' 
+                        : 'hover:bg-gray-200 cursor-pointer'
+                    }`}
+                    onClick={(isUserBlocked || isBlockedByUser) ? undefined : handleAttachmentClick}
+                    disabled={isUserBlocked || isBlockedByUser}
                     aria-label="Dosya ekle"
                   >
                     <FiPaperclip className="w-5 h-5 text-gray-600" />
@@ -1448,20 +1669,23 @@ export default function Messages() {
                       value={newMessage}
                       onChange={(e) => setNewMessage(e.target.value)}
                       onKeyPress={handleKeyPress}
-                      placeholder="Type your message..."
-                      className="w-full bg-white rounded-full px-4 py-2 border border-gray-300 focus:ring-2 focus:ring-[#A6292A] focus:border-[#A6292A] placeholder-gray-500 text-gray-900 outline-none"
+                      placeholder={(isUserBlocked || isBlockedByUser) ? "Cannot send messages" : "Type your message..."}
+                      disabled={isUserBlocked || isBlockedByUser}
+                      className={`w-full bg-white rounded-full px-4 py-2 border border-gray-300 focus:ring-2 focus:ring-[#A6292A] focus:border-[#A6292A] placeholder-gray-500 text-gray-900 outline-none ${
+                        (isUserBlocked || isBlockedByUser) ? 'opacity-50 cursor-not-allowed' : ''
+                      }`}
                     />
                   </div>
-                  <button
-                    onClick={selectedFiles.length > 0 ? handleSend : handleSendMessage}
-                    disabled={fileSendLoading || (!newMessage.trim() && selectedFiles.length === 0)}
-                    className={`p-2 rounded-full ml-2 transition-colors  ${
-                      (newMessage.trim() || selectedFiles.length > 0)
-                        ? 'bg-[#A6292A] text-white hover:bg-[#8a1f1f] cursor-pointer'
-                        : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                    }`}
-                    aria-label="Send message"
-                  >
+                                      <button
+                      onClick={selectedFiles.length > 0 ? handleSend : handleSendMessage}
+                      disabled={fileSendLoading || (!newMessage.trim() && selectedFiles.length === 0) || isUserBlocked || isBlockedByUser}
+                      className={`p-2 rounded-full ml-2 transition-colors  ${
+                        (newMessage.trim() || selectedFiles.length > 0) && !isUserBlocked && !isBlockedByUser
+                          ? 'bg-[#A6292A] text-white hover:bg-[#8a1f1f] cursor-pointer'
+                          : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                      }`}
+                      aria-label="Send message"
+                    >
                     {fileSendLoading ? (
                       <span className="loader w-5 h-5" />
                     ) : (
@@ -1490,14 +1714,25 @@ export default function Messages() {
         </div>
       </div>
 
-      {/* Confirmation Modal */}
+      {/* Confirmation Modals */}
       <ConfirmationModal
         isOpen={showClearModal}
         onClose={() => setShowClearModal(false)}
         onConfirm={confirmClearMessages}
         title="Clear Messages"
-        message={`Are you sure you want to clear all messages with ${selectedConversation?.user.nickname}? This action cannot be undone and messages will be removed from your view.`}
-        confirmText="Clear Messages"
+        message={`Are you sure you want to clear all messages with ${selectedConversation?.user.nickname}? This will only remove messages from your view - the other person will still see them.`}
+        confirmText="Clear for Me"
+        cancelText="Cancel"
+        type="danger"
+      />
+
+      <ConfirmationModal
+        isOpen={showBlockModal}
+        onClose={() => setShowBlockModal(false)}
+        onConfirm={handleBlockUser}
+        title="Block User"
+        message={`Are you sure you want to block ${selectedConversation?.user.nickname}? They will not be able to send you messages, and you won't be able to send them messages or reply to their posts.`}
+        confirmText={blockLoading ? "Blocking..." : "Block"}
         cancelText="Cancel"
         type="danger"
       />
