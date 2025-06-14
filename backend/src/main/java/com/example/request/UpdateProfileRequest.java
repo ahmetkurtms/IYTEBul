@@ -10,7 +10,6 @@ import lombok.NoArgsConstructor;
 public class UpdateProfileRequest {
     private String nickname;
     private String phoneNumber;
-    private String bio;
     private String studentId;
     private Boolean emailNotifications;
     private Boolean postNotifications;

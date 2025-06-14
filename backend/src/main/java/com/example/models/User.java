@@ -49,9 +49,6 @@ public class User {
     private String phoneNumber;
     
     @Column(columnDefinition = "TEXT")
-    private String bio;
-    
-    @Column(columnDefinition = "TEXT")
     private String profilePhotoUrl;
     
     private String studentId;

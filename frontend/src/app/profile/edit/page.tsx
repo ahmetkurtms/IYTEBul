@@ -10,7 +10,6 @@ export default function EditProfile() {
   const [formData, setFormData] = useState({
     name: '',
     department: '',
-    bio: '',
     profileImage: ''
   });
   const [photo, setPhoto] = useState<File | null>(null);
@@ -41,7 +40,6 @@ export default function EditProfile() {
         setFormData({
           name: data.name || '',
           department: data.department || '',
-          bio: data.bio || '',
           profileImage: data.profileImage || ''
         });
       } catch (error) {
@@ -131,17 +129,6 @@ export default function EditProfile() {
               type="text"
               value={formData.department}
               onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#9a0e20] focus:ring-[#9a0e20]"
-            />
-          </div>
-
-          {/* Hakkımda */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Hakkımda</label>
-            <textarea
-              value={formData.bio}
-              onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-              rows={4}
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#9a0e20] focus:ring-[#9a0e20]"
             />
           </div>

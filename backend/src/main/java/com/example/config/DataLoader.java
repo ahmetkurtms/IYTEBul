@@ -35,7 +35,6 @@ public class DataLoader implements CommandLineRunner {
             admin.setRole(Role.ADMIN);
             admin.setIsVerified(true);
             admin.setDepartment("System Administration");
-            admin.setBio("System Administrator Account");
             
             userRepository.save(admin);
             System.out.println("Admin user created successfully:");

@@ -73,7 +73,6 @@ public class AdminController {
                     userMap.put("department", user.getDepartment() != null ? user.getDepartment() : "Unknown");
                     userMap.put("phoneNumber", user.getPhoneNumber());
                     userMap.put("studentId", user.getStudentId());
-                    userMap.put("bio", user.getBio());
                     userMap.put("createdAt", user.getCreated_at().toString());
                     userMap.put("isBanned", user.isCurrentlyBanned());
                     userMap.put("isVerified", user.getIsVerified());

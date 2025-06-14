@@ -18,7 +18,6 @@ interface UserProfile {
   phoneNumber?: string
   createdAt: string
   studentId?: string
-  bio?: string
   nickname?: string
   emailNotifications?: boolean
   postNotifications?: boolean
@@ -331,8 +330,6 @@ export default function ProfilePage() {
         updateData.nickname = editedProfile.nickname
       } else if (field === "phoneNumber") {
         updateData.phoneNumber = editedProfile.phoneNumber
-      } else if (field === "bio") {
-        updateData.bio = editedProfile.bio
       } else if (field === "studentId") {
         updateData.studentId = editedProfile.studentId
       }
@@ -1002,54 +999,6 @@ export default function ProfilePage() {
                         </div>
                       )}
                     </div>
-                  </div>
-
-                  {/* About Me */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-900 mb-2">
-                      About Me
-                    </label>
-                    {editingField === "bio" ? (
-                      <div className="space-y-2">
-                        <textarea
-                          value={editedProfile?.bio || ""}
-                          onChange={(e) =>
-                            setEditedProfile({ ...editedProfile!, bio: e.target.value })
-                          }
-                          rows={4}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9a0e20] focus:border-transparent bg-white text-gray-900 resize-none"
-                          placeholder="Tell us about yourself..."
-                          autoFocus
-                        />
-                        <div className="flex justify-end space-x-2">
-                          <button
-                            onClick={() => handleFieldSave("bio")}
-                            disabled={isSaving}
-                            className="p-2 text-green-600 hover:text-green-700 disabled:opacity-50 cursor-pointer"
-                          >
-                            <FaCheck className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={handleFieldCancel}
-                            className="p-2 text-red-600 hover:text-red-700 cursor-pointer"
-                          >
-                            <FaTimes className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="relative">
-                        <p className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-md bg-gray-50 text-gray-900 min-h-[100px]">
-                          {profile?.bio || "No bio provided"}
-                        </p>
-                        <button
-                          onClick={() => setEditingField("bio")}
-                          className="absolute right-3 top-3 text-gray-400 hover:text-[#9a0e20] transition-colors cursor-pointer"
-                        >
-                          <FaEdit className="w-4 h-4" />
-                        </button>
-                      </div>
-                    )}
                   </div>
                 </div>
 

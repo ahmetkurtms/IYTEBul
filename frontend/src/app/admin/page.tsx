@@ -38,7 +38,6 @@ interface User {
   banExpiresAt?: string;
   phoneNumber?: string;
   studentId?: string;
-  bio?: string;
   surname?: string;
 }
 
@@ -1370,17 +1369,6 @@ export default function AdminPanel() {
                       {selectedUserForDetails.name} {selectedUserForDetails.surname || ''}
                     </h3>
                     <p className="text-lg text-gray-600 mb-1">@{selectedUserForDetails.nickname}</p>
-                    {selectedUserForDetails.bio ? (
-                      <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                        <p className="text-sm font-medium text-blue-800 mb-1">Bio:</p>
-                        <p className="text-sm text-blue-700">{selectedUserForDetails.bio}</p>
-                      </div>
-                    ) : (
-                      <div className="mt-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                        <p className="text-sm font-medium text-gray-600 mb-1">Bio:</p>
-                        <p className="text-sm text-gray-500 italic">Not provided</p>
-                      </div>
-                    )}
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

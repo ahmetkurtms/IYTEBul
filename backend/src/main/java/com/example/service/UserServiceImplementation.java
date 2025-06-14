@@ -98,9 +98,6 @@ public class UserServiceImplementation implements UserService {
         if(user.getPhoneNumber()!=null) {
             oldUser.setPhoneNumber(user.getPhoneNumber());
         }
-        if(user.getBio()!=null) {
-            oldUser.setBio(user.getBio());
-        }
         if(user.getProfilePhotoUrl()!=null) {
             oldUser.setProfilePhotoUrl(user.getProfilePhotoUrl());
         }
@@ -149,7 +146,6 @@ public class UserServiceImplementation implements UserService {
         response.setPhoneNumber(user.getPhoneNumber());
         response.setCreatedAt(user.getCreated_at());
         response.setStudentId(user.getStudentId());
-        response.setBio(user.getBio());
         response.setNickname(user.getNickname());
         
         // Add ban information
@@ -176,9 +172,6 @@ public class UserServiceImplementation implements UserService {
         }
         if (request.getPhoneNumber() != null) {
             user.setPhoneNumber(request.getPhoneNumber());
-        }
-        if (request.getBio() != null) {
-            user.setBio(request.getBio());
         }
         if (request.getStudentId() != null) {
             user.setStudentId(request.getStudentId());

@@ -18,7 +18,6 @@ public class UserProfileResponse {
     private String phoneNumber;
     private LocalDateTime createdAt;
     private String studentId;
-    private String bio;
     private String nickname;
     private Boolean isBanned;
     private LocalDateTime banExpiresAt;
