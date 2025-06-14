@@ -187,7 +187,7 @@ export default function AdminPanel() {
   const fetchUsers = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:8080/api/v1/admin/users', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/users`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -213,7 +213,7 @@ export default function AdminPanel() {
   const fetchPosts = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:8080/api/v1/admin/posts', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/posts`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -236,7 +236,7 @@ export default function AdminPanel() {
 
   const fetchLocations = async () => {
     try {
-      const response = await fetch('http://localhost:8080/api/v1/locations');
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/locations`);
       if (response.ok) {
         const locationsData = await response.json();
         setLocations(locationsData);
@@ -252,7 +252,7 @@ export default function AdminPanel() {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      const response = await fetch('http://localhost:8080/api/v1/admin/reports', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/reports`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -304,7 +304,7 @@ export default function AdminPanel() {
         requestBody.banReason = reason;
       }
 
-      const response = await fetch(`http://localhost:8080/api/v1/admin/users/${userId}/ban`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/users/${userId}/ban`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -407,8 +407,8 @@ export default function AdminPanel() {
     try {
       const token = localStorage.getItem('token');
       const endpoint = itemToDelete.type === 'user' 
-        ? `http://localhost:8080/api/v1/admin/users/${itemToDelete.id}`
-        : `http://localhost:8080/api/v1/admin/posts/${itemToDelete.id}`;
+        ? `${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/users/${itemToDelete.id}`
+        : `${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/posts/${itemToDelete.id}`;
 
       const response = await fetch(endpoint, {
         method: 'DELETE',
@@ -472,7 +472,7 @@ export default function AdminPanel() {
         'reject': 'DISMISSED'
       };
 
-      const response = await fetch(`http://localhost:8080/api/v1/admin/reports/${reportId}/status`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/reports/${reportId}/status`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -512,7 +512,7 @@ export default function AdminPanel() {
       // Önce raporun status'unu "REVIEWED" olarak güncelle (eğer PENDING ise)
       const report = reports.find(r => r.id === reportId);
       if (report && report.status === 'PENDING') {
-        const statusResponse = await fetch(`http://localhost:8080/api/v1/admin/reports/${reportId}/status`, {
+        const statusResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/reports/${reportId}/status`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -535,7 +535,7 @@ export default function AdminPanel() {
       }
 
       // If not found in posts array, fetch from backend
-      const response = await fetch(`http://localhost:8080/api/v1/admin/posts`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/posts`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
