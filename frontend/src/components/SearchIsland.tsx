@@ -6,22 +6,19 @@ import { MdOutlineGridView, MdOutlineViewAgenda, MdOutlineAdd } from 'react-icon
 // Custom 4x4 grid icon component (16 squares)
 const QuadGridIcon = ({ className = "h-6 w-6" }: { className?: string }) => (
   <svg className={className} viewBox="0 0 24 24" fill="currentColor">
-    <rect x="2" y="2" width="4" height="4" rx="0.5" />
-    <rect x="8" y="2" width="4" height="4" rx="0.5" />
-    <rect x="14" y="2" width="4" height="4" rx="0.5" />
-    <rect x="20" y="2" width="2" height="4" rx="0.5" />
-    <rect x="2" y="8" width="4" height="4" rx="0.5" />
-    <rect x="8" y="8" width="4" height="4" rx="0.5" />
-    <rect x="14" y="8" width="4" height="4" rx="0.5" />
-    <rect x="20" y="8" width="2" height="4" rx="0.5" />
-    <rect x="2" y="14" width="4" height="4" rx="0.5" />
-    <rect x="8" y="14" width="4" height="4" rx="0.5" />
-    <rect x="14" y="14" width="4" height="4" rx="0.5" />
-    <rect x="20" y="14" width="2" height="4" rx="0.5" />
-    <rect x="2" y="20" width="4" height="2" rx="0.5" />
-    <rect x="8" y="20" width="4" height="2" rx="0.5" />
-    <rect x="14" y="20" width="4" height="2" rx="0.5" />
-    <rect x="20" y="20" width="2" height="2" rx="0.5" />
+    {/* 4x4 eşit kare grid */}
+    {[0, 1, 2, 3].map(row =>
+      [0, 1, 2, 3].map(col => (
+        <rect
+          key={`${row}-${col}`}
+          x={2 + col * 5}
+          y={2 + row * 5}
+          width={4}
+          height={4}
+          rx={0.5}
+        />
+      ))
+    )}
   </svg>
 );
 

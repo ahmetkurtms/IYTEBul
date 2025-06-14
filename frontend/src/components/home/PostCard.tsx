@@ -102,27 +102,15 @@ export default function PostCard({
         isHighlighted ? 'ring-4 ring-blue-500 ring-opacity-50 shadow-2xl transform scale-105 transition-all duration-1000' : ''
       }`}
     >
-      {/* 3-Dot Menu - Only in top right corner */}
-      <div className="absolute top-3 right-3 z-10" ref={menuRef}>
+      {/* Report Flag - Only in top right corner */}
+      <div className="absolute top-3 right-3 z-10">
         <button
-          onClick={() => setShowMenu(!showMenu)}
+          onClick={() => onReportPost(post.id, post.title)}
           className="p-1.5 bg-white/90 backdrop-blur-sm rounded-full shadow-sm hover:bg-white transition-colors cursor-pointer"
-          title="More options"
+          title="Report this post"
         >
-          <FiMoreVertical className="w-3 h-3 text-gray-600" />
+          <FiFlag className="w-4 h-4 text-red-600" />
         </button>
-        
-        {showMenu && (
-          <div className="absolute top-full right-0 mt-1 bg-white rounded-lg shadow-lg border border-gray-200 py-1 min-w-[120px] z-20">
-            <button
-              onClick={handleReportClick}
-              className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2 cursor-pointer"
-            >
-              <FiFlag className="w-4 h-4" />
-              <span>Report</span>
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Post İçeriği */}
