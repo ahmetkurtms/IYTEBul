@@ -79,17 +79,33 @@ const SearchIsland: React.FC<SearchIslandProps> = ({
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       const target = event.target as HTMLElement;
-      // Eğer tıklanan element bir input veya label ise modalı kapatma
-      if (target.tagName === 'INPUT' || target.tagName === 'LABEL') {
-        return;
+      if (target.tagName === 'INPUT' || target.tagName === 'LABEL') return;
+      
+      // Check if click is outside date popover
+      if (datePopoverOpen) {
+        const datePopover = document.querySelector('[data-date-popover]');
+        if (datePopover && !datePopover.contains(event.target as Node)) {
+          const dateButton = document.querySelector('[data-date-button]');
+          if (!dateButton || !dateButton.contains(event.target as Node)) {
+            setDatePopoverOpen(false);
+          }
+        }
       }
-      if (datePopoverOpen && calendarRef.current && !calendarRef.current.contains(event.target as Node)) {
-        setDatePopoverOpen(false);
+      
+      // Check if click is outside filter popover
+      if (filterPopoverOpen) {
+        const filterPopover = document.querySelector('[data-filter-popover]');
+        if (filterPopover && !filterPopover.contains(event.target as Node)) {
+          const filterButton = document.querySelector('[data-filter-button]');
+          if (!filterButton || !filterButton.contains(event.target as Node)) {
+            setFilterPopoverOpen(false);
+          }
+        }
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [datePopoverOpen, calendarRef, setDatePopoverOpen]);
+  }, [datePopoverOpen, filterPopoverOpen, setDatePopoverOpen, setFilterPopoverOpen]);
 
   return (
     <div className="sticky top-0 z-30 bg-white bg-opacity-95 backdrop-blur shadow-md rounded-b-xl mb-6">
@@ -124,16 +140,24 @@ const SearchIsland: React.FC<SearchIslandProps> = ({
           </div>
           <div className="relative flex items-center">
             <FiCalendar
+              data-date-button
               className={`text-2xl cursor-pointer hover:text-gray-800 transition-colors ${((dateStart && dateStart.trim()) || (dateEnd && dateEnd.trim())) ? 'text-[#9a0e20]' : 'text-gray-600'}`}
-              onClick={() => setDatePopoverOpen(!datePopoverOpen)}
+              onClick={(e) => {
+                e.stopPropagation();
+                setDatePopoverOpen(!datePopoverOpen);
+              }}
             />
             {datePopoverOpen && (
-              <div ref={calendarRef} className="absolute right-0 top-full mt-2 z-50 w-64 bg-white rounded-xl shadow-xl border border-gray-100 p-4 animate-fade-in">
+              <div data-date-popover className="absolute right-0 top-full mt-2 z-50 w-64 bg-white rounded-xl shadow-xl border border-gray-100 p-4 animate-fade-in">
                 <div className="flex justify-between items-center mb-2">
                   <div className="font-semibold text-gray-900">Date Range</div>
                   {((dateStart && dateStart.trim()) || (dateEnd && dateEnd.trim())) && (
                     <button
-                      onClick={() => { setDateStart(''); setDateEnd(''); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDateStart('');
+                        setDateEnd('');
+                      }}
                       className="text-sm text-[#9a0e20] hover:text-[#801d21] font-medium cursor-pointer"
                     >Clear all</button>
                   )}
@@ -165,15 +189,20 @@ const SearchIsland: React.FC<SearchIslandProps> = ({
                 </div>
                 <button
                   className="w-full bg-[#9a0e20] text-white rounded-lg py-2 font-semibold hover:bg-[#801d21] transition-colors cursor-pointer"
-                  onClick={() => setDatePopoverOpen(false)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDatePopoverOpen(false);
+                  }}
                 >Apply</button>
               </div>
             )}
           </div>
           <div className="relative flex items-center">
             <FiFilter
+              data-filter-button
               className={`text-2xl cursor-pointer hover:text-gray-800 transition-colors ${(selectedCategories.length > 0 || selectedLocations.length > 0) && !filterPopoverOpen ? 'text-[#761a1e]' : 'text-gray-600'}`}
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 const next = !filterPopoverOpen;
                 setFilterPopoverOpen(next);
                 if (next) {
@@ -183,12 +212,13 @@ const SearchIsland: React.FC<SearchIslandProps> = ({
               }}
             />
             {filterPopoverOpen && (
-              <div ref={calendarRef} className="absolute right-0 top-full mt-2 z-50 w-72 bg-white rounded-xl shadow-xl border border-gray-100 p-4 animate-fade-in">
+              <div data-filter-popover className="absolute right-0 top-full mt-2 z-50 w-72 bg-white rounded-xl shadow-xl border border-gray-100 p-4 animate-fade-in">
                 <div className="flex justify-between items-center mb-2">
                   <div className="font-semibold text-gray-900">Filters</div>
                   {(selectedCategories.length > 0 || selectedLocations.length > 0) && (
                     <button
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         setSelectedCategories([]);
                         setSelectedLocations([]);
                       }}
@@ -223,7 +253,8 @@ const SearchIsland: React.FC<SearchIslandProps> = ({
                         <div
                           key={`category-${cat || index}`}
                           className={`px-2 py-1 cursor-pointer hover:bg-gray-100 rounded text-gray-800 flex items-center justify-between ${selectedCategories.includes(cat) ? 'font-semibold text-[#9a0e20]' : ''}`}
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setSelectedCategories(selectedCategories.includes(cat)
                               ? selectedCategories.filter(c => c !== cat)
                               : [...selectedCategories, cat]);
@@ -254,7 +285,8 @@ const SearchIsland: React.FC<SearchIslandProps> = ({
                         <div
                           key={`location-${loc.id || loc.nameEn || index}`}
                           className={`px-2 py-1 cursor-pointer hover:bg-gray-100 rounded text-gray-800 flex items-center justify-between ${selectedLocations.includes(loc.nameEn) ? 'font-semibold text-[#9a0e20]' : ''}`}
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setSelectedLocations(selectedLocations.includes(loc.nameEn)
                               ? selectedLocations.filter(l => l !== loc.nameEn)
                               : [...selectedLocations, loc.nameEn]);
@@ -382,16 +414,24 @@ const SearchIsland: React.FC<SearchIslandProps> = ({
           </div>
           <div className="relative flex items-center">
             <FiCalendar
+              data-date-button
               className={`text-2xl cursor-pointer hover:text-gray-800 transition-colors ${((dateStart && dateStart.trim()) || (dateEnd && dateEnd.trim())) ? 'text-[#9a0e20]' : 'text-gray-600'}`}
-              onClick={() => setDatePopoverOpen(!datePopoverOpen)}
+              onClick={(e) => {
+                e.stopPropagation();
+                setDatePopoverOpen(!datePopoverOpen);
+              }}
             />
             {datePopoverOpen && (
-              <div ref={calendarRef} className="absolute right-0 top-full mt-2 z-50 w-64 bg-white rounded-xl shadow-xl border border-gray-100 p-4 animate-fade-in">
+              <div data-date-popover className="absolute right-0 top-full mt-2 z-50 w-64 bg-white rounded-xl shadow-xl border border-gray-100 p-4 animate-fade-in">
                 <div className="flex justify-between items-center mb-2">
                   <div className="font-semibold text-gray-900">Date Range</div>
                   {((dateStart && dateStart.trim()) || (dateEnd && dateEnd.trim())) && (
                     <button
-                      onClick={() => { setDateStart(''); setDateEnd(''); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDateStart('');
+                        setDateEnd('');
+                      }}
                       className="text-sm text-[#9a0e20] hover:text-[#801d21] font-medium cursor-pointer"
                     >Clear all</button>
                   )}
@@ -423,7 +463,10 @@ const SearchIsland: React.FC<SearchIslandProps> = ({
                 </div>
                 <button
                   className="w-full bg-[#9a0e20] text-white rounded-lg py-2 font-semibold hover:bg-[#801d21] transition-colors cursor-pointer"
-                  onClick={() => setDatePopoverOpen(false)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDatePopoverOpen(false);
+                  }}
                 >Apply</button>
               </div>
             )}
@@ -431,7 +474,8 @@ const SearchIsland: React.FC<SearchIslandProps> = ({
           <div className="relative flex items-center">
             <FiFilter
               className={`text-2xl cursor-pointer hover:text-gray-800 transition-colors ${(selectedCategories.length > 0 || selectedLocations.length > 0) && !filterPopoverOpen ? 'text-[#761a1e]' : 'text-gray-600'}`}
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 const next = !filterPopoverOpen;
                 setFilterPopoverOpen(next);
                 if (next) {
@@ -446,7 +490,8 @@ const SearchIsland: React.FC<SearchIslandProps> = ({
                   <div className="font-semibold text-gray-900">Filters</div>
                   {(selectedCategories.length > 0 || selectedLocations.length > 0) && (
                     <button
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         setSelectedCategories([]);
                         setSelectedLocations([]);
                       }}
@@ -481,7 +526,8 @@ const SearchIsland: React.FC<SearchIslandProps> = ({
                         <div
                           key={`category-${cat || index}`}
                           className={`px-2 py-1 cursor-pointer hover:bg-gray-100 rounded text-gray-800 flex items-center justify-between ${selectedCategories.includes(cat) ? 'font-semibold text-[#9a0e20]' : ''}`}
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setSelectedCategories(selectedCategories.includes(cat)
                               ? selectedCategories.filter(c => c !== cat)
                               : [...selectedCategories, cat]);
@@ -512,7 +558,8 @@ const SearchIsland: React.FC<SearchIslandProps> = ({
                         <div
                           key={`location-${loc.id || loc.nameEn || index}`}
                           className={`px-2 py-1 cursor-pointer hover:bg-gray-100 rounded text-gray-800 flex items-center justify-between ${selectedLocations.includes(loc.nameEn) ? 'font-semibold text-[#9a0e20]' : ''}`}
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setSelectedLocations(selectedLocations.includes(loc.nameEn)
                               ? selectedLocations.filter(l => l !== loc.nameEn)
                               : [...selectedLocations, loc.nameEn]);
