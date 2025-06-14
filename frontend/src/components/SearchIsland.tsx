@@ -248,7 +248,7 @@ const SearchIsland: React.FC<SearchIslandProps> = ({
                       }
                       return ordered.map((cat, index) => (
                         <div
-                          key={`category-${cat || index}`}
+                          key={`category-${cat}-${index}`}
                           className={`px-2 py-1 cursor-pointer hover:bg-gray-100 rounded text-gray-800 flex items-center justify-between ${selectedCategories.includes(cat) ? 'font-semibold text-[#9a0e20]' : ''}`}
                           onClick={(e) => {
                             e.stopPropagation();
@@ -280,7 +280,7 @@ const SearchIsland: React.FC<SearchIslandProps> = ({
                       }
                       return ordered.map((loc, index) => (
                         <div
-                          key={`location-${loc.id || loc.nameEn || index}`}
+                          key={`location-${loc.id ?? ''}-${loc.nameEn}-${index}`}
                           className={`px-2 py-1 cursor-pointer hover:bg-gray-100 rounded text-gray-800 flex items-center justify-between ${selectedLocations.includes(loc.nameEn) ? 'font-semibold text-[#9a0e20]' : ''}`}
                           onClick={(e) => {
                             e.stopPropagation();
@@ -521,7 +521,7 @@ const SearchIsland: React.FC<SearchIslandProps> = ({
                       }
                       return ordered.map((cat, index) => (
                         <div
-                          key={`category-${cat || index}`}
+                          key={`category-${cat}-${index}`}
                           className={`px-2 py-1 cursor-pointer hover:bg-gray-100 rounded text-gray-800 flex items-center justify-between ${selectedCategories.includes(cat) ? 'font-semibold text-[#9a0e20]' : ''}`}
                           onClick={(e) => {
                             e.stopPropagation();
@@ -553,7 +553,7 @@ const SearchIsland: React.FC<SearchIslandProps> = ({
                       }
                       return ordered.map((loc, index) => (
                         <div
-                          key={`location-${loc.id || loc.nameEn || index}`}
+                          key={`location-${loc.id ?? ''}-${loc.nameEn}-${index}`}
                           className={`px-2 py-1 cursor-pointer hover:bg-gray-100 rounded text-gray-800 flex items-center justify-between ${selectedLocations.includes(loc.nameEn) ? 'font-semibold text-[#9a0e20]' : ''}`}
                           onClick={(e) => {
                             e.stopPropagation();
