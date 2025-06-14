@@ -6,7 +6,7 @@ import Navbar from '@/components/ui/Navbar';
 import ConfirmationModal from '@/components/ConfirmationModal';
 import { formatDistanceToNow } from 'date-fns';
 import { enUS } from 'date-fns/locale';
-import { FiSearch, FiSend, FiMoreVertical, FiPaperclip, FiSmile, FiMessageCircle, FiX, FiImage, FiChevronUp, FiChevronDown, FiCamera, FiTrash2, FiCornerUpLeft } from 'react-icons/fi';
+import { FiSearch, FiSend, FiMoreVertical, FiPaperclip, FiSmile, FiMessageCircle, FiX, FiImage, FiChevronUp, FiChevronDown, FiCamera, FiTrash2, FiCornerUpLeft, FiArrowLeft } from 'react-icons/fi';
 import { BsCheck, BsCheckAll, BsCheckCircle, BsXCircle } from 'react-icons/bs';
 import Image from 'next/image';
 import { messageApi, MessageResponse, ConversationResponse, UserProfile } from '@/lib/messageApi';
@@ -16,8 +16,6 @@ interface User {
   nickname: string;
   name: string;
   profilePhotoUrl?: string;
-  isOnline?: boolean;
-  lastSeen?: string;
 }
 
 interface Message {
@@ -184,8 +182,6 @@ export default function Messages() {
           nickname: conv.otherUserNickname,
           name: conv.otherUserName,
           profilePhotoUrl: conv.otherUserProfilePhoto,
-          isOnline: conv.otherUserIsOnline,
-          lastSeen: conv.otherUserLastSeen
         },
         lastMessage: conv.lastMessage ? {
           id: conv.lastMessage.messageId,
@@ -280,7 +276,6 @@ export default function Messages() {
           nickname: userProfile.nickname,
           name: userProfile.name,
           profilePhotoUrl: userProfile.profilePhotoUrl,
-          isOnline: true
         };
         setCurrentUser(currentUserData);
         console.log('Current user set:', currentUserData);
@@ -293,8 +288,6 @@ export default function Messages() {
             nickname: conv.otherUserNickname,
             name: conv.otherUserName,
             profilePhotoUrl: conv.otherUserProfilePhoto,
-            isOnline: conv.otherUserIsOnline,
-            lastSeen: conv.otherUserLastSeen
           },
           lastMessage: conv.lastMessage ? {
             id: conv.lastMessage.messageId,
@@ -350,8 +343,6 @@ export default function Messages() {
                   nickname: targetUser.nickname,
                   name: targetUser.name,
                   profilePhotoUrl: targetUser.profilePhotoUrl,
-                  isOnline: false,
-                  lastSeen: new Date().toISOString()
                 },
                 lastMessage: undefined,
                 unreadCount: 0
@@ -374,8 +365,6 @@ export default function Messages() {
                   nickname: 'Unknown User',
                   name: 'Unknown User',
                   profilePhotoUrl: undefined,
-                  isOnline: false,
-                  lastSeen: new Date().toISOString()
                 },
                 lastMessage: undefined,
                 unreadCount: 0
@@ -970,12 +959,14 @@ export default function Messages() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="h-screen flex flex-col bg-gray-50">
       <Navbar />
       
-      <div className="flex h-[calc(100vh-80px)]">
+      <div className="flex-1 flex overflow-hidden">
         {/* Conversations List */}
-        <div className="w-80 bg-[#f7f7f7] border-r border-gray-200 flex flex-col">
+        <div className={`w-full md:w-80 bg-[#f7f7f7] border-r border-gray-200 flex flex-col ${
+          selectedConversation ? 'hidden md:flex' : 'flex'
+        }`}>
           {/* Header */}
           <div className="p-4 border-b border-gray-200 bg-[#f7f7f7]">
             <h1 className="text-xl font-bold text-gray-900 mb-3">Messages</h1>
@@ -1023,9 +1014,6 @@ export default function Messages() {
                           </span>
                         )}
                       </div>
-                      {conversation.user.isOnline && (
-                        <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
-                      )}
                     </div>
                     
                     <div className="flex-1 min-w-0">
@@ -1064,12 +1052,18 @@ export default function Messages() {
         </div>
 
         {/* Chat Area */}
-        <div className="flex-1 flex flex-col bg-white">
+        <div className={`flex-1 flex flex-col bg-white ${!selectedConversation ? 'hidden md:flex' : 'flex'}`}>
           {selectedConversation ? (
-            <>
-              {/* Chat Header */}
-              <div className="p-4 border-b border-gray-200 bg-[#f7f7f7] flex items-center justify-between">
+            <div className="flex flex-col h-full">
+              {/* Chat Header - Fixed position */}
+              <div className="flex-none p-4 border-b border-gray-200 bg-[#f7f7f7] flex items-center justify-between">
                 <div className="flex items-center space-x-3">
+                  <button 
+                    onClick={() => setSelectedConversation(null)}
+                    className="md:hidden mr-2 text-gray-600 hover:text-gray-900"
+                  >
+                    <FiArrowLeft size={24} />
+                  </button>
                   <div className="relative">
                     <div className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center overflow-hidden">
                       {selectedConversation.user.profilePhotoUrl ? (
@@ -1086,19 +1080,11 @@ export default function Messages() {
                         </span>
                       )}
                     </div>
-                    {selectedConversation.user.isOnline && (
-                      <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
-                    )}
                   </div>
                   <div>
                     <h2 className="font-semibold text-gray-900">
                       {selectedConversation.user.nickname}
                     </h2>
-                    <p className="text-sm text-gray-500">
-                      {selectedConversation.user.isOnline ? 'Online' : 
-                        `Last seen: ${formatDistanceToNow(new Date(selectedConversation.user.lastSeen || ''), { addSuffix: true, locale: enUS })}`
-                      }
-                    </p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
@@ -1249,7 +1235,7 @@ export default function Messages() {
                 </div>
               )}
 
-              {/* Messages */}
+              {/* Messages - Scrollable area */}
               <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-white">
                 {messages.map((message, messageIndex) => {
                   const isCurrentUser = message.senderId === currentUser?.id;
@@ -1545,8 +1531,8 @@ export default function Messages() {
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* Message Input */}
-              <div className="p-4 border-t border-gray-200 bg-[#f7f7f7]">
+              {/* Message Input - Fixed position */}
+              <div className="flex-none p-4 border-t border-gray-200 bg-[#f7f7f7]">
                 {/* Block Warning */}
                 {(isUserBlocked || isBlockedByUser) && (
                   <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg">
@@ -1561,15 +1547,10 @@ export default function Messages() {
                     </div>
                   </div>
                 )}
-                {/* Reply Preview - INPUT VERSION WITH X BUTTON */}
+                
+                {/* Reply Preview */}
                 {replyToMessage && (
-                  <div 
-                    className="mb-3 p-3 bg-blue-50 rounded-lg border-l-4 border-blue-500 cursor-pointer hover:bg-blue-100 transition-colors input-reply-preview"
-                    onClick={() => {
-                      // Reply mesajına scroll et
-                      scrollToMessage(replyToMessage.id);
-                    }}
-                  >
+                  <div className="mb-3 p-3 bg-blue-50 rounded-lg border-l-4 border-blue-500">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-xs font-semibold text-blue-700">
                         Replying to {(() => {
@@ -1676,16 +1657,16 @@ export default function Messages() {
                       }`}
                     />
                   </div>
-                                      <button
-                      onClick={selectedFiles.length > 0 ? handleSend : handleSendMessage}
-                      disabled={fileSendLoading || (!newMessage.trim() && selectedFiles.length === 0) || isUserBlocked || isBlockedByUser}
-                      className={`p-2 rounded-full ml-2 transition-colors  ${
-                        (newMessage.trim() || selectedFiles.length > 0) && !isUserBlocked && !isBlockedByUser
-                          ? 'bg-[#A6292A] text-white hover:bg-[#8a1f1f] cursor-pointer'
-                          : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                      }`}
-                      aria-label="Send message"
-                    >
+                  <button
+                    onClick={selectedFiles.length > 0 ? handleSend : handleSendMessage}
+                    disabled={fileSendLoading || (!newMessage.trim() && selectedFiles.length === 0) || isUserBlocked || isBlockedByUser}
+                    className={`p-2 rounded-full ml-2 transition-colors ${
+                      (newMessage.trim() || selectedFiles.length > 0) && !isUserBlocked && !isBlockedByUser
+                        ? 'bg-[#A6292A] text-white hover:bg-[#8a1f1f] cursor-pointer'
+                        : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                    }`}
+                    aria-label="Send message"
+                  >
                     {fileSendLoading ? (
                       <span className="loader w-5 h-5" />
                     ) : (
@@ -1694,7 +1675,7 @@ export default function Messages() {
                   </button>
                 </div>
               </div>
-            </>
+            </div>
           ) : (
             /* No conversation selected */
             <div className="flex-1 flex items-center justify-center bg-gray-50">
