@@ -611,7 +611,7 @@ export default function Home() {
               <h2 className="text-xl font-semibold text-gray-900">Report Post</h2>
               <button
                 onClick={closeReportModal}
-                className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                className="p-2 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
               >
                 <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
@@ -628,7 +628,7 @@ export default function Home() {
                 <select
                   value={reportReason}
                   onChange={(e) => setReportReason(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-[#9a0e20] focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-[#9a0e20] focus:border-transparent cursor-pointer"
                   required
                 >
                   <option value="" className="text-gray-500">Select a reason</option>
@@ -656,14 +656,14 @@ export default function Home() {
               <div className="flex space-x-3">
                 <button
                   onClick={closeReportModal}
-                  className="flex-1 bg-gray-700 text-white font-medium px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors"
+                  className="flex-1 bg-gray-700 text-white font-medium px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={submitReport}
                   disabled={!reportReason.trim() || isSubmittingReport}
-                  className="flex-1 bg-[#9a0e20] text-white font-medium px-4 py-2 rounded-lg hover:bg-[#801d21] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 bg-[#9a0e20] text-white font-medium px-4 py-2 rounded-lg hover:bg-[#801d21] transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                 >
                   {isSubmittingReport ? 'Submitting...' : 'Submit Report'}
                 </button>
@@ -704,7 +704,7 @@ export default function Home() {
                 onClick={() => setNotification(null)}
                 className={`ml-2 inline-flex text-gray-400 hover:text-gray-600 focus:outline-none ${
                   notification.type === 'success' ? 'hover:text-green-600' : 'hover:text-red-600'
-                }`}
+                } cursor-pointer`}
               >
                 <span className="sr-only">Close</span>
                 ×
