@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import Image from "next/image"
 import Navbar from "@/components/ui/Navbar"
 import { messageApi } from "@/lib/messageApi"
-import { FaCamera, FaMapMarkerAlt, FaCalendarAlt, FaPhone, FaEnvelope, FaEdit, FaCheck, FaTimes, FaTrash, FaEye, FaIdCard, FaPlug, FaTshirt, FaWallet, FaBoxOpen, FaGem } from "react-icons/fa"
+import { FaCamera, FaMapMarkerAlt, FaCalendarAlt, FaPhone, FaEnvelope, FaEdit, FaCheck, FaTimes, FaTrash, FaEye, FaIdCard } from "react-icons/fa"
 
 
 
@@ -189,7 +189,7 @@ export default function ProfilePage() {
           createdAt: post.dateShared,
           imageBase64: post.image,
         }))
-        setUserPosts(transformedPosts.slice().sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()))
+        setUserPosts(transformedPosts)
       } else if (response.status === 401) {
         localStorage.removeItem("token")
         router.push("/auth")
@@ -224,24 +224,17 @@ export default function ProfilePage() {
       if (response.ok) {
         // Remove the post from the state
         setUserPosts(userPosts.filter(post => post.id !== postId))
-        // Close the modal if it's open
-        if (showModal) {
-          closeModal()
-        }
-        // Close the delete confirmation modal
-        setShowDeleteConfirm(false)
-        setPostToDelete(null)
+        console.log("Post deleted successfully")
       } else if (response.status === 401) {
         localStorage.removeItem("token")
         router.push("/auth")
       } else {
-        const errorData = await response.text()
-        console.error("Failed to delete post:", response.status, errorData)
-        setError("Failed to delete post. Please try again later.")
+        console.error("Failed to delete post:", response.status)
+        setError("Post silinemedi")
       }
     } catch (error) {
-      console.error("Error while deleting post:", error)
-      setError("An error occurred while deleting the post. Please try again later.")
+      console.error("Post silinirken hata:", error)
+      setError("Post silinirken bir hata oluştu")
     }
   }
 
@@ -713,7 +706,7 @@ export default function ProfilePage() {
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {userPosts.slice().sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).map((post) => (
+                    {userPosts.map((post) => (
                       <div key={post.id} className="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow">
                         {/* Post Image */}
                         <div className="relative h-48 rounded-t-lg overflow-hidden bg-gray-100">
@@ -1139,24 +1132,24 @@ export default function ProfilePage() {
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="flex justify-between items-center p-4 md:p-6 border-b border-gray-200">
+            <div className="flex justify-between items-center p-6 border-b border-gray-200">
               <h2 className="text-xl font-semibold text-gray-900">Post Details</h2>
               <button
                 onClick={closeModal}
-                className="p-2 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+                className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
               >
                 <FaTimes className="w-5 h-5" />
               </button>
             </div>
 
             {/* Modal Content */}
-            <div className="p-4 md:p-6">
+            <div className="p-6">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Left Side - Image */}
                 <div className="space-y-4">
                   <div className="relative">
                     {selectedPost.imageBase64 ? (
-                      <div className="relative w-full h-48 md:h-96 rounded-lg overflow-hidden bg-gray-100">
+                      <div className="relative w-full h-96 rounded-lg overflow-hidden bg-gray-100">
                         <img
                           src={selectedPost.imageBase64.startsWith('data:') ? selectedPost.imageBase64 : `data:image/jpeg;base64,${selectedPost.imageBase64}`}
                           alt={selectedPost.title}
@@ -1164,7 +1157,7 @@ export default function ProfilePage() {
                         />
                       </div>
                     ) : (
-                      <div className="relative w-full h-48 md:h-96 rounded-lg overflow-hidden bg-gray-100">
+                      <div className="relative w-full h-96 rounded-lg overflow-hidden bg-gray-100">
                         <img
                           src={
                             selectedPost.category === 'Electronics' ? '/assets/electronic.jpeg' :
@@ -1207,12 +1200,7 @@ export default function ProfilePage() {
                   <div className="grid grid-cols-1 gap-4">
                     <div className="flex items-center p-3 bg-gray-50 rounded-lg">
                       <div className="w-8 h-8 bg-[#9a0e20] rounded-full flex items-center justify-center mr-3">
-                        {selectedPost.category === 'Electronics' && <FaPlug className="text-white text-lg" />}
-                        {selectedPost.category === 'Clothing' && <FaTshirt className="text-white text-lg" />}
-                        {selectedPost.category === 'Cards' && <FaWallet className="text-white text-lg" />}
-                        {selectedPost.category === 'Accessories' && <FaGem className="text-white text-lg" />}
-                        {selectedPost.category === 'Other' && <FaBoxOpen className="text-white text-lg" />}
-                        {!['Electronics','Clothing','Cards','Accessories','Other'].includes(selectedPost.category) && <FaBoxOpen className="text-white text-lg" />}
+                        <span className="text-white text-xs font-bold">C</span>
                       </div>
                       <div>
                         <p className="text-sm font-medium text-gray-900">Category</p>
@@ -1253,10 +1241,16 @@ export default function ProfilePage() {
                   <div className="flex space-x-3 pt-4">
                     <button
                       onClick={() => showDeleteConfirmation(selectedPost)}
-                      className="flex-1 bg-[#9a0e20] text-white px-4 py-2 rounded-lg hover:bg-[#7a0b19] transition-colors flex items-center justify-center cursor-pointer"
+                      className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center"
                     >
                       <FaTrash className="w-4 h-4 mr-2" />
                       Delete Post
+                    </button>
+                    <button
+                      onClick={closeModal}
+                      className="flex-1 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+                    >
+                      Close
                     </button>
                   </div>
                 </div>
@@ -1278,10 +1272,10 @@ export default function ProfilePage() {
           >
             {/* Modal Header */}
             <div className="flex justify-between items-center p-6 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-900">Delete Post</h2>
+              <h2 className="text-xl font-semibold text-gray-900">Postu Sil</h2>
               <button
                 onClick={handleDeleteCancel}
-                className="p-2 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+                className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
               >
                 <FaTimes className="w-5 h-5" />
               </button>
@@ -1291,21 +1285,21 @@ export default function ProfilePage() {
             <div className="p-6">
               <div className="mb-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">"{postToDelete.title}"</h3>
-                <p className="text-gray-600">Are you sure you want to delete this post? This action cannot be undone.</p>
+                <p className="text-gray-600">Bu postu silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.</p>
               </div>
 
               <div className="flex space-x-3">
                 <button
                   onClick={handleDeleteCancel}
-                  className="flex-1 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors cursor-pointer"
+                  className="flex-1 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
                 >
-                  Cancel
+                  İptal
                 </button>
                 <button
                   onClick={handleDeleteConfirm}
-                  className="flex-1 bg-[#9a0e20] text-white px-4 py-2 rounded-lg hover:bg-[#7a0b19] transition-colors cursor-pointer"
+                  className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
                 >
-                  Delete
+                  Sil
                 </button>
               </div>
             </div>
