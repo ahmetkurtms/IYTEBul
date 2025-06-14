@@ -16,10 +16,33 @@ interface UserProfile {
 
 export default function Navbar() {
   const router = useRouter();
-  const { setOpen } = useSidebar();
+  const { setOpen, open } = useSidebar();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Ekran boyutunu ve scroll pozisyonunu kontrol et
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    const handleScroll = () => {
+      const scrollPosition = window.scrollY;
+      setIsScrolled(scrollPosition > 100);
+    };
+
+    handleResize(); // İlk yüklemede kontrol et
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('scroll', handleScroll);
+    
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
 
   // Check if user is admin
   useEffect(() => {
@@ -87,14 +110,19 @@ export default function Navbar() {
           <div className='flex justify-between items-center'>
             {/* Logo */}
             <div className="flex items-center space-x-4">
-              {/* Hamburger sadece admin değilse göster */}
+              {/* Hamburger menü - mobilde her zaman, masaüstünde scroll edildiğinde floating */}
               {!isAdmin && (
-                <button
-                  onClick={() => setOpen(true)}
-                  className='p-2 rounded-lg hover:bg-white/10 transition-colors cursor-pointer'
-                >
-                  <FiMenu className="h-6 w-6" />
-                </button>
+                <>
+                  {/* Normal navbar hamburger - sadece mobilde ve scroll edilmediğinde */}
+                  {(!isScrolled || isMobile) && (
+                    <button
+                      onClick={() => setOpen(true)}
+                      className='p-2 rounded-lg hover:bg-white/10 transition-colors cursor-pointer'
+                    >
+                      <FiMenu className="h-6 w-6" />
+                    </button>
+                  )}
+                </>
               )}
               
               <Link href={isAdmin ? '/admin' : '/home'} className='flex items-center space-x-3 group'>
@@ -159,6 +187,25 @@ export default function Navbar() {
           </div>
         </div>
       </nav>
+
+      {/* Floating Hamburger - sadece masaüstünde, scroll edildiğinde, sidebar kapalıyken ve admin değilken */}
+      {!isAdmin && isScrolled && !isMobile && !open && (
+        <div className="sticky top-4 z-40 flex pointer-events-none select-none" style={{ width: '100%' }}>
+          <div className="w-full max-w-7xl px-4">
+            <button
+              onClick={() => setOpen(true)}
+              className="pointer-events-auto bg-[#9a0e20] hover:bg-[#7a0b19] text-white rounded-full shadow-lg p-3 transition-all duration-300 opacity-100 translate-y-0 cursor-pointer"
+              style={{
+                transition: 'opacity 0.4s, transform 0.4s',
+                opacity: isScrolled ? 1 : 0,
+                transform: isScrolled ? 'translateY(0)' : 'translateY(-20px)',
+              }}
+            >
+              <FiMenu className="h-6 w-6" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Logout Confirmation Modal */}
       {showLogoutModal && (
