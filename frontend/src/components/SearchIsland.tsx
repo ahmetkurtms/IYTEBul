@@ -301,7 +301,9 @@ const SearchIsland: React.FC<SearchIslandProps> = ({
           <div className="relative">
             <button
               className="flex items-center px-4 h-[42px] bg-white border border-gray-200 rounded-xl shadow-sm text-gray-800 font-medium hover:border-[#801d21] focus:border-[#801d21] transition-colors cursor-pointer whitespace-nowrap"
-              onClick={() => setSortPopoverOpen(!sortPopoverOpen)}
+              onClick={() => {
+                setSortPopoverOpen(!sortPopoverOpen);
+              }}
             >
               <FaSort className={`mr-2 text-lg ${((dateStart && dateStart.trim()) || (dateEnd && dateEnd.trim())) ? 'text-[#9a0e20]' : ''}`} />
               {sortOrder === 'desc' ? 'Newest to oldest' : 'Oldest to newest'}
@@ -311,13 +313,19 @@ const SearchIsland: React.FC<SearchIslandProps> = ({
                 <div className="flex flex-col gap-1">
                   <button
                     className={`flex items-center gap-2 px-2 py-1 rounded hover:bg-gray-100 ${sortOrder === 'desc' ? 'font-bold text-[#9a0e20]' : 'text-gray-700 cursor-pointer'}`}
-                    onClick={() => { setSortOrder('desc'); setSortPopoverOpen(false); }}
+                    onMouseDown={() => {
+                      setSortOrder('desc');
+                      setSortPopoverOpen(false);
+                    }}
                   >
                     {sortOrder === 'desc' ? <span>✓</span> : <span className="inline-block w-4" />} Newest to oldest
                   </button>
                   <button
                     className={`flex items-center gap-2 px-2 py-1 rounded hover:bg-gray-100 ${sortOrder === 'asc' ? 'font-bold text-[#9a0e20]' : 'text-gray-700 cursor-pointer'}`}
-                    onClick={() => { setSortOrder('asc'); setSortPopoverOpen(false); }}
+                    onMouseDown={() => {
+                      setSortOrder('asc');
+                      setSortPopoverOpen(false);
+                    }}
                   >
                     {sortOrder === 'asc' ? <span>✓</span> : <span className="inline-block w-4" />} Oldest to newest
                   </button>
@@ -545,7 +553,9 @@ const SearchIsland: React.FC<SearchIslandProps> = ({
           <div className="relative">
             <button
               className="flex items-center px-4 h-[42px] bg-white border border-gray-200 rounded-xl shadow-sm text-gray-800 font-medium hover:border-[#801d21] focus:border-[#801d21] transition-colors cursor-pointer whitespace-nowrap"
-              onClick={() => setSortPopoverOpen(!sortPopoverOpen)}
+              onClick={() => {
+                setSortPopoverOpen(!sortPopoverOpen);
+              }}
             >
               <FaSort className={`mr-2 text-lg ${((dateStart && dateStart.trim()) || (dateEnd && dateEnd.trim())) ? 'text-[#9a0e20]' : ''}`} />
               {sortOrder === 'desc' ? 'Newest to oldest' : 'Oldest to newest'}
@@ -555,13 +565,19 @@ const SearchIsland: React.FC<SearchIslandProps> = ({
                 <div className="flex flex-col gap-1">
                   <button
                     className={`flex items-center gap-2 px-2 py-1 rounded hover:bg-gray-100 ${sortOrder === 'desc' ? 'font-bold text-[#9a0e20]' : 'text-gray-700 cursor-pointer'}`}
-                    onClick={() => { setSortOrder('desc'); setSortPopoverOpen(false); }}
+                    onMouseDown={() => {
+                      setSortOrder('desc');
+                      setSortPopoverOpen(false);
+                    }}
                   >
                     {sortOrder === 'desc' ? <span>✓</span> : <span className="inline-block w-4" />} Newest to oldest
                   </button>
                   <button
                     className={`flex items-center gap-2 px-2 py-1 rounded hover:bg-gray-100 ${sortOrder === 'asc' ? 'font-bold text-[#9a0e20]' : 'text-gray-700 cursor-pointer'}`}
-                    onClick={() => { setSortOrder('asc'); setSortPopoverOpen(false); }}
+                    onMouseDown={() => {
+                      setSortOrder('asc');
+                      setSortPopoverOpen(false);
+                    }}
                   >
                     {sortOrder === 'asc' ? <span>✓</span> : <span className="inline-block w-4" />} Oldest to newest
                   </button>
