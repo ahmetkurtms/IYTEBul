@@ -1253,16 +1253,10 @@ export default function ProfilePage() {
                   <div className="flex space-x-3 pt-4">
                     <button
                       onClick={() => showDeleteConfirmation(selectedPost)}
-                      className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center"
+                      className="flex-1 bg-[#9a0e20] text-white px-4 py-2 rounded-lg hover:bg-[#7a0b19] transition-colors flex items-center justify-center cursor-pointer"
                     >
                       <FaTrash className="w-4 h-4 mr-2" />
                       Delete Post
-                    </button>
-                    <button
-                      onClick={closeModal}
-                      className="flex-1 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
-                    >
-                      Close
                     </button>
                   </div>
                 </div>
@@ -1309,7 +1303,7 @@ export default function ProfilePage() {
                 </button>
                 <button
                   onClick={handleDeleteConfirm}
-                  className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+                  className="flex-1 bg-[#9a0e20] text-white px-4 py-2 rounded-lg hover:bg-[#7a0b19] transition-colors cursor-pointer"
                 >
                   Delete
                 </button>
