@@ -100,6 +100,9 @@ export default function Messages() {
   const [isSelectingMessagesForReport, setIsSelectingMessagesForReport] = useState(false);
   const [isReportModalMinimized, setIsReportModalMinimized] = useState(false);
 
+  // Add state for delete confirmation
+  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState<{ type: 'self' | 'everyone', messageId: number } | null>(null);
+
   // Fix hydration issues
   useEffect(() => {
     setIsMounted(true);
@@ -572,7 +575,7 @@ export default function Messages() {
         showNotification('error', 'Cannot send message - you or the other user may have blocked each other');
         setFileSendError('Cannot send - user blocked');
       } else {
-        setFileSendError('Mesaj gönderilemedi. Lütfen tekrar deneyin.');
+        setFileSendError('Message could not be sent. Please try again.');
       }
     } finally {
       setFileSendLoading(false);
@@ -1264,7 +1267,7 @@ export default function Messages() {
                         <div className={`flex items-center space-x-1 ${isCurrentUser ? 'order-1 mr-2' : 'order-2 ml-2'}`}>
                           <button
                             onClick={() => handleReplyToMessage(message)}
-                            className="p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors opacity-0 group-hover:opacity-100"
+                            className="p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors opacity-0 group-hover:opacity-100 cursor-pointer"
                             title="Reply"
                           >
                             <FiCornerUpLeft className="w-3 h-3 text-gray-600" />
@@ -1272,7 +1275,7 @@ export default function Messages() {
                           <div className="relative">
                             <button
                               onClick={(e) => handleDeleteButtonClick(message.id, e)}
-                              className="p-1.5 rounded-full bg-red-100 hover:bg-red-200 transition-colors opacity-0 group-hover:opacity-100"
+                              className="p-1.5 rounded-full bg-red-100 hover:bg-red-200 transition-colors opacity-0 group-hover:opacity-100 cursor-pointer"
                               title="Delete"
                             >
                               <FiTrash2 className="w-3 h-3 text-red-600" />
@@ -1286,10 +1289,10 @@ export default function Messages() {
                               >
                                 <button
                                   onClick={() => {
-                                    handleDeleteMessageForSelf(message.id);
+                                    setShowDeleteConfirmModal({ type: 'self', messageId: message.id });
                                     setDeleteMenuMessageId(null);
                                   }}
-                                  className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 transition-colors flex items-center space-x-2"
+                                  className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 transition-colors flex items-center space-x-2 cursor-pointer"
                                 >
                                   <span>🗑️</span>
                                   <span>Delete for me</span>
@@ -1297,10 +1300,10 @@ export default function Messages() {
                                 {message.senderId === currentUser?.id && (
                                   <button
                                     onClick={() => {
-                                      handleDeleteMessageForEveryone(message.id);
+                                      setShowDeleteConfirmModal({ type: 'everyone', messageId: message.id });
                                       setDeleteMenuMessageId(null);
                                     }}
-                                    className="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center space-x-2"
+                                    className="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center space-x-2 cursor-pointer"
                                   >
                                     <span>❌</span>
                                     <span>Delete for everyone</span>
@@ -1382,7 +1385,7 @@ export default function Messages() {
                                 <div className="flex-shrink-0">
                                   <button
                                     onClick={() => router.push(`/home?highlightItem=${message.referencedItemId}`)}
-                                    className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                                    className="text-xs text-blue-600 hover:text-blue-800 font-medium cursor-pointer"
                                   >
                                     View
                                   </button>
@@ -1564,7 +1567,7 @@ export default function Messages() {
                           setReplyToMessage(null);
                           setNewMessage('');
                         }}
-                        className="p-1 rounded-full hover:bg-blue-200 transition-colors"
+                        className="p-1 rounded-full hover:bg-blue-200 transition-colors cursor-pointer"
                         title="Cancel reply"
                       >
                         <FiX className="w-3 h-3 text-blue-600" />
@@ -1876,7 +1879,7 @@ export default function Messages() {
                 onClick={() => setNotification(null)}
                 className={`ml-2 inline-flex text-gray-400 hover:text-gray-600 focus:outline-none ${
                   notification.type === 'success' ? 'hover:text-green-600' : 'hover:text-red-600'
-                }`}
+                } cursor-pointer`}
               >
                 <span className="sr-only">Close</span>
                 ×
@@ -1900,6 +1903,26 @@ export default function Messages() {
           <span className="font-semibold">Continue Report</span>
         </button>
       )}
+
+      {/* Confirmation Modal for Delete Message */}
+      <ConfirmationModal
+        isOpen={!!showDeleteConfirmModal}
+        onClose={() => setShowDeleteConfirmModal(null)}
+        onConfirm={async () => {
+          if (!showDeleteConfirmModal) return;
+          if (showDeleteConfirmModal.type === 'self') {
+            await handleDeleteMessageForSelf(showDeleteConfirmModal.messageId);
+          } else {
+            await handleDeleteMessageForEveryone(showDeleteConfirmModal.messageId);
+          }
+          setShowDeleteConfirmModal(null);
+        }}
+        title={showDeleteConfirmModal?.type === 'self' ? 'Delete for Me' : 'Delete for Everyone'}
+        message={showDeleteConfirmModal?.type === 'self' ? 'Are you sure you want to delete this message for yourself? This cannot be undone.' : 'Are you sure you want to delete this message for everyone? This cannot be undone.'}
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
+      />
     </div>
   );
 }
