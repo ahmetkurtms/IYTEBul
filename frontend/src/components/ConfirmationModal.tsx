@@ -82,7 +82,7 @@ export default function ConfirmationModal({
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+            className="text-gray-400 hover:text-gray-600 transition-colors"
           >
             <FiX className="w-5 h-5" />
           </button>
@@ -97,13 +97,13 @@ export default function ConfirmationModal({
         <div className="flex items-center justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors cursor-pointer"
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
           >
             {cancelText}
           </button>
           <button
             onClick={handleConfirm}
-            className={`px-4 py-2 text-sm font-medium text-white rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors cursor-pointer ${colors.confirmBtn}`}
+            className={`px-4 py-2 text-sm font-medium text-white rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors ${colors.confirmBtn}`}
           >
             {confirmText}
           </button>

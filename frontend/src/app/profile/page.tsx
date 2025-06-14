@@ -1136,7 +1136,7 @@ export default function ProfilePage() {
               <h2 className="text-xl font-semibold text-gray-900">Post Details</h2>
               <button
                 onClick={closeModal}
-                className="p-2 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+                className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
               >
                 <FaTimes className="w-5 h-5" />
               </button>
@@ -1241,14 +1241,14 @@ export default function ProfilePage() {
                   <div className="flex space-x-3 pt-4">
                     <button
                       onClick={() => showDeleteConfirmation(selectedPost)}
-                      className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center cursor-pointer"
+                      className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center"
                     >
                       <FaTrash className="w-4 h-4 mr-2" />
                       Delete Post
                     </button>
                     <button
                       onClick={closeModal}
-                      className="flex-1 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors cursor-pointer"
+                      className="flex-1 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
                     >
                       Close
                     </button>
@@ -1272,10 +1272,10 @@ export default function ProfilePage() {
           >
             {/* Modal Header */}
             <div className="flex justify-between items-center p-6 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-900">Delete Post</h2>
+              <h2 className="text-xl font-semibold text-gray-900">Postu Sil</h2>
               <button
                 onClick={handleDeleteCancel}
-                className="p-2 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+                className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
               >
                 <FaTimes className="w-5 h-5" />
               </button>
@@ -1285,21 +1285,21 @@ export default function ProfilePage() {
             <div className="p-6">
               <div className="mb-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">"{postToDelete.title}"</h3>
-                <p className="text-gray-600">Are you sure you want to delete this post? This action cannot be undone.</p>
+                <p className="text-gray-600">Bu postu silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.</p>
               </div>
 
               <div className="flex space-x-3">
                 <button
                   onClick={handleDeleteCancel}
-                  className="flex-1 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors cursor-pointer"
+                  className="flex-1 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
                 >
-                  Cancel
+                  İptal
                 </button>
                 <button
                   onClick={handleDeleteConfirm}
-                  className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors cursor-pointer"
+                  className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
                 >
-                  Delete
+                  Sil
                 </button>
               </div>
             </div>
