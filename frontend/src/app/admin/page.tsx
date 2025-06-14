@@ -784,31 +784,31 @@ export default function AdminPanel() {
                   <select
                     value={filterStatus}
                     onChange={e => setFilterStatus(e.target.value)}
-                    className="py-2 px-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9a0e20] text-gray-900 font-medium"
+                    className="py-2 px-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9a0e20] text-gray-900 font-medium cursor-pointer"
                   >
-                    <option value="all">All Statuses</option>
-                    <option value="pending">Pending</option>
-                    <option value="reviewed">Reviewed</option>
-                    <option value="dismissed">Rejected</option>
-                    <option value="action_taken">Action Taken</option>
+                    <option value="all" className="cursor-pointer">All Statuses</option>
+                    <option value="pending" className="cursor-pointer">Pending</option>
+                    <option value="reviewed" className="cursor-pointer">Reviewed</option>
+                    <option value="dismissed" className="cursor-pointer">Rejected</option>
+                    <option value="action_taken" className="cursor-pointer">Action Taken</option>
                   </select>
                   <select
                     value={filterReportType}
                     onChange={e => setFilterReportType(e.target.value)}
-                    className="py-2 px-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9a0e20] text-gray-900 font-medium"
+                    className="py-2 px-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9a0e20] text-gray-900 font-medium cursor-pointer"
                   >
-                    <option value="all">All Types</option>
-                    <option value="post">Post Reports</option>
-                    <option value="user">User Reports</option>
+                    <option value="all" className="cursor-pointer">All Types</option>
+                    <option value="post" className="cursor-pointer">Post Reports</option>
+                    <option value="user" className="cursor-pointer">User Reports</option>
                   </select>
                   <select
                     value={filterReason}
                     onChange={e => setFilterReason(e.target.value)}
-                    className="py-2 px-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9a0e20] text-gray-900 font-medium"
+                    className="py-2 px-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9a0e20] text-gray-900 font-medium cursor-pointer"
                   >
-                    <option value="all">All Reasons</option>
+                    <option value="all" className="cursor-pointer">All Reasons</option>
                     {REPORT_REASONS.map(reason => (
-                      <option key={reason.value} value={reason.value}>{reason.label}</option>
+                      <option key={reason.value} value={reason.value} className="cursor-pointer">{reason.label}</option>
                     ))}
                   </select>
                 </div>
@@ -1559,7 +1559,7 @@ export default function AdminPanel() {
                   onClick={() => setNotification(null)}
                   className={`ml-2 inline-flex text-gray-400 hover:text-gray-600 focus:outline-none ${
                     notification.type === 'success' ? 'hover:text-green-600' : 'hover:text-red-600'
-                  }`}
+                  } cursor-pointer`}
                 >
                   <span className="sr-only">Close</span>
                   ×
