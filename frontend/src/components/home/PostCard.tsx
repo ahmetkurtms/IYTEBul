@@ -1,6 +1,6 @@
 import { formatDistanceToNow } from 'date-fns';
 import { enUS } from 'date-fns/locale';
-import { FiFlag, FiMoreVertical } from 'react-icons/fi';
+import { FiFlag, FiMoreVertical, FiTag, FiMapPin } from 'react-icons/fi';
 import { useState, useRef, useEffect } from 'react';
 
 interface Post {
@@ -187,14 +187,16 @@ export default function PostCard({
           )}
         </div>
         
-        {/* Tags Section - Responsive Layout with prefixes */}
+        {/* Tags Section - Responsive Layout with icons */}
         <div className="mb-3 sm:mb-4">
           <div className="flex flex-wrap gap-1">
-            <span className="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded-full truncate max-w-[calc(50%-2px)]" title={`Category: ${post.category}`}>
-              Category: {post.category}
+            <span className="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded-full truncate max-w-[calc(50%-2px)] flex items-center gap-1" title={`Category: ${post.category}`}>
+              <FiTag className="w-3 h-3" />
+              <span>{post.category}</span>
             </span>
-            <span className="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded-full truncate max-w-[calc(50%-2px)]" title={`Location: ${post.location}`}>
-              Location: {post.location}
+            <span className="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded-full truncate max-w-[calc(50%-2px)] flex items-center gap-1" title={`Location: ${post.location}`}>
+              <FiMapPin className="w-3 h-3" />
+              <span>{post.location}</span>
             </span>
           </div>
         </div>
