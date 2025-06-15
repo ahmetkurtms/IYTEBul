@@ -102,9 +102,15 @@ public class AdminController {
             @RequestHeader("Authorization") String jwt,
             @RequestBody(required = false) Map<String, String> banRequest) {
         try {
-            validateAdmin(jwt);
+            System.out.println("=== BAN USER REQUEST START ===");
+            System.out.println("User ID: " + userId);
+            System.out.println("Ban Request: " + banRequest);
+            
+            User admin = validateAdmin(jwt);
+            System.out.println("Admin validated: " + admin.getNickname());
             
             User user = userService.findUserById(userId);
+            System.out.println("Target user found: " + user.getNickname() + " (current ban status: " + user.isCurrentlyBanned() + ")");
             
             if (user.isCurrentlyBanned()) {
                 // Unban user
@@ -147,6 +153,39 @@ public class AdminController {
                 }
                 
                 userRepository.save(user);
+                System.out.println("User ban status saved to database");
+                
+                // Verify the user was actually saved with ban status
+                User savedUser = userRepository.findById(userId).orElse(null);
+                if (savedUser != null) {
+                    System.out.println("Verification - User after save:");
+                    System.out.println("  - Banned Status: " + savedUser.getBanned_status());
+                    System.out.println("  - Currently Banned (calculated): " + savedUser.isCurrentlyBanned());
+                    System.out.println("  - Ban Expires At: " + savedUser.getBanExpiresAt());
+                    System.out.println("  - Ban Reason: " + savedUser.getBanReason());
+                } else {
+                    System.err.println("ERROR: Could not find user after save!");
+                }
+                
+                // Update all reports for this user to ACTION_TAKEN status
+                System.out.println("=== UPDATING USER REPORTS FOR BANNED USER ===");
+                System.out.println("User ID: " + userId);
+                List<UserReport> userReports = userReportRepository.findByUserId(userId);
+                System.out.println("Found " + userReports.size() + " user reports for this user");
+                
+                for (UserReport report : userReports) {
+                    System.out.println("Report ID: " + report.getId() + ", Current Status: " + report.getStatus());
+                    if (report.getStatus() == UserReport.ReportStatus.PENDING || 
+                        report.getStatus() == UserReport.ReportStatus.REVIEWED) {
+                        report.setStatus(UserReport.ReportStatus.ACTION_TAKEN);
+                        report.setReviewedAt(LocalDateTime.now());
+                        report.setReviewedBy(admin);
+                        userReportRepository.save(report);
+                        System.out.println("Updated report " + report.getId() + " to ACTION_TAKEN");
+                    } else {
+                        System.out.println("Skipping report " + report.getId() + " - already processed");
+                    }
+                }
                 
                 // Send ban notification email only if user has email notifications enabled
                 if (Boolean.TRUE.equals(user.getEmailNotifications())) {
@@ -168,6 +207,7 @@ public class AdminController {
                     }
                 }
                 
+                System.out.println("=== BAN USER REQUEST COMPLETED SUCCESSFULLY ===");
                 return ResponseEntity.ok(new ApiResponse("User banned successfully", true));
             }
         } catch (Exception e) {
@@ -310,7 +350,10 @@ public class AdminController {
             }
             // User reports
             List<UserReport> userReports = userReportRepository.findAllByOrderByCreatedAtDesc();
+            System.out.println("=== FETCHING USER REPORTS ===");
+            System.out.println("Total user reports found: " + userReports.size());
             for (UserReport report : userReports) {
+                System.out.println("User Report ID: " + report.getId() + ", Status: " + report.getStatus() + ", User ID: " + report.getUser().getUser_id());
                 Map<String, Object> reportMap = new java.util.HashMap<>();
                 reportMap.put("id", report.getId());
                 reportMap.put("type", "user");
