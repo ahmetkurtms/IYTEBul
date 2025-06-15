@@ -172,25 +172,96 @@ export default function AdminPanel() {
     }
   }, [activeTab]);
 
-  // Mock data
+  // Load initial data
   useEffect(() => {
+    const initializeData = async () => {
       const token = localStorage.getItem('token');
       if (!token) {
         router.push('/auth');
         return;
       }
 
-    // Fetch real data from backend
-    fetchUsers();
-    fetchPosts();
-    fetchLocations();
-    fetchReports();
-    
-    setLoading(false);
+      console.log('=== INITIALIZING ADMIN PANEL DATA ===');
+      setLoading(true);
+      
+      try {
+        // Fetch users
+        console.log('Fetching users...');
+        const usersResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/users`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        
+        if (usersResponse.ok) {
+          const usersData = await usersResponse.json();
+          console.log(`Users fetched successfully: ${usersData.length} users`);
+          setUsers(usersData);
+        } else if (usersResponse.status === 403) {
+          console.error('Access denied for users');
+          showNotification('error', 'Access denied: Admin role required');
+          router.push('/home');
+          return;
+        } else {
+          console.error('Failed to fetch users:', usersResponse.status);
+          showNotification('error', 'Failed to fetch users');
+        }
+
+        // Fetch posts
+        console.log('Fetching posts...');
+        const postsResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/posts`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        
+        if (postsResponse.ok) {
+          const postsData = await postsResponse.json();
+          console.log(`Posts fetched successfully: ${postsData.length} posts`);
+          setPosts(postsData);
+        } else {
+          console.error('Failed to fetch posts:', postsResponse.status);
+          showNotification('error', 'Failed to fetch posts');
+        }
+
+        // Fetch locations
+        console.log('Fetching locations...');
+        const locationsResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/locations`);
+        if (locationsResponse.ok) {
+          const locationsData = await locationsResponse.json();
+          console.log(`Locations fetched successfully: ${locationsData.length} locations`);
+          setLocations(locationsData);
+        } else {
+          console.error('Failed to fetch locations:', locationsResponse.status);
+          setLocations([]);
+        }
+
+        // Fetch reports
+        console.log('Fetching reports...');
+        const reportsResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/reports`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+
+        if (reportsResponse.ok) {
+          const reportsData = await reportsResponse.json();
+          console.log(`Reports fetched successfully: ${reportsData.length} reports`);
+          setReports(reportsData);
+        } else {
+          console.error('Failed to fetch reports:', reportsResponse.status);
+          setReports([]);
+        }
+
+        console.log('=== ADMIN PANEL DATA LOADED SUCCESSFULLY ===');
+      } catch (error) {
+        console.error('Error loading admin panel data:', error);
+        showNotification('error', 'Failed to load admin panel data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initializeData();
   }, [router]);
 
   const fetchUsers = async () => {
     try {
+      console.log('Fetching users...');
       const token = localStorage.getItem('token');
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/users`, {
         headers: {
@@ -200,13 +271,14 @@ export default function AdminPanel() {
       
       if (response.ok) {
         const data = await response.json();
-        console.log('Full user data from backend:', data);
-        console.log('First user detailed:', JSON.stringify(data[0], null, 2));
+        console.log(`Users fetched successfully: ${data.length} users`);
         setUsers(data);
       } else if (response.status === 403) {
+        console.error('Access denied for users');
         showNotification('error', 'Access denied: Admin role required');
         router.push('/home');
       } else {
+        console.error('Failed to fetch users:', response.status);
         showNotification('error', 'Failed to fetch users');
       }
     } catch (error) {
@@ -217,6 +289,7 @@ export default function AdminPanel() {
 
   const fetchPosts = async () => {
     try {
+      console.log('Fetching posts...');
       const token = localStorage.getItem('token');
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/posts`, {
         headers: {
@@ -226,11 +299,14 @@ export default function AdminPanel() {
       
       if (response.ok) {
         const data = await response.json();
+        console.log(`Posts fetched successfully: ${data.length} posts`);
         setPosts(data);
       } else if (response.status === 403) {
+        console.error('Access denied for posts');
         showNotification('error', 'Access denied: Admin role required');
         router.push('/home');
       } else {
+        console.error('Failed to fetch posts:', response.status);
         showNotification('error', 'Failed to fetch posts');
       }
     } catch (error) {
@@ -241,10 +317,15 @@ export default function AdminPanel() {
 
   const fetchLocations = async () => {
     try {
+      console.log('Fetching locations...');
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/locations`);
       if (response.ok) {
         const locationsData = await response.json();
+        console.log(`Locations fetched successfully: ${locationsData.length} locations`);
         setLocations(locationsData);
+      } else {
+        console.error('Failed to fetch locations:', response.status);
+        setLocations([]);
       }
     } catch (error) {
       console.error('Error fetching locations:', error);
@@ -254,8 +335,12 @@ export default function AdminPanel() {
 
   const fetchReports = async () => {
     try {
+      console.log('Fetching reports...');
       const token = localStorage.getItem('token');
-      if (!token) return;
+      if (!token) {
+        console.log('No token found, skipping reports fetch');
+        return;
+      }
 
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/reports`, {
         headers: {
@@ -265,6 +350,7 @@ export default function AdminPanel() {
 
       if (response.ok) {
         const reportsData = await response.json();
+        console.log(`Reports fetched successfully: ${reportsData.length} reports`);
         setReports(reportsData);
       } else {
         console.error('Failed to fetch reports:', response.status);
@@ -278,6 +364,11 @@ export default function AdminPanel() {
 
   const handleBanUser = async (userId: number, duration?: string, reason?: string) => {
     try {
+      console.log('=== HANDLE BAN USER START ===');
+      console.log('User ID:', userId);
+      console.log('Duration:', duration);
+      console.log('Reason:', reason);
+      
       const token = localStorage.getItem('token');
       
       // Calculate ban expiry time based on duration using local time
@@ -309,6 +400,9 @@ export default function AdminPanel() {
         requestBody.banReason = reason;
       }
 
+      console.log('Request Body:', requestBody);
+      console.log('API URL:', `${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/users/${userId}/ban`);
+
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/users/${userId}/ban`, {
         method: 'PUT',
         headers: {
@@ -318,7 +412,13 @@ export default function AdminPanel() {
         body: Object.keys(requestBody).length > 0 ? JSON.stringify(requestBody) : undefined,
       });
       
+      console.log('Response Status:', response.status);
+      console.log('Response OK:', response.ok);
+      
       if (response.ok) {
+        const responseData = await response.json();
+        console.log('Ban Response Data:', responseData);
+        
         // Update local state
         setUsers(prev => prev.map(user => 
           user.id === userId ? { 
@@ -329,7 +429,10 @@ export default function AdminPanel() {
         ));
         
         const user = users.find(u => u.id === userId);
+        console.log('User found for notification:', user);
+        
         if (user?.isBanned) {
+          console.log('User was banned, showing unban notification');
           showNotification('success', `${user.nickname || user.name} has been unbanned successfully`);
         } else {
           const durationText = duration === 'permanent' ? 'permanently' : 
@@ -337,9 +440,26 @@ export default function AdminPanel() {
                               duration === '24h' ? 'for 24 hours' :
                               duration === '7d' ? 'for 7 days' :
                               duration === '30d' ? 'for 30 days' : '';
+          console.log('User was not banned, showing ban notification with duration:', durationText);
           showNotification('success', `${user?.nickname || user?.name} has been banned ${durationText}`);
+          
+          // Update related user reports to ACTION_TAKEN status in frontend
+          console.log('Updating related user reports to ACTION_TAKEN in frontend state');
+          setReports(prev => prev.map(report => 
+            report.type === 'user' && report.userId === userId && 
+            (report.status === 'PENDING' || report.status === 'REVIEWED')
+              ? { ...report, status: 'ACTION_TAKEN' as const }
+              : report
+          ));
         }
+        
+        // Refresh reports list to ensure we have the latest data
+        console.log('Fetching latest reports data...');
+        await fetchReports();
+        console.log('=== HANDLE BAN USER COMPLETED SUCCESSFULLY ===');
       } else {
+        const errorData = await response.text();
+        console.error('Ban request failed:', response.status, errorData);
         showNotification('error', 'Failed to update user ban status');
       }
     } catch (error) {
@@ -351,11 +471,17 @@ export default function AdminPanel() {
   const [activeReportIdForBan, setActiveReportIdForBan] = useState<number | null>(null);
 
   const openBanModal = (user: User, reportId?: number) => {
+    console.log('=== OPEN BAN MODAL ===');
+    console.log('User:', user);
+    console.log('Report ID:', reportId);
+    
     setSelectedUser(user);
     setBanDuration('1h');
     setBanReason('');
     setShowBanModal(true);
     setActiveReportIdForBan(reportId ?? null);
+    
+    console.log('Active Report ID for Ban set to:', reportId ?? null);
   };
 
   const closeBanModal = () => {
@@ -368,15 +494,31 @@ export default function AdminPanel() {
 
   const confirmBanUser = async () => {
     if (!selectedUser) return;
+    
+    console.log('=== BAN USER FRONTEND START ===');
+    console.log('Selected User:', selectedUser);
+    console.log('Active Report ID for Ban:', activeReportIdForBan);
+    console.log('Ban Duration:', banDuration);
+    console.log('Ban Reason:', banReason);
+    
     if (selectedUser.isBanned) {
+      console.log('User is currently banned, unbanning...');
       await handleBanUser(selectedUser.id);
     } else {
+      console.log('User is not banned, banning...');
       await handleBanUser(selectedUser.id, banDuration, banReason);
       if (activeReportIdForBan) {
+        console.log('Updating related report to ACTION_TAKEN...');
         await handleReportAction(activeReportIdForBan, 'approve');
+      } else {
+        console.log('No report ID found, skipping report update');
       }
     }
     closeBanModal();
+    // Refresh all data to ensure consistency
+    console.log('Refreshing users and reports data...');
+    await Promise.all([fetchUsers(), fetchReports()]);
+    console.log('=== BAN USER FRONTEND COMPLETED ===');
   };
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -580,11 +722,43 @@ export default function AdminPanel() {
     }
   };
 
-  const handleViewReportedUser = (userId: number) => {
+  const [selectedReportForBan, setSelectedReportForBan] = useState<number | null>(null);
+
+  const handleViewReportedUser = async (userId: number, reportId?: number) => {
     const user = users.find(u => u.id === userId);
     if (user) {
       setSelectedUserForDetails(user);
+      setSelectedReportForBan(reportId || null);
       setShowUserDetailsModal(true);
+      
+      // Update report status to REVIEWED if it's currently PENDING
+      if (reportId) {
+        const report = reports.find(r => r.id === reportId);
+        if (report && report.status === 'PENDING') {
+          try {
+            const token = localStorage.getItem('token');
+            if (token) {
+              const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/reports/${reportId}/status`, {
+                method: 'PUT',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${token}`,
+                },
+                body: JSON.stringify({ status: 'REVIEWED' }),
+              });
+              
+              if (response.ok) {
+                // Update report status in local state
+                setReports(prev => prev.map(r => 
+                  r.id === reportId ? { ...r, status: 'REVIEWED' as const } : r
+                ));
+              }
+            }
+          } catch (error) {
+            console.error('Error updating report status:', error);
+          }
+        }
+      }
     } else {
       showNotification('error', 'User not found');
     }
@@ -598,6 +772,7 @@ export default function AdminPanel() {
   const closeUserDetailsModal = () => {
     setShowUserDetailsModal(false);
     setSelectedUserForDetails(null);
+    setSelectedReportForBan(null);
   };
 
   const [filterReportType, setFilterReportType] = useState<string>('all');
@@ -1041,14 +1216,32 @@ export default function AdminPanel() {
                                 <FiEye className="w-4 h-4" />
                               </button>
                             )}
-                            {report.type === 'user' && (
-                              <button
-                                onClick={() => handleViewReportedUser(report.userId!)}
-                                className="p-2 rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors cursor-pointer"
-                                title="View Reported User"
-                              >
-                                <FiEye className="w-4 h-4" />
-                              </button>
+                                                        {report.type === 'user' && (
+                              <>
+                                <button
+                                  onClick={() => handleViewReportedUser(report.userId!, report.id)}
+                                  className="p-2 rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors cursor-pointer"
+                                  title="View Reported User"
+                                >
+                                  <FiEye className="w-4 h-4" />
+                                </button>
+                                {(report.status === 'PENDING' || report.status === 'REVIEWED') && (
+                                  <button
+                                    onClick={() => {
+                                      const reportedUser = users.find(u => u.id === report.userId);
+                                      if (reportedUser) {
+                                        openBanModal(reportedUser, report.id);
+                                      } else {
+                                        showNotification('error', 'User not found in current user list');
+                                      }
+                                    }}
+                                    className="p-2 rounded-lg bg-yellow-100 text-yellow-600 hover:bg-yellow-200 transition-colors cursor-pointer"
+                                    title="Ban User"
+                                  >
+                                    <FiUserX className="w-4 h-4" />
+                                  </button>
+                                )}
+                              </>
                             )}
                             {(report.status === 'PENDING' || report.status === 'REVIEWED') && (
                               <>
@@ -1506,7 +1699,7 @@ export default function AdminPanel() {
                   <div className="flex space-x-2 pt-3 border-t border-gray-200">
                     <button
                       onClick={() => {
-                        openBanModal(selectedUserForDetails);
+                        openBanModal(selectedUserForDetails, selectedReportForBan || undefined);
                         closeUserDetailsModal();
                       }}
                       className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
