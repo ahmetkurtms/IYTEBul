@@ -89,11 +89,25 @@ export default function Messages() {
   const [isBlockedByUser, setIsBlockedByUser] = useState(false);
   const [blockLoading, setBlockLoading] = useState(false);
   
-  // Message hover states
+  // Message states - restored hoveredMessageId for web hover functionality
   const [hoveredMessageId, setHoveredMessageId] = useState<number | null>(null);
   const [replyToMessage, setReplyToMessage] = useState<Message | null>(null);
   const [deleteMenuMessageId, setDeleteMenuMessageId] = useState<number | null>(null);
+  const [mobileMenuMessageId, setMobileMenuMessageId] = useState<number | null>(null);
   const deleteMenuRef = useRef<HTMLDivElement>(null);
+
+  // Swipe to reply states
+  const [swipeState, setSwipeState] = useState<{
+    messageId: number | null;
+    startX: number;
+    currentX: number;
+    isDragging: boolean;
+  }>({
+    messageId: null,
+    startX: 0,
+    currentX: 0,
+    isDragging: false
+  });
 
   // State ekle
   const [selectedReportMessageIds, setSelectedReportMessageIds] = useState<number[]>([]);
@@ -698,6 +712,10 @@ export default function Messages() {
       if (deleteMenuMessageId && deleteMenuRef.current && !deleteMenuRef.current.contains(e.target as Node)) {
         setDeleteMenuMessageId(null);
       }
+      // Close mobile menu on outside click
+      if (mobileMenuMessageId && !((e.target as Element)?.closest('.mobile-menu-container'))) {
+        setMobileMenuMessageId(null);
+      }
     }
     document.addEventListener('mousedown', handleClick);
     document.addEventListener('touchstart', handleClick);
@@ -705,7 +723,7 @@ export default function Messages() {
       document.removeEventListener('mousedown', handleClick);
       document.removeEventListener('touchstart', handleClick);
     };
-  }, [deleteMenuMessageId]);
+  }, [deleteMenuMessageId, mobileMenuMessageId]);
 
   // Filter messages based on search query (reverse order - newest first)
   const filteredMessages = messages
@@ -934,6 +952,64 @@ export default function Messages() {
         messageInputRef.current.focus();
       }
     }, 100);
+  };
+
+  // Swipe to reply handlers
+  const handleTouchStart = (e: React.TouchEvent, messageId: number) => {
+    const touch = e.touches[0];
+    setSwipeState({
+      messageId,
+      startX: touch.clientX,
+      currentX: touch.clientX,
+      isDragging: true
+    });
+  };
+
+  const handleTouchMove = (e: React.TouchEvent, messageId: number) => {
+    if (!swipeState.isDragging || swipeState.messageId !== messageId) return;
+    
+    const touch = e.touches[0];
+    const deltaX = touch.clientX - swipeState.startX;
+    
+    // Only allow swipe in the correct direction (right for received messages, left for sent messages)
+    const message = messages.find(m => m.id === messageId);
+    const isCurrentUser = message?.senderId === currentUser?.id;
+    
+    if ((isCurrentUser && deltaX > 0) || (!isCurrentUser && deltaX < 0)) {
+      return; // Wrong direction, don't update
+    }
+    
+    // Limit swipe distance
+    const maxSwipe = 80;
+    const clampedX = Math.max(-maxSwipe, Math.min(maxSwipe, deltaX));
+    
+    setSwipeState(prev => ({
+      ...prev,
+      currentX: swipeState.startX + clampedX
+    }));
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent, messageId: number) => {
+    if (!swipeState.isDragging || swipeState.messageId !== messageId) return;
+    
+    const deltaX = swipeState.currentX - swipeState.startX;
+    const threshold = 50; // Minimum swipe distance to trigger reply
+    
+    // Check if swipe was far enough
+    if (Math.abs(deltaX) >= threshold) {
+      const message = messages.find(m => m.id === messageId);
+      if (message) {
+        handleReplyToMessage(message);
+      }
+    }
+    
+    // Reset swipe state
+    setSwipeState({
+      messageId: null,
+      startX: 0,
+      currentX: 0,
+      isDragging: false
+    });
   };
 
   if (loading || !isMounted) {
@@ -1283,13 +1359,54 @@ export default function Messages() {
                       className={`flex ${isCurrentUser ? 'justify-end' : 'justify-start'} transition-all duration-1000 group`}
                       onMouseEnter={() => setHoveredMessageId(message.id)}
                       onMouseLeave={() => setHoveredMessageId(null)}
+                      onTouchStart={(e) => handleTouchStart(e, message.id)}
+                      onTouchMove={(e) => handleTouchMove(e, message.id)}
+                      onTouchEnd={(e) => handleTouchEnd(e, message.id)}
                     >
-                      {/* Action buttons - shown on hover */}
-                      {hoveredMessageId === message.id && (
-                        <div className={`flex items-center space-x-1 ${isCurrentUser ? 'order-1 mr-2' : 'order-2 ml-2'}`}>
+                      {/* Action buttons - always visible on mobile, hover on desktop */}
+                      <div className={`flex items-center space-x-1 ${isCurrentUser ? 'order-1 mr-2' : 'order-2 ml-2'}`}>
+                        {/* Mobile menu button - only visible on mobile */}
+                        <div className="md:hidden mobile-menu-container relative">
+                          <button
+                            onClick={() => setMobileMenuMessageId(mobileMenuMessageId === message.id ? null : message.id)}
+                            className="p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors cursor-pointer"
+                            title="Message options"
+                          >
+                            <FiChevronUp className={`w-3 h-3 text-gray-600 transition-transform ${mobileMenuMessageId === message.id ? 'rotate-180' : ''}`} />
+                          </button>
+                          
+                          {/* Mobile action buttons dropdown */}
+                          {mobileMenuMessageId === message.id && (
+                            <div className={`absolute ${isCurrentUser ? 'right-0' : 'left-0'} top-full mt-1 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20 flex space-x-1 p-2`}>
+                              <button
+                                onClick={() => {
+                                  handleReplyToMessage(message);
+                                  setMobileMenuMessageId(null);
+                                }}
+                                className="p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors cursor-pointer"
+                                title="Reply"
+                              >
+                                <FiCornerUpLeft className="w-3 h-3 text-gray-600" />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  handleDeleteButtonClick(message.id, e);
+                                  setMobileMenuMessageId(null);
+                                }}
+                                className="p-1.5 rounded-full bg-red-100 hover:bg-red-200 transition-colors cursor-pointer"
+                                title="Delete"
+                              >
+                                <FiTrash2 className="w-3 h-3 text-red-600" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Desktop action buttons - only visible on desktop with hover */}
+                        <div className={`hidden md:flex items-center space-x-1 md:opacity-0 md:group-hover:opacity-100`}>
                           <button
                             onClick={() => handleReplyToMessage(message)}
-                            className="p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors opacity-0 group-hover:opacity-100 cursor-pointer"
+                            className="p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors cursor-pointer"
                             title="Reply"
                           >
                             <FiCornerUpLeft className="w-3 h-3 text-gray-600" />
@@ -1297,7 +1414,7 @@ export default function Messages() {
                           <div className="relative">
                             <button
                               onClick={(e) => handleDeleteButtonClick(message.id, e)}
-                              className="p-1.5 rounded-full bg-red-100 hover:bg-red-200 transition-colors opacity-0 group-hover:opacity-100 cursor-pointer"
+                              className="p-1.5 rounded-full bg-red-100 hover:bg-red-200 transition-colors cursor-pointer"
                               title="Delete"
                             >
                               <FiTrash2 className="w-3 h-3 text-red-600" />
@@ -1335,7 +1452,7 @@ export default function Messages() {
                             )}
                           </div>
                         </div>
-                      )}
+                      </div>
                       
                       <div
                         className={`relative max-w-xs lg:max-w-md px-2 py-1 shadow transition-all duration-1000 overflow-hidden ${
@@ -1348,7 +1465,21 @@ export default function Messages() {
                         } ${
                           isMatchingSearch && !isCurrentSearchResult && !isHighlighted ? 'ring-2 ring-yellow-400/30' : ''
                         }`}
+                        style={{
+                          transform: swipeState.messageId === message.id && swipeState.isDragging
+                            ? `translateX(${swipeState.currentX - swipeState.startX}px)`
+                            : 'translateX(0px)',
+                          transition: swipeState.isDragging ? 'none' : 'transform 0.2s ease-out'
+                        }}
                       >
+                        {/* Swipe reply indicator */}
+                        {swipeState.messageId === message.id && swipeState.isDragging && Math.abs(swipeState.currentX - swipeState.startX) > 20 && (
+                          <div className={`absolute top-1/2 transform -translate-y-1/2 ${
+                            isCurrentUser ? 'right-full mr-2' : 'left-full ml-2'
+                          } bg-gray-200 rounded-full p-2 opacity-70`}>
+                            <FiCornerUpLeft className="w-4 h-4 text-gray-600" />
+                          </div>
+                        )}
                         <div className="relative">
                           <div className="text-xs text-gray-500 mb-1">
                             {isCurrentUser ? 'You' : selectedConversation?.user.nickname}

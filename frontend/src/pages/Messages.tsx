@@ -63,8 +63,7 @@ export default function Messages() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
-  // Message hover states
-  const [hoveredMessageId, setHoveredMessageId] = useState<number | null>(null);
+  // Message reply state - removed hoveredMessageId since we don't need it anymore
   const [replyToMessage, setReplyToMessage] = useState<Message | null>(null);
 
   // Fix hydration issues
@@ -184,28 +183,24 @@ export default function Messages() {
                     <div
                       key={message.id}
                       className={`flex ${isCurrentUser ? 'justify-end' : 'justify-start'} group`}
-                      onMouseEnter={() => setHoveredMessageId(message.id)}
-                      onMouseLeave={() => setHoveredMessageId(null)}
                     >
-                      {/* Action buttons - shown on hover */}
-                      {hoveredMessageId === message.id && (
-                        <div className={`flex items-center space-x-1 ${isCurrentUser ? 'order-1 mr-2' : 'order-2 ml-2'}`}>
-                          <button
-                            onClick={() => handleReplyToMessage(message)}
-                            className="p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors opacity-0 group-hover:opacity-100"
-                            title="Reply"
-                          >
-                            <FiCornerUpLeft className="w-3 h-3 text-gray-600" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteMessage(message.id)}
-                            className="p-1.5 rounded-full bg-red-100 hover:bg-red-200 transition-colors opacity-0 group-hover:opacity-100"
-                            title="Delete"
-                          >
-                            <FiTrash2 className="w-3 h-3 text-red-600" />
-                          </button>
-                        </div>
-                      )}
+                      {/* Action buttons - now always visible */}
+                      <div className={`flex items-center space-x-2 ${isCurrentUser ? 'order-1 mr-3' : 'order-2 ml-3'}`}>
+                        <button
+                          onClick={() => handleReplyToMessage(message)}
+                          className="p-2.5 rounded-full bg-white border border-gray-300 hover:bg-gray-50 transition-colors shadow-md active:scale-95"
+                          title="Reply"
+                        >
+                          <FiCornerUpLeft className="w-4 h-4 text-gray-700" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteMessage(message.id)}
+                          className="p-2.5 rounded-full bg-red-500 hover:bg-red-600 transition-colors shadow-md active:scale-95"
+                          title="Delete"
+                        >
+                          <FiTrash2 className="w-4 h-4 text-white" />
+                        </button>
+                      </div>
 
                       <div
                         className={`relative max-w-xs lg:max-w-md px-4 py-2 shadow transition-all duration-300 ${isCurrentUser
