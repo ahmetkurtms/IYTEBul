@@ -1043,7 +1043,7 @@ export default function AdminPanel() {
                             )}
                             {report.type === 'user' && (
                               <button
-                                onClick={() => openBanModal(users.find(u => u.id === report.userId)!, report.id)}
+                                onClick={() => handleViewReportedUser(report.userId!)}
                                 className="p-2 rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors cursor-pointer"
                                 title="View Reported User"
                               >
@@ -1315,59 +1315,58 @@ export default function AdminPanel() {
       {/* User Details Modal */}
       {showUserDetailsModal && selectedUserForDetails && (
         <div 
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-3"
           onClick={closeUserDetailsModal}
         >
           <div 
-            className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+            className="bg-white rounded-lg max-w-4xl w-full max-h-[95vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex justify-between items-center px-4 py-2 border-b border-gray-200">
-
-              <h2 className="text-xl font-semibold text-gray-900">User Details</h2>
+            <div className="flex justify-between items-center px-4 py-3 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900">User Details</h2>
               <button
                 onClick={closeUserDetailsModal}
-                className="p-2 text-2xl text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+                className="p-1 text-xl text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
               >
                 ×
               </button>
             </div>
 
-            <div className="p-6">
-              <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            <div className="p-4">
+              <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
                 {/* Profile Photo Section */}
                 <div className="lg:col-span-1">
                   <div className="text-center">
-                    <div className="w-32 h-32 mx-auto rounded-full bg-gray-300 flex items-center justify-center overflow-hidden mb-4">
+                    <div className="w-24 h-24 mx-auto rounded-full bg-gray-300 flex items-center justify-center overflow-hidden mb-3">
                       {selectedUserForDetails.profilePhotoUrl ? (
                         <Image
                           src={selectedUserForDetails.profilePhotoUrl}
                           alt={selectedUserForDetails.name}
-                          width={128}
-                          height={128}
+                          width={96}
+                          height={96}
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <span className="text-gray-600 font-semibold text-4xl">
+                        <span className="text-gray-600 font-semibold text-2xl">
                           {selectedUserForDetails.name.charAt(0).toUpperCase()}
                         </span>
                       )}
                     </div>
                     
-                    <div className="space-y-2">
+                    <div className="space-y-1">
                       <div className="flex items-center justify-center space-x-2">
                         {selectedUserForDetails.isVerified && (
-                          <BsCheckCircle className="w-5 h-5 text-green-500" />
+                          <BsCheckCircle className="w-4 h-4 text-green-500" />
                         )}
                         {selectedUserForDetails.isBanned && (
-                          <span className="px-3 py-1 bg-red-100 text-red-800 text-sm rounded-full font-medium">
+                          <span className="px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full font-medium">
                             Banned
                           </span>
                         )}
                       </div>
                       
                       {selectedUserForDetails.isBanned && selectedUserForDetails.banExpiresAt && (
-                        <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
+                        <div className="text-xs text-red-600 bg-red-50 p-2 rounded">
                           <p className="font-medium">Ban expires:</p>
                           <p>{new Date(selectedUserForDetails.banExpiresAt).toLocaleString()}</p>
                         </div>
@@ -1377,18 +1376,18 @@ export default function AdminPanel() {
                 </div>
 
                 {/* User Information */}
-                <div className="lg:col-span-3 space-y-6">
+                <div className="lg:col-span-3 space-y-4">
                   <div>
-                    <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                    <h3 className="text-xl font-bold text-gray-900 mb-1">
                       {selectedUserForDetails.name} {selectedUserForDetails.surname || ''}
                     </h3>
-                    <p className="text-lg text-gray-600 mb-1">@{selectedUserForDetails.nickname}</p>
+                    <p className="text-base text-gray-600">@{selectedUserForDetails.nickname}</p>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="bg-gray-50 p-5 rounded-lg">
-                      <h4 className="font-semibold text-gray-900 mb-2">Contact Information</h4>
-                      <div className="space-y-2 text-sm">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="bg-gray-50 p-3 rounded-lg">
+                      <h4 className="font-semibold text-gray-900 mb-2 text-sm">Contact Information</h4>
+                      <div className="space-y-1 text-xs">
                         <div>
                           <span className="font-medium text-gray-700">Email:</span>
                           <p><span className="text-gray-600 truncate overflow-hidden whitespace-nowrap" title={selectedUserForDetails.email}>{selectedUserForDetails.email}</span></p>
@@ -1404,9 +1403,9 @@ export default function AdminPanel() {
                       </div>
                     </div>
 
-                    <div className="bg-gray-50 p-5 rounded-lg">
-                      <h4 className="font-semibold text-gray-900 mb-2">Academic Information</h4>
-                      <div className="space-y-2 text-sm">
+                    <div className="bg-gray-50 p-3 rounded-lg">
+                      <h4 className="font-semibold text-gray-900 mb-2 text-sm">Academic Information</h4>
+                      <div className="space-y-1 text-xs">
                         {selectedUserForDetails.studentId && (
                           <div>
                             <span className="font-medium text-gray-700">Student ID:</span>
@@ -1423,10 +1422,10 @@ export default function AdminPanel() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="bg-gray-50 p-5 rounded-lg">
-                      <h4 className="font-semibold text-gray-900 mb-2">Account Status</h4>
-                      <div className="space-y-2 text-sm">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="bg-gray-50 p-3 rounded-lg">
+                      <h4 className="font-semibold text-gray-900 mb-2 text-sm">Account Status</h4>
+                      <div className="space-y-1 text-xs">
                         <div className="flex items-center justify-between">
                           <span className="font-medium text-gray-700">Status:</span>
                           <span className={`px-2 py-1 rounded text-xs font-medium ${
@@ -1439,9 +1438,9 @@ export default function AdminPanel() {
                         </div>
                       </div>
                     </div>
-                    <div className="bg-gray-50 p-5 rounded-lg">
-                      <h4 className="font-semibold text-gray-900 mb-2">Account Timeline</h4>
-                      <div className="space-y-2 text-sm">
+                    <div className="bg-gray-50 p-3 rounded-lg">
+                      <h4 className="font-semibold text-gray-900 mb-2 text-sm">Account Timeline</h4>
+                      <div className="space-y-1 text-xs">
                         <div>
                           <span className="font-medium text-gray-700">Joined:</span>
                           <p className="text-gray-600">
@@ -1468,9 +1467,9 @@ export default function AdminPanel() {
                       </div>
                     </div>
                   </div>
-                  <div className="bg-gray-50 p-5 rounded-lg sm:col-span-2">
-                    <h4 className="font-semibold text-gray-900 mb-2">Statistics & System Info</h4>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div className="bg-gray-50 p-3 rounded-lg sm:col-span-2">
+                    <h4 className="font-semibold text-gray-900 mb-2 text-sm">Statistics & System Info</h4>
+                    <div className="grid grid-cols-2 gap-3 text-xs">
                       <div className="flex items-center justify-between">
                         <span className="font-medium text-gray-700">User ID:</span>
                         <span className="text-gray-600">#{selectedUserForDetails.id}</span>
@@ -1504,13 +1503,13 @@ export default function AdminPanel() {
                     </div>
                   </div>
                   {/* Action Buttons */}
-                  <div className="flex space-x-3 pt-4 border-t border-gray-200">
+                  <div className="flex space-x-2 pt-3 border-t border-gray-200">
                     <button
                       onClick={() => {
                         openBanModal(selectedUserForDetails);
                         closeUserDetailsModal();
                       }}
-                      className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors cursor-pointer ${
+                      className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
                         selectedUserForDetails.isBanned
                           ? 'bg-green-600 text-white hover:bg-green-700'
                           : 'bg-yellow-600 text-white hover:bg-yellow-700'
@@ -1523,13 +1522,13 @@ export default function AdminPanel() {
                         handleDeleteUser(selectedUserForDetails.id);
                         closeUserDetailsModal();
                       }}
-                      className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors font-medium cursor-pointer"
+                      className="flex-1 bg-red-600 text-white px-3 py-2 rounded-lg hover:bg-red-700 transition-colors text-sm font-medium cursor-pointer"
                     >
                       Delete User
                     </button>
                     <button
                       onClick={closeUserDetailsModal}
-                      className="flex-1 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors font-medium cursor-pointer"
+                      className="flex-1 bg-gray-600 text-white px-3 py-2 rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium cursor-pointer"
                     >
                       Close
                     </button>

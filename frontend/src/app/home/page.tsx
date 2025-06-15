@@ -23,6 +23,7 @@ import { BsCheckCircle, BsXCircle } from 'react-icons/bs';
 import { messageApi } from '@/lib/messageApi';
 import SearchIsland from '@/components/SearchIsland';
 import ScrollToTopButton from '@/components/ScrollToTopButton';
+import ConfirmationModal from '@/components/ConfirmationModal';
 
 // Custom 4x4 grid icon component (16 squares)
 const QuadGridIcon = ({ className = "h-6 w-6" }: { className?: string }) => (
@@ -106,6 +107,9 @@ export default function Home() {
 
   // Notification state
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  
+  // Deleted post popup state
+  const [showDeletedPostPopup, setShowDeletedPostPopup] = useState(false);
 
   // Handle sending message to post owner
   const handleSendMessage = async (userId: number, userName: string) => {
@@ -503,29 +507,43 @@ export default function Home() {
     const highlightItemParam = searchParams?.get('highlightItem');
     if (highlightItemParam) {
       const itemId = parseInt(highlightItemParam);
-      setHighlightedItemId(itemId);
       
-      // Switch to quad view when highlighting an item
-      setViewMode('quad');
+      // Check if the post exists in current posts
+      const postExists = posts.find(post => post.id === itemId);
       
-      // Scroll to the highlighted item after posts are loaded
-      setTimeout(() => {
-        const itemElement = document.querySelector(`[data-post-id="${itemId}"]`);
-        if (itemElement) {
-          itemElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-      }, 500);
-      
-      // Clear the URL parameter after 3 seconds and remove highlight
-      setTimeout(() => {
-        setHighlightedItemId(null);
-        // Remove the URL parameter without affecting browser history
+      if (postExists) {
+        setHighlightedItemId(itemId);
+        
+        // Switch to quad view when highlighting an item
+        setViewMode('quad');
+        
+        // Scroll to the highlighted item after posts are loaded
+        setTimeout(() => {
+          const itemElement = document.querySelector(`[data-post-id="${itemId}"]`);
+          if (itemElement) {
+            itemElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 500);
+        
+        // Clear the URL parameter after 3 seconds and remove highlight
+        setTimeout(() => {
+          setHighlightedItemId(null);
+          // Remove the URL parameter without affecting browser history
+          const url = new URL(window.location.href);
+          url.searchParams.delete('highlightItem');
+          window.history.replaceState({}, document.title, url.toString());
+        }, 3000);
+      } else if (posts.length > 0) {
+        // Post doesn't exist (likely deleted), show popup
+        setShowDeletedPostPopup(true);
+        
+        // Remove the URL parameter
         const url = new URL(window.location.href);
         url.searchParams.delete('highlightItem');
         window.history.replaceState({}, document.title, url.toString());
-      }, 3000);
+      }
     }
-  }, [searchParams]);
+  }, [searchParams, posts]);
 
   // Refresh posts when window gains focus (e.g., returning from admin panel)
   useEffect(() => {
@@ -764,6 +782,15 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      {/* Deleted Post Popup */}
+      <ConfirmationModal
+        isOpen={showDeletedPostPopup}
+        onClose={() => setShowDeletedPostPopup(false)}
+        title="Post Not Found"
+        message="This post has been deleted and is no longer available."
+        type="info-only"
+      />
     </div>
   );
 }
