@@ -251,25 +251,27 @@ export default function Navbar() {
 
       {/* Floating Hamburger - sadece masaüstünde, scroll edildiğinde, sidebar kapalıyken ve admin değilken */}
       {!isAdmin && isScrolled && !isMobile && !open && (
-        <div className="fixed top-4 left-4 z-50 pointer-events-none">
-          <div className="relative pointer-events-auto">
-            <button
-              onClick={() => setOpen(true)}
-              className="bg-[#9a0e20] hover:bg-[#7a0b19] text-white rounded-full shadow-lg p-3 transition-all duration-300 cursor-pointer"
-              style={{
-                transition: 'opacity 0.4s, transform 0.4s',
-                opacity: isScrolled ? 1 : 0,
-                transform: isScrolled ? 'translateY(0)' : 'translateY(-20px)',
-              }}
-            >
-              <FiMenu className="h-6 w-6" />
-            </button>
-            {/* Floating Notification Badge */}
-            {unreadMessageCount > 0 && (
-              <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold animate-pulse z-10">
-                {unreadMessageCount > 99 ? '99+' : unreadMessageCount}
-              </div>
-            )}
+        <div className="sticky top-4 z-40 flex pointer-events-none select-none" style={{ width: '100%' }}>
+          <div className="w-full max-w-7xl px-4">
+            <div className="relative">
+              <button
+                onClick={() => setOpen(true)}
+                className="pointer-events-auto bg-[#9a0e20] hover:bg-[#7a0b19] text-white rounded-full shadow-lg p-3 transition-all duration-300 opacity-100 translate-y-0 cursor-pointer"
+                style={{
+                  transition: 'opacity 0.4s, transform 0.4s',
+                  opacity: isScrolled ? 1 : 0,
+                  transform: isScrolled ? 'translateY(0)' : 'translateY(-20px)',
+                }}
+              >
+                <FiMenu className="h-6 w-6" />
+              </button>
+              {/* Floating Notification Badge */}
+              {unreadMessageCount > 0 && (
+                <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold animate-pulse pointer-events-none">
+                  {unreadMessageCount > 99 ? '99+' : unreadMessageCount}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
