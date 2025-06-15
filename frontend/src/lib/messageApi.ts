@@ -97,6 +97,32 @@ export interface UserInfo {
   // Add any necessary properties for UserInfo
 }
 
+// Event system for real-time updates
+class MessageEventEmitter {
+  private listeners: { [key: string]: (() => void)[] } = {};
+
+  on(event: string, callback: () => void) {
+    if (!this.listeners[event]) {
+      this.listeners[event] = [];
+    }
+    this.listeners[event].push(callback);
+  }
+
+  off(event: string, callback: () => void) {
+    if (this.listeners[event]) {
+      this.listeners[event] = this.listeners[event].filter(cb => cb !== callback);
+    }
+  }
+
+  emit(event: string) {
+    if (this.listeners[event]) {
+      this.listeners[event].forEach(callback => callback());
+    }
+  }
+}
+
+export const messageEvents = new MessageEventEmitter();
+
 export const messageApi = {
   // Get current user profile
   getCurrentUser: async (): Promise<UserProfile> => {

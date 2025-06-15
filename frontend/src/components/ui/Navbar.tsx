@@ -3,10 +3,10 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSidebar } from '@/components/ui/Sidebar';
 import { FiLogOut, FiUser, FiMenu, FiShield } from 'react-icons/fi';
-
+import { messageApi, messageEvents } from '@/lib/messageApi';
 
 interface UserProfile {
   profilePhotoUrl?: string;
@@ -22,6 +22,9 @@ export default function Navbar() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
+  const [isTokenReady, setIsTokenReady] = useState(false);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Ekran boyutunu ve scroll pozisyonunu kontrol et
   useEffect(() => {
@@ -43,6 +46,56 @@ export default function Navbar() {
       window.removeEventListener('scroll', handleScroll);
     };
   }, []);
+
+  // Token hazır olduğunda kontrol et
+  useEffect(() => {
+    const checkToken = () => {
+      const token = localStorage.getItem('token');
+      setIsTokenReady(!!token);
+    };
+    
+    checkToken();
+    // Storage event listener - başka tab'den token değişirse
+    const handleStorageChange = () => checkToken();
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
+  // Fetch unread message count
+  const fetchUnreadMessageCount = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const conversations = await messageApi.getConversations();
+      const totalUnread = conversations.reduce((total, conv) => total + conv.unreadCount, 0);
+      setUnreadMessageCount(totalUnread);
+    } catch (error) {
+      console.error('Failed to fetch unread message count:', error);
+    }
+  };
+
+  // Token hazır olduğunda unread mesaj sayısını kontrol et
+  useEffect(() => {
+    if (!isTokenReady) return;
+
+    // İlk yüklemede hemen kontrol et
+    fetchUnreadMessageCount();
+
+    // Her 30 saniyede bir kontrol et
+    intervalRef.current = setInterval(fetchUnreadMessageCount, 30000);
+
+    // Event listener ekle - mesaj güncellendiğinde sayacı yenile
+    messageEvents.on('unreadCountUpdated', fetchUnreadMessageCount);
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+      messageEvents.off('unreadCountUpdated', fetchUnreadMessageCount);
+    };
+  }, [isTokenReady]);
 
   // Check if user is admin
   useEffect(() => {
@@ -115,12 +168,20 @@ export default function Navbar() {
                 <>
                   {/* Normal navbar hamburger - sadece mobilde ve scroll edilmediğinde */}
                   {(!isScrolled || isMobile) && (
-                    <button
-                      onClick={() => setOpen(true)}
-                      className='p-2 rounded-lg hover:bg-white/10 transition-colors cursor-pointer'
-                    >
-                      <FiMenu className="h-6 w-6" />
-                    </button>
+                    <div className="relative">
+                      <button
+                        onClick={() => setOpen(true)}
+                        className='p-2 rounded-lg hover:bg-white/10 transition-colors cursor-pointer'
+                      >
+                        <FiMenu className="h-6 w-6" />
+                      </button>
+                      {/* Notification Badge */}
+                      {unreadMessageCount > 0 && (
+                        <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold animate-pulse">
+                          {unreadMessageCount > 99 ? '99+' : unreadMessageCount}
+                        </div>
+                      )}
+                    </div>
                   )}
                 </>
               )}
@@ -192,17 +253,25 @@ export default function Navbar() {
       {!isAdmin && isScrolled && !isMobile && !open && (
         <div className="sticky top-4 z-40 flex pointer-events-none select-none" style={{ width: '100%' }}>
           <div className="w-full max-w-7xl px-4">
-            <button
-              onClick={() => setOpen(true)}
-              className="pointer-events-auto bg-[#9a0e20] hover:bg-[#7a0b19] text-white rounded-full shadow-lg p-3 transition-all duration-300 opacity-100 translate-y-0 cursor-pointer"
-              style={{
-                transition: 'opacity 0.4s, transform 0.4s',
-                opacity: isScrolled ? 1 : 0,
-                transform: isScrolled ? 'translateY(0)' : 'translateY(-20px)',
-              }}
-            >
-              <FiMenu className="h-6 w-6" />
-            </button>
+            <div className="relative">
+              <button
+                onClick={() => setOpen(true)}
+                className="pointer-events-auto bg-[#9a0e20] hover:bg-[#7a0b19] text-white rounded-full shadow-lg p-3 transition-all duration-300 opacity-100 translate-y-0 cursor-pointer"
+                style={{
+                  transition: 'opacity 0.4s, transform 0.4s',
+                  opacity: isScrolled ? 1 : 0,
+                  transform: isScrolled ? 'translateY(0)' : 'translateY(-20px)',
+                }}
+              >
+                <FiMenu className="h-6 w-6" />
+              </button>
+              {/* Floating Notification Badge */}
+              {unreadMessageCount > 0 && (
+                <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold animate-pulse pointer-events-none">
+                  {unreadMessageCount > 99 ? '99+' : unreadMessageCount}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

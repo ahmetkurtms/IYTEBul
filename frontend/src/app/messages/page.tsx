@@ -9,7 +9,7 @@ import { enUS } from 'date-fns/locale';
 import { FiSearch, FiSend, FiMoreVertical, FiPaperclip, FiSmile, FiMessageCircle, FiX, FiImage, FiChevronUp, FiChevronDown, FiCamera, FiTrash2, FiCornerUpLeft, FiArrowLeft } from 'react-icons/fi';
 import { BsCheck, BsCheckAll, BsCheckCircle, BsXCircle } from 'react-icons/bs';
 import Image from 'next/image';
-import { messageApi, MessageResponse, ConversationResponse, UserProfile } from '@/lib/messageApi';
+import { messageApi, messageEvents, MessageResponse, ConversationResponse, UserProfile } from '@/lib/messageApi';
 
 interface User {
   id: number;
@@ -198,6 +198,11 @@ export default function Messages() {
         } : undefined,
         unreadCount: conv.unreadCount
       }));
+      
+      setConversations(convertedConversations);
+      
+      // Trigger event to update navbar notification count
+      messageEvents.emit('unreadCountUpdated');
 
       // Remove duplicates based on user.id
       const uniqueConversations = convertedConversations.filter((conv, index, self) => 
@@ -463,6 +468,9 @@ export default function Messages() {
 
           setMessages(convertedMessages);
           console.log('Messages loaded:', convertedMessages);
+          
+          // Trigger event to update navbar notification count when messages are loaded
+          messageEvents.emit('unreadCountUpdated');
         } catch (error) {
           console.error('Error loading messages:', error);
         }
@@ -975,7 +983,7 @@ export default function Messages() {
       
       <div className="flex-1 flex overflow-hidden">
         {/* Conversations List */}
-        <div className={`w-full md:w-80 bg-[#f7f7f7] border-r border-gray-200 flex flex-col ${
+        <div className={`w-full md:w-80 bg-[#f7f7f7] border-r border-gray-200 flex flex-col overflow-hidden ${
           selectedConversation ? 'hidden md:flex' : 'flex'
         }`}>
           {/* Header */}
@@ -994,21 +1002,27 @@ export default function Messages() {
           </div>
 
           {/* Conversations */}
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden">
             {filteredConversations.map((conversation) => {
               const isSelected = selectedConversation?.user.id === conversation.user.id;
               return (
                 <div
                   key={`conv-${conversation.user.id}`}
-                  onClick={() => setSelectedConversation(conversation)}
-                  className={`relative flex items-stretch border-b border-gray-100 cursor-pointer transition-colors ${
+                  onClick={() => {
+                    setSelectedConversation(conversation);
+                    // Trigger event to update navbar notification count after selecting conversation
+                    setTimeout(() => {
+                      messageEvents.emit('unreadCountUpdated');
+                    }, 1000);
+                  }}
+                  className={`relative flex items-stretch border-b border-gray-100 cursor-pointer transition-colors overflow-hidden ${
                     isSelected ? 'bg-[#ffe5e9]' : 'hover:bg-gray-100'
                   }`}
                 >
                   {isSelected && (
                     <div className="absolute right-0 top-0 h-full w-1 bg-[#9a0e20] rounded-l" />
                   )}
-                  <div className="flex items-center space-x-3 flex-1 p-4">
+                  <div className="flex items-center space-x-3 flex-1 p-4 overflow-hidden">
                     <div className="relative">
                       <div className="w-12 h-12 rounded-full bg-gray-300 flex items-center justify-center overflow-hidden">
                         {conversation.user.profilePhotoUrl ? (
@@ -1027,7 +1041,7 @@ export default function Messages() {
                       </div>
                     </div>
                     
-                    <div className="flex-1 min-w-0">
+                    <div className="flex-1 min-w-0 overflow-hidden">
                       <div className="flex items-center justify-between">
                         <h3 className="font-semibold text-gray-900 truncate">
                           {conversation.user.nickname}
@@ -1039,8 +1053,8 @@ export default function Messages() {
                           )}
                         </span>
                       </div>
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm text-gray-600 truncate">
+                      <div className="flex items-center justify-between overflow-hidden">
+                        <p className="text-sm text-gray-600 truncate break-all max-w-[200px] overflow-hidden whitespace-nowrap">
                           {conversation.lastMessage?.content
                             ? conversation.lastMessage.content
                             : (conversation.lastMessage?.imageBase64List && conversation.lastMessage.imageBase64List.length > 0
@@ -1324,7 +1338,7 @@ export default function Messages() {
                       )}
                       
                       <div
-                        className={`relative max-w-xs lg:max-w-md px-2 py-1 shadow transition-all duration-1000 ${
+                        className={`relative max-w-xs lg:max-w-md px-2 py-1 shadow transition-all duration-1000 overflow-hidden ${
                           isCurrentUser
                             ? 'bg-[#A6292A] text-white self-end rounded-tl-lg rounded-tr-2xl rounded-bl-lg rounded-br-md order-2'
                             : 'bg-[#f1f0f0] text-gray-900 self-start rounded-tl-2xl rounded-tr-lg rounded-br-lg rounded-bl-2xl order-1'
@@ -1459,8 +1473,8 @@ export default function Messages() {
                             </div>
                           )}
                           
-                          <div className="break-words">
-                            <p className="text-sm leading-relaxed break-words pr-15">
+                          <div className="break-words overflow-hidden max-w-full">
+                            <p className="text-sm leading-relaxed break-words pr-15 whitespace-pre-wrap word-wrap-break-word max-w-full overflow-wrap-anywhere">
                               {isMatchingSearch && messageSearchQuery ? (
                                 // Highlight search terms
                                 message.content.split(new RegExp(`(${messageSearchQuery})`, 'gi')).map((part, index) =>

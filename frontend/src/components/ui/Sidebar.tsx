@@ -5,6 +5,7 @@ import { Home, MessageSquare, User, X } from "lucide-react"
 import { useRouter, usePathname } from "next/navigation"
 import Image from "next/image"
 import { cn } from "@/lib/utils"
+import { messageApi, messageEvents } from "@/lib/messageApi"
 
 const SidebarContext = React.createContext<{
   open: boolean
@@ -36,6 +37,67 @@ interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {}
 
 export function Sidebar({ className, ...props }: SidebarProps) {
   const { open, setOpen } = useSidebar()
+  const [unreadMessageCount, setUnreadMessageCount] = React.useState(0)
+  const [isTokenReady, setIsTokenReady] = React.useState(false)
+  const intervalRef = React.useRef<NodeJS.Timeout | null>(null)
+
+  // Token hazır olduğunda kontrol et
+  React.useEffect(() => {
+    const checkToken = () => {
+      const token = localStorage.getItem('token');
+      setIsTokenReady(!!token);
+    };
+    
+    checkToken();
+    // Storage event listener - başka tab'den token değişirse
+    const handleStorageChange = () => checkToken();
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
+  // Fetch unread message count
+  const fetchUnreadMessageCount = React.useCallback(async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const conversations = await messageApi.getConversations();
+      const totalUnread = conversations.reduce((total, conv) => total + conv.unreadCount, 0);
+      setUnreadMessageCount(totalUnread);
+    } catch (error) {
+      console.error('Failed to fetch unread message count in sidebar:', error);
+    }
+  }, []);
+
+  // Token hazır olduğunda unread mesaj sayısını kontrol et
+  React.useEffect(() => {
+    if (!isTokenReady) return;
+
+    // İlk yüklemede hemen kontrol et
+    fetchUnreadMessageCount();
+
+    // Her 30 saniyede bir kontrol et
+    intervalRef.current = setInterval(fetchUnreadMessageCount, 30000);
+
+    // Event listener ekle - mesaj güncellendiğinde sayacı yenile
+    messageEvents.on('unreadCountUpdated', fetchUnreadMessageCount);
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+      messageEvents.off('unreadCountUpdated', fetchUnreadMessageCount);
+    };
+  }, [isTokenReady, fetchUnreadMessageCount]);
+
+  // Sidebar açıldığında da kontrol et
+  React.useEffect(() => {
+    if (open && isTokenReady) {
+      fetchUnreadMessageCount();
+    }
+  }, [open, isTokenReady, fetchUnreadMessageCount]);
+
   return (
     <>
       {/* Overlay */}
@@ -78,6 +140,7 @@ export function Sidebar({ className, ...props }: SidebarProps) {
             icon={MessageSquare}
             label="Messages"
             href="/messages"
+            unreadCount={unreadMessageCount}
           />
           <SidebarNavItem
             icon={User}
@@ -96,9 +159,10 @@ interface SidebarNavItemProps {
   icon: React.ElementType
   label: string
   href: string
+  unreadCount?: number
 }
 
-function SidebarNavItem({ icon: Icon, label, href }: SidebarNavItemProps) {
+function SidebarNavItem({ icon: Icon, label, href, unreadCount }: SidebarNavItemProps) {
   const router = useRouter()
   const pathname = usePathname()
   const { setOpen } = useSidebar()
@@ -110,14 +174,22 @@ function SidebarNavItem({ icon: Icon, label, href }: SidebarNavItemProps) {
         setOpen(false)
       }}
       className={cn(
-        "flex items-center gap-3 w-full px-3 py-2 rounded-lg font-medium text-base transition-colors cursor-pointer",
+        "flex items-center justify-between w-full px-3 py-2 rounded-lg font-medium text-base transition-colors cursor-pointer",
         isActive
           ? "bg-[#f8d7da] text-[#9a0e20] shadow-sm"
           : "text-gray-700 hover:bg-[#f8d7da]/60 hover:text-[#9a0e20]"
       )}
     >
-      <Icon className={cn("w-5 h-5", isActive ? "text-[#9a0e20]" : "text-gray-500")}/>
-      <span>{label}</span>
+      <div className="flex items-center gap-3">
+        <Icon className={cn("w-5 h-5", isActive ? "text-[#9a0e20]" : "text-gray-500")}/>
+        <span>{label}</span>
+      </div>
+      {/* Notification Badge for Messages */}
+      {unreadCount && unreadCount > 0 && (
+        <div className="bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold animate-pulse">
+          {unreadCount > 99 ? '99+' : unreadCount}
+        </div>
+      )}
     </button>
   )
 }
