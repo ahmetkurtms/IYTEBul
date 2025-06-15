@@ -24,6 +24,7 @@ import { messageApi } from '@/lib/messageApi';
 import SearchIsland from '@/components/SearchIsland';
 import ScrollToTopButton from '@/components/ScrollToTopButton';
 import ConfirmationModal from '@/components/ConfirmationModal';
+import ImageModal from '@/components/ui/ImageModal';
 
 // Custom 4x4 grid icon component (16 squares)
 const QuadGridIcon = ({ className = "h-6 w-6" }: { className?: string }) => (
@@ -110,6 +111,11 @@ export default function Home() {
   
   // Deleted post popup state
   const [showDeletedPostPopup, setShowDeletedPostPopup] = useState(false);
+
+  // Image modal states
+  const [imageModalOpen, setImageModalOpen] = useState(false);
+  const [currentImageUrl, setCurrentImageUrl] = useState('');
+  const [currentImageAlt, setCurrentImageAlt] = useState('');
 
   // Handle sending message to post owner
   const handleSendMessage = async (userId: number, userName: string) => {
@@ -588,6 +594,13 @@ export default function Home() {
     return () => window.removeEventListener('focus', handleFocus);
   }, [sortOrder, postType, selectedCategories, selectedLocations, searchQuery, dateStart, dateEnd]);
 
+  // Handle image click to open modal
+  const handleImageClick = (imageUrl: string, altText: string) => {
+    setCurrentImageUrl(imageUrl);
+    setCurrentImageAlt(altText);
+    setImageModalOpen(true);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-100 via-gray-50 to-slate-200">
       {/* Hamburger Menu Icon */}
@@ -664,6 +677,7 @@ export default function Home() {
                   onSendMessageText={handleSendMessageText}
                   viewMode={viewMode}
                   isHighlighted={highlightedItemId === post.id}
+                  onImageClick={handleImageClick}
                 />
               ))}
             </div>
@@ -790,6 +804,15 @@ export default function Home() {
         title="Post Not Found"
         message="This post has been deleted and is no longer available."
         type="info-only"
+      />
+
+      {/* Image Modal */}
+      <ImageModal
+        isOpen={imageModalOpen}
+        onClose={() => setImageModalOpen(false)}
+        imageUrls={[currentImageUrl]}
+        currentIndex={0}
+        altText={currentImageAlt}
       />
     </div>
   );

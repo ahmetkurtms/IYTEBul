@@ -31,6 +31,7 @@ interface PostCardProps {
   onSendMessageText?: (userId: number, userName: string, message: string, postId?: number) => void;
   viewMode?: 'quad' | 'double' | 'single';
   isHighlighted?: boolean;
+  onImageClick?: (imageUrl: string, altText: string) => void;
 }
  
 export default function PostCard({
@@ -44,6 +45,7 @@ export default function PostCard({
   onSendMessageText,
   viewMode = 'double',
   isHighlighted,
+  onImageClick,
 }: PostCardProps) {
   const [showMenu, setShowMenu] = useState(false);
   const [messageText, setMessageText] = useState('');
@@ -92,6 +94,22 @@ export default function PostCard({
     setMessageText('');
     if (onToggleMessageForm) {
       onToggleMessageForm(post.id);
+    }
+  };
+ 
+  const handleImageClick = () => {
+    if (onImageClick) {
+      const imageUrl = post.imageBase64 
+        ? `data:${post.imageContentType};base64,${post.imageBase64}`
+        : (
+          post.category === 'Electronics' ? '/assets/electronic.jpeg' :
+          post.category === 'Clothing' ? '/assets/clothes.jpeg' :
+          post.category === 'Cards' ? '/assets/wallet.jpeg' :
+          post.category === 'Other' ? '/assets/others.jpeg' :
+          post.category === 'Accessories' ? '/assets/accessories.jpeg' :
+          '/assets/others.jpeg'
+        );
+      onImageClick(imageUrl, post.title || 'Post image');
     }
   };
  
@@ -151,7 +169,8 @@ export default function PostCard({
             <img
               src={`data:${post.imageContentType};base64,${post.imageBase64}`}
               alt={post.title}
-              className="object-cover w-full h-full"
+              className="object-cover w-full h-full cursor-pointer hover:opacity-90 transition-opacity"
+              onClick={handleImageClick}
             />
           ) : (
             <img
@@ -164,7 +183,8 @@ export default function PostCard({
                 '/assets/others.jpeg'
               }
               alt="Default category image"
-              className="object-cover w-full h-full"
+              className="object-cover w-full h-full cursor-pointer hover:opacity-90 transition-opacity"
+              onClick={handleImageClick}
             />
           )}
         </div>
