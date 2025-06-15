@@ -119,6 +119,10 @@ export default function Messages() {
   
   // Page visibility state for optimizing polling
   const [isPageVisible, setIsPageVisible] = useState(true);
+  
+  // Active typing state to increase polling frequency
+  const [isActivelyTyping, setIsActivelyTyping] = useState(false);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Fix hydration issues
   useEffect(() => {
@@ -617,14 +621,17 @@ export default function Messages() {
       } catch (error) {
         console.error('Error polling for new messages:', error);
       }
-    }, 3000); // Poll every 3 seconds
+    }, isActivelyTyping ? 800 : 1500); // Poll every 0.8 seconds when actively typing, otherwise 1.5 seconds
 
     // Cleanup interval on unmount or when conversation changes
     return () => {
       console.log('Cleaning up polling interval');
       clearInterval(pollInterval);
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
     };
-  }, [selectedConversation?.user.id, currentUser?.id, isPageVisible]);
+  }, [selectedConversation?.user.id, currentUser?.id, isPageVisible, isActivelyTyping]);
 
   // Poll for new conversations in conversation list
   useEffect(() => {
@@ -644,7 +651,7 @@ export default function Messages() {
       } catch (error) {
         console.error('Error polling for conversation updates:', error);
       }
-    }, 5000); // Poll every 5 seconds for conversation updates
+    }, 3000); // Poll every 3 seconds for conversation updates
 
     // Cleanup interval on unmount
     return () => {
@@ -2018,7 +2025,21 @@ export default function Messages() {
                       ref={messageInputRef}
                       type="text"
                       value={newMessage}
-                      onChange={(e) => setNewMessage(e.target.value)}
+                      onChange={(e) => {
+                        setNewMessage(e.target.value);
+                        // Handle typing detection for faster polling
+                        setIsActivelyTyping(true);
+                        
+                        // Clear existing timeout
+                        if (typingTimeoutRef.current) {
+                          clearTimeout(typingTimeoutRef.current);
+                        }
+                        
+                        // Set user as not typing after 2 seconds of inactivity
+                        typingTimeoutRef.current = setTimeout(() => {
+                          setIsActivelyTyping(false);
+                        }, 2000);
+                      }}
                       onKeyPress={handleKeyPress}
                       placeholder={(isUserBlocked || isBlockedByUser) ? "Cannot send messages" : "Type your message..."}
                       disabled={isUserBlocked || isBlockedByUser}
