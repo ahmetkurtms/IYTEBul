@@ -240,7 +240,7 @@ const SearchIsland: React.FC<SearchIslandProps> = ({
                         setSelectedCategories([]);
                         setSelectedLocations([]);
                       }}
-                      className="text-sm text-[#9a0e20] hover:text-[#801d21] font-medium"
+                      className="text-sm text-[#9a0e20] hover:text-[#801d21] font-medium cursor-pointer"
                     >Clear all</button>
                   )}
                 </div>
@@ -518,7 +518,7 @@ const SearchIsland: React.FC<SearchIslandProps> = ({
                         setSelectedCategories([]);
                         setSelectedLocations([]);
                       }}
-                      className="text-sm text-[#9a0e20] hover:text-[#801d21] font-medium"
+                      className="text-sm text-[#9a0e20] hover:text-[#801d21] font-medium cursor-pointer"
                     >Clear all</button>
                   )}
                 </div>
