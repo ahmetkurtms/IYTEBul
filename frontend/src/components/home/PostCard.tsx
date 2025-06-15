@@ -1,6 +1,7 @@
 import { formatDistanceToNow } from 'date-fns';
 import { enUS } from 'date-fns/locale';
 import { FiFlag, FiMoreVertical, FiTag, FiMapPin } from 'react-icons/fi';
+import { FaPlug, FaTshirt, FaWallet, FaGem, FaBoxOpen } from 'react-icons/fa';
 import { useState, useRef, useEffect } from 'react';
 
 interface Post {
@@ -180,12 +181,25 @@ export default function PostCard({
         {/* Tags Section - Responsive Layout with icons */}
         <div className="mb-3 sm:mb-4">
           <div className="flex flex-wrap gap-1">
-            <span className="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded-full truncate max-w-[calc(50%-2px)] flex items-center gap-1" title={`Category: ${post.category}`}>
-              <FiTag className="w-3 h-3" />
-              <span>{post.category}</span>
-            </span>
-            <span className="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded-full truncate max-w-[calc(50%-2px)] flex items-center gap-1" title={`Location: ${post.location}`}>
-              <FiMapPin className="w-3 h-3" />
+            <button 
+              className="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded-full flex items-center gap-1 transition-all duration-200 hover:max-w-none group"
+              title={`Category: ${post.category}`}
+              onClick={(e) => {
+                if (window.innerWidth < 640) { // Only for mobile
+                  e.currentTarget.classList.toggle('max-w-[calc(50%-2px)]');
+                }
+              }}
+            >
+              {post.category === 'Electronics' && <FaPlug className="w-3 h-3 flex-shrink-0" />}
+              {post.category === 'Clothing' && <FaTshirt className="w-3 h-3 flex-shrink-0" />}
+              {post.category === 'Cards' && <FaWallet className="w-3 h-3 flex-shrink-0" />}
+              {post.category === 'Accessories' && <FaGem className="w-3 h-3 flex-shrink-0" />}
+              {post.category === 'Other' && <FaBoxOpen className="w-3 h-3 flex-shrink-0" />}
+              <span className="hidden sm:inline">{post.category}</span>
+              <span className="sm:hidden">{post.category}</span>
+            </button>
+            <span className="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded-full flex items-center gap-1 whitespace-normal break-words" title={`Location: ${post.location}`}>
+              <FiMapPin className="w-3 h-3 flex-shrink-0" />
               <span>{post.location}</span>
             </span>
           </div>
