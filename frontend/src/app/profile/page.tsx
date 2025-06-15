@@ -620,7 +620,7 @@ export default function ProfilePage() {
               </div>
 
               {/* User Info */}
-              <div className="ml-40">
+              <div className="ml-40 max-md:ml-0 max-md:mt-20 max-md:text-left">
 
                 {/* Contact Info */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt">
