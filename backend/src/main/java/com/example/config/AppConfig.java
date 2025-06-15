@@ -38,7 +38,7 @@ public class AppConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(Arrays.asList(
             "http://localhost:3000",
-            "http://10.8.62.102:3000"  // <--- BURASI EDUROAM (HAZIRLIKTAN BAĞLANDIM)
+            "http://10.8.47.46:3000"  // <--- BURASI EDUROAM (HAZIRLIKTAN BAĞLANDIM)
             
         ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
