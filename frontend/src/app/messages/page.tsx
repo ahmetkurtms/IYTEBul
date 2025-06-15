@@ -671,24 +671,32 @@ export default function Messages() {
 
   // Close options menu on outside click
   useEffect(() => {
-    function handleClick(e: MouseEvent) {
+    function handleClick(e: MouseEvent | TouchEvent) {
       if (showOptionsMenu && optionsMenuRef.current && !optionsMenuRef.current.contains(e.target as Node)) {
         setShowOptionsMenu(false);
       }
     }
     document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
+    document.addEventListener('touchstart', handleClick);
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+      document.removeEventListener('touchstart', handleClick);
+    };
   }, [showOptionsMenu]);
 
   // Close delete menu on outside click
   useEffect(() => {
-    function handleClick(e: MouseEvent) {
+    function handleClick(e: MouseEvent | TouchEvent) {
       if (deleteMenuMessageId && deleteMenuRef.current && !deleteMenuRef.current.contains(e.target as Node)) {
         setDeleteMenuMessageId(null);
       }
     }
     document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
+    document.addEventListener('touchstart', handleClick);
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+      document.removeEventListener('touchstart', handleClick);
+    };
   }, [deleteMenuMessageId]);
 
   // Filter messages based on search query (reverse order - newest first)

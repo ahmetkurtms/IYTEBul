@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { FiSearch, FiFilter, FiCalendar } from 'react-icons/fi';
 import { FaSort } from 'react-icons/fa6';
 import { MdOutlineGridView, MdOutlineViewAgenda, MdOutlineAdd } from 'react-icons/md';
@@ -73,35 +73,52 @@ const SearchIsland: React.FC<SearchIslandProps> = ({
   const day = String(now.getDate()).padStart(2, '0');
   const today = `${year}-${month}-${day}`;
 
+  // Create refs for mobile filter and date components
+  const mobileFilterRef = useRef<HTMLDivElement>(null);
+  const mobileFilterButtonRef = useRef<HTMLDivElement>(null);
+  const mobileDateRef = useRef<HTMLDivElement>(null);
+  const mobileDateButtonRef = useRef<HTMLDivElement>(null);
+  const desktopFilterRef = useRef<HTMLDivElement>(null);
+  const desktopFilterButtonRef = useRef<HTMLDivElement>(null);
+  const desktopDateRef = useRef<HTMLDivElement>(null);
+  const desktopDateButtonRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
+    function handleClickOutside(event: MouseEvent | TouchEvent) {
       const target = event.target as HTMLElement;
+      
+      // Skip if clicking on input or label elements
       if (target.tagName === 'INPUT' || target.tagName === 'LABEL') return;
       
-      // Check if click is outside date popover
+      // Handle date popover
       if (datePopoverOpen) {
-        const datePopover = document.querySelector('[data-date-popover]');
-        if (datePopover && !datePopover.contains(event.target as Node)) {
-          const dateButton = document.querySelector('[data-date-button]');
-          if (!dateButton || !dateButton.contains(event.target as Node)) {
-            setDatePopoverOpen(false);
-          }
+        const isDesktopDateClick = desktopDateRef.current?.contains(target) || desktopDateButtonRef.current?.contains(target);
+        const isMobileDateClick = mobileDateRef.current?.contains(target) || mobileDateButtonRef.current?.contains(target);
+        
+        if (!isDesktopDateClick && !isMobileDateClick) {
+          setDatePopoverOpen(false);
         }
       }
       
-      // Check if click is outside filter popover
+      // Handle filter popover
       if (filterPopoverOpen) {
-        const filterPopover = document.querySelector('[data-filter-popover]');
-        if (filterPopover && !filterPopover.contains(event.target as Node)) {
-          const filterButton = document.querySelector('[data-filter-button]');
-          if (!filterButton || !filterButton.contains(event.target as Node)) {
-            setFilterPopoverOpen(false);
-          }
+        const isDesktopFilterClick = desktopFilterRef.current?.contains(target) || desktopFilterButtonRef.current?.contains(target);
+        const isMobileFilterClick = mobileFilterRef.current?.contains(target) || mobileFilterButtonRef.current?.contains(target);
+        
+        if (!isDesktopFilterClick && !isMobileFilterClick) {
+          setFilterPopoverOpen(false);
         }
       }
     }
+    
+    // Add both mouse and touch event listeners for mobile support
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
   }, [datePopoverOpen, filterPopoverOpen, setDatePopoverOpen, setFilterPopoverOpen]);
 
   return (
@@ -135,17 +152,19 @@ const SearchIsland: React.FC<SearchIslandProps> = ({
               className="flex-1 bg-transparent border-none outline-none text-gray-800 placeholder-gray-500 text-base"
             />
           </div>
-          <div className="relative flex items-center">
-            <FiCalendar
-              data-date-button
+          <div ref={desktopDateRef} className="relative flex items-center">
+            <div 
+              ref={desktopDateButtonRef}
               className={`text-2xl cursor-pointer hover:text-gray-800 transition-colors ${((dateStart && dateStart.trim()) || (dateEnd && dateEnd.trim())) ? 'text-[#9a0e20]' : 'text-gray-600'}`}
               onClick={(e) => {
                 e.stopPropagation();
                 setDatePopoverOpen(!datePopoverOpen);
               }}
-            />
+            >
+              <FiCalendar />
+            </div>
             {datePopoverOpen && (
-              <div data-date-popover className="absolute right-0 top-full mt-2 z-50 w-64 bg-white rounded-xl shadow-xl border border-gray-100 p-4 animate-fade-in">
+              <div className="absolute right-0 top-full mt-2 z-50 w-64 bg-white rounded-xl shadow-xl border border-gray-100 p-4 animate-fade-in">
                 <div className="flex justify-between items-center mb-2">
                   <div className="font-semibold text-gray-900">Date Range</div>
                   {((dateStart && dateStart.trim()) || (dateEnd && dateEnd.trim())) && (
@@ -194,9 +213,9 @@ const SearchIsland: React.FC<SearchIslandProps> = ({
               </div>
             )}
           </div>
-          <div className="relative flex items-center">
-            <FiFilter
-              data-filter-button
+          <div ref={desktopFilterRef} className="relative flex items-center">
+            <div
+              ref={desktopFilterButtonRef}
               className={`text-2xl cursor-pointer hover:text-gray-800 transition-colors ${(selectedCategories.length > 0 || selectedLocations.length > 0) && !filterPopoverOpen ? 'text-[#761a1e]' : 'text-gray-600'}`}
               onClick={(e) => {
                 e.stopPropagation();
@@ -207,9 +226,11 @@ const SearchIsland: React.FC<SearchIslandProps> = ({
                   setSortSelectedOnOpen(true);
                 }
               }}
-            />
+            >
+              <FiFilter />
+            </div>
             {filterPopoverOpen && (
-              <div data-filter-popover className="absolute right-0 top-full mt-2 z-50 w-72 bg-white rounded-xl shadow-xl border border-gray-100 p-4 animate-fade-in">
+              <div className="absolute right-0 top-full mt-2 z-50 w-72 bg-white rounded-xl shadow-xl border border-gray-100 p-4 animate-fade-in">
                 <div className="flex justify-between items-center mb-2">
                   <div className="font-semibold text-gray-900">Filters</div>
                   {(selectedCategories.length > 0 || selectedLocations.length > 0) && (
@@ -409,17 +430,19 @@ const SearchIsland: React.FC<SearchIslandProps> = ({
               className="flex-1 bg-transparent border-none outline-none text-gray-800 placeholder-gray-500 text-base"
             />
           </div>
-          <div className="relative flex items-center">
-            <FiCalendar
-              data-date-button
+          <div ref={mobileDateRef} className="relative flex items-center">
+            <div
+              ref={mobileDateButtonRef}
               className={`text-2xl cursor-pointer hover:text-gray-800 transition-colors ${((dateStart && dateStart.trim()) || (dateEnd && dateEnd.trim())) ? 'text-[#9a0e20]' : 'text-gray-600'}`}
               onClick={(e) => {
                 e.stopPropagation();
                 setDatePopoverOpen(!datePopoverOpen);
               }}
-            />
+            >
+              <FiCalendar />
+            </div>
             {datePopoverOpen && (
-              <div data-date-popover className="absolute right-0 top-full mt-2 z-50 w-64 bg-white rounded-xl shadow-xl border border-gray-100 p-4 animate-fade-in">
+              <div className="absolute right-0 top-full mt-2 z-50 w-64 bg-white rounded-xl shadow-xl border border-gray-100 p-4 animate-fade-in">
                 <div className="flex justify-between items-center mb-2">
                   <div className="font-semibold text-gray-900">Date Range</div>
                   {((dateStart && dateStart.trim()) || (dateEnd && dateEnd.trim())) && (
@@ -468,8 +491,9 @@ const SearchIsland: React.FC<SearchIslandProps> = ({
               </div>
             )}
           </div>
-          <div className="relative flex items-center">
-            <FiFilter
+          <div ref={mobileFilterRef} className="relative flex items-center">
+            <div
+              ref={mobileFilterButtonRef}
               className={`text-2xl cursor-pointer hover:text-gray-800 transition-colors ${(selectedCategories.length > 0 || selectedLocations.length > 0) && !filterPopoverOpen ? 'text-[#761a1e]' : 'text-gray-600'}`}
               onClick={(e) => {
                 e.stopPropagation();
@@ -480,9 +504,11 @@ const SearchIsland: React.FC<SearchIslandProps> = ({
                   setSortSelectedOnOpen(true);
                 }
               }}
-            />
+            >
+              <FiFilter />
+            </div>
             {filterPopoverOpen && (
-              <div ref={calendarRef} className="absolute right-0 top-full mt-2 z-50 w-72 bg-white rounded-xl shadow-xl border border-gray-100 p-4 animate-fade-in">
+              <div className="absolute right-0 top-full mt-2 z-50 w-72 bg-white rounded-xl shadow-xl border border-gray-100 p-4 animate-fade-in">
                 <div className="flex justify-between items-center mb-2">
                   <div className="font-semibold text-gray-900">Filters</div>
                   {(selectedCategories.length > 0 || selectedLocations.length > 0) && (

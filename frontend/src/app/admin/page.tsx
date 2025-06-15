@@ -136,7 +136,7 @@ export default function AdminPanel() {
 
   // Close popovers on outside click
   useEffect(() => {
-    function handleClick(e: MouseEvent) {
+    function handleClick(e: MouseEvent | TouchEvent) {
       if (datePopoverOpen && calendarRef.current && !calendarRef.current.contains(e.target as Node)) {
         setDatePopoverOpen(false);
       }
@@ -148,7 +148,11 @@ export default function AdminPanel() {
       }
     }
     document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
+    document.addEventListener('touchstart', handleClick);
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+      document.removeEventListener('touchstart', handleClick);
+    };
   }, [datePopoverOpen, filterPopoverOpen, sortPopoverOpen]);
 
   // Reset filters when changing tabs

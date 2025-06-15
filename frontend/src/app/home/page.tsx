@@ -470,24 +470,32 @@ export default function Home() {
 
   // Close filter popover on outside click
   useEffect(() => {
-    function handleClick(e: MouseEvent) {
+    function handleClick(e: MouseEvent | TouchEvent) {
       if (filterPopoverOpen && filterRef.current && !filterRef.current.contains(e.target as Node)) {
         setFilterPopoverOpen(false);
       }
     }
     document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
+    document.addEventListener('touchstart', handleClick);
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+      document.removeEventListener('touchstart', handleClick);
+    };
   }, [filterPopoverOpen]);
 
   // Sort popover'ı kapatma
   useEffect(() => {
-    function handleClick(e: MouseEvent) {
+    function handleClick(e: MouseEvent | TouchEvent) {
       if (sortPopoverOpen && sortRef.current && !sortRef.current.contains(e.target as Node)) {
         setSortPopoverOpen(false);
       }
     }
     document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
+    document.addEventListener('touchstart', handleClick);
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+      document.removeEventListener('touchstart', handleClick);
+    };
   }, [sortPopoverOpen]);
 
   // Handle highlightItem URL parameter
