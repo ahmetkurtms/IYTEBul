@@ -116,11 +116,72 @@ export default function Messages() {
 
   // Add state for delete confirmation
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState<{ type: 'self' | 'everyone', messageId: number } | null>(null);
+  
+  // Page visibility state for optimizing polling
+  const [isPageVisible, setIsPageVisible] = useState(true);
 
   // Fix hydration issues
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  // Page visibility API to optimize polling
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      const isVisible = !document.hidden;
+      setIsPageVisible(isVisible);
+      console.log('Page visibility changed:', isVisible);
+      
+      // When page becomes visible, immediately poll for updates
+      if (isVisible && selectedConversation && currentUser) {
+        console.log('Page became visible - fetching latest messages immediately');
+        const fetchLatestMessages = async () => {
+          try {
+            const latestMessages = await messageApi.getMessagesWithUser(selectedConversation.user.id);
+            const convertedMessages: Message[] = latestMessages.map(msg => ({
+              id: msg.messageId,
+              senderId: msg.senderId,
+              receiverId: msg.receiverId,
+              content: msg.messageText,
+              timestamp: msg.sentAt,
+              isRead: msg.isRead,
+              isSent: true,
+              imageBase64List: msg.imageBase64List || [],
+              referencedItemId: msg.referencedItemId,
+              referencedItemTitle: msg.referencedItemTitle,
+              referencedItemImage: msg.referencedItemImage,
+              referencedItemCategory: msg.referencedItemCategory,
+              referencedItemType: msg.referencedItemType,
+              replyToMessageId: msg.replyToMessageId,
+              replyToMessageText: msg.replyToMessageText,
+              replyToSenderName: msg.replyToSenderName,
+              replyToMessageImages: msg.replyToMessageImages || []
+            }));
+            
+            setMessages(prevMessages => {
+              if (prevMessages.length !== convertedMessages.length) {
+                console.log(`New messages found on page focus: ${convertedMessages.length - prevMessages.length} new messages`);
+                return convertedMessages;
+              }
+              return prevMessages;
+            });
+            
+            await refreshConversations();
+          } catch (error) {
+            console.error('Error fetching messages on page focus:', error);
+          }
+        };
+        
+        fetchLatestMessages();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [selectedConversation, currentUser]);
 
   // Admin kontrolü ekle
   useEffect(() => {
@@ -499,6 +560,99 @@ export default function Messages() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Real-time messaging: Poll for new messages
+  useEffect(() => {
+    if (!selectedConversation || !currentUser || !isPageVisible) return;
+
+    console.log('Setting up real-time polling for conversation:', selectedConversation.user.id);
+    
+    const pollInterval = setInterval(async () => {
+      // Only poll if page is visible
+      if (!isPageVisible) {
+        console.log('Page not visible, skipping message poll');
+        return;
+      }
+
+      try {
+        // Fetch latest messages
+        const latestMessages = await messageApi.getMessagesWithUser(selectedConversation.user.id);
+        
+        // Convert backend data to frontend format
+        const convertedMessages: Message[] = latestMessages.map(msg => ({
+          id: msg.messageId,
+          senderId: msg.senderId,
+          receiverId: msg.receiverId,
+          content: msg.messageText,
+          timestamp: msg.sentAt,
+          isRead: msg.isRead,
+          isSent: true,
+          imageBase64List: msg.imageBase64List || [],
+          
+          // Referenced item information
+          referencedItemId: msg.referencedItemId,
+          referencedItemTitle: msg.referencedItemTitle,
+          referencedItemImage: msg.referencedItemImage,
+          referencedItemCategory: msg.referencedItemCategory,
+          referencedItemType: msg.referencedItemType,
+          
+          // Reply information
+          replyToMessageId: msg.replyToMessageId,
+          replyToMessageText: msg.replyToMessageText,
+          replyToSenderName: msg.replyToSenderName,
+          replyToMessageImages: msg.replyToMessageImages || []
+        }));
+
+        // Only update if there are new messages
+        setMessages(prevMessages => {
+          if (prevMessages.length !== convertedMessages.length) {
+            console.log(`New messages detected: ${convertedMessages.length - prevMessages.length} new messages`);
+            return convertedMessages;
+          }
+          return prevMessages;
+        });
+
+        // Also refresh conversations to update last message and unread counts
+        await refreshConversations();
+        
+      } catch (error) {
+        console.error('Error polling for new messages:', error);
+      }
+    }, 3000); // Poll every 3 seconds
+
+    // Cleanup interval on unmount or when conversation changes
+    return () => {
+      console.log('Cleaning up polling interval');
+      clearInterval(pollInterval);
+    };
+  }, [selectedConversation?.user.id, currentUser?.id, isPageVisible]);
+
+  // Poll for new conversations in conversation list
+  useEffect(() => {
+    if (!currentUser || !isPageVisible) return;
+
+    console.log('Setting up conversation list polling');
+    
+    const conversationPollInterval = setInterval(async () => {
+      // Only poll if page is visible
+      if (!isPageVisible) {
+        console.log('Page not visible, skipping conversation poll');
+        return;
+      }
+
+      try {
+        await refreshConversations();
+      } catch (error) {
+        console.error('Error polling for conversation updates:', error);
+      }
+    }, 5000); // Poll every 5 seconds for conversation updates
+
+    // Cleanup interval on unmount
+    return () => {
+      console.log('Cleaning up conversation polling interval');
+      clearInterval(conversationPollInterval);
+    };
+  }, [currentUser?.id, isPageVisible]);
+
   // Attachment icon click handler
   const handleAttachmentClick = () => {
     if (fileInputRef.current) fileInputRef.current.click();
@@ -590,7 +744,38 @@ export default function Messages() {
           ? { ...conv, lastMessage: message }
           : conv
       ));
+      
+      // Refresh conversations and messages immediately after sending
       await refreshConversations();
+      
+      // Force a quick poll to get the latest state from server
+      setTimeout(async () => {
+        try {
+          const latestMessages = await messageApi.getMessagesWithUser(selectedConversation.user.id);
+          const convertedMessages: Message[] = latestMessages.map(msg => ({
+            id: msg.messageId,
+            senderId: msg.senderId,
+            receiverId: msg.receiverId,
+            content: msg.messageText,
+            timestamp: msg.sentAt,
+            isRead: msg.isRead,
+            isSent: true,
+            imageBase64List: msg.imageBase64List || [],
+            referencedItemId: msg.referencedItemId,
+            referencedItemTitle: msg.referencedItemTitle,
+            referencedItemImage: msg.referencedItemImage,
+            referencedItemCategory: msg.referencedItemCategory,
+            referencedItemType: msg.referencedItemType,
+            replyToMessageId: msg.replyToMessageId,
+            replyToMessageText: msg.replyToMessageText,
+            replyToSenderName: msg.replyToSenderName,
+            replyToMessageImages: msg.replyToMessageImages || []
+          }));
+          setMessages(convertedMessages);
+        } catch (error) {
+          console.error('Error refreshing messages after send:', error);
+        }
+      }, 500); // Quick refresh after 500ms
     } catch (error) {
       console.error('Error sending message with files:', error);
       if (error instanceof Error && error.message.includes('blocked')) {
@@ -665,6 +850,35 @@ export default function Messages() {
 
       // Refresh conversations from backend to get accurate data
       await refreshConversations();
+
+      // Force a quick poll to get the latest state from server
+      setTimeout(async () => {
+        try {
+          const latestMessages = await messageApi.getMessagesWithUser(selectedConversation.user.id);
+          const convertedMessages: Message[] = latestMessages.map(msg => ({
+            id: msg.messageId,
+            senderId: msg.senderId,
+            receiverId: msg.receiverId,
+            content: msg.messageText,
+            timestamp: msg.sentAt,
+            isRead: msg.isRead,
+            isSent: true,
+            imageBase64List: msg.imageBase64List || [],
+            referencedItemId: msg.referencedItemId,
+            referencedItemTitle: msg.referencedItemTitle,
+            referencedItemImage: msg.referencedItemImage,
+            referencedItemCategory: msg.referencedItemCategory,
+            referencedItemType: msg.referencedItemType,
+            replyToMessageId: msg.replyToMessageId,
+            replyToMessageText: msg.replyToMessageText,
+            replyToSenderName: msg.replyToSenderName,
+            replyToMessageImages: msg.replyToMessageImages || []
+          }));
+          setMessages(convertedMessages);
+        } catch (error) {
+          console.error('Error refreshing messages after send:', error);
+        }
+      }, 500); // Quick refresh after 500ms
 
     } catch (error) {
       console.error('Error sending message:', error);
