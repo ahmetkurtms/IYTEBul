@@ -159,8 +159,8 @@ export default function Navbar() {
   return (
     <>
       <nav className='bg-gradient-to-r from-[#9a0e20] to-[#7a0b19] text-white shadow-lg'>
-        <div className='container mx-auto px-4 py-3'>
-          <div className='flex justify-between items-center'>
+        <div className='px-4 py-3'>
+          <div className='flex justify-start items-center relative'>
             {/* Logo */}
             <div className="flex items-center space-x-4">
               {/* Hamburger menü - mobilde her zaman, masaüstünde scroll edildiğinde floating */}
@@ -204,8 +204,7 @@ export default function Navbar() {
             </div>
 
             {/* Sağ Taraf Butonları */}
-           
-            <div className="flex items-center space-x-2">
+            <div className="absolute right-4 flex items-center space-x-2">
               {/* Admin badge */}
               {isAdmin && (
                 <div className="flex items-center space-x-2 px-3 py-1 bg-white/10 rounded-lg">
