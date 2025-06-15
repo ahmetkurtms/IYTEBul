@@ -4,12 +4,12 @@ import { FiAlertTriangle, FiX } from 'react-icons/fi';
 interface ConfirmationModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: () => void;
+  onConfirm?: () => void;
   title: string;
   message: string;
   confirmText?: string;
   cancelText?: string;
-  type?: 'danger' | 'warning' | 'info';
+  type?: 'danger' | 'warning' | 'info' | 'info-only';
 }
 
 export default function ConfirmationModal({
@@ -39,6 +39,7 @@ export default function ConfirmationModal({
           iconBg: 'bg-yellow-100'
         };
       case 'info':
+      case 'info-only':
         return {
           icon: 'text-blue-500',
           confirmBtn: 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500',
@@ -62,7 +63,9 @@ export default function ConfirmationModal({
   };
 
   const handleConfirm = () => {
-    onConfirm();
+    if (onConfirm) {
+      onConfirm();
+    }
     onClose();
   };
 
@@ -95,17 +98,19 @@ export default function ConfirmationModal({
 
         {/* Footer */}
         <div className="flex items-center justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50">
+          {type !== 'info-only' && (
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors cursor-pointer"
+            >
+              {cancelText}
+            </button>
+          )}
           <button
-            onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors cursor-pointer"
-          >
-            {cancelText}
-          </button>
-          <button
-            onClick={handleConfirm}
+            onClick={type === 'info-only' ? onClose : handleConfirm}
             className={`px-4 py-2 text-sm font-medium text-white rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors cursor-pointer ${colors.confirmBtn}`}
           >
-            {confirmText}
+            {type === 'info-only' ? 'OK' : confirmText}
           </button>
         </div>
       </div>

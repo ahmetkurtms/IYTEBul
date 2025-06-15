@@ -5,6 +5,7 @@ import com.example.models.Item;
 import com.example.models.User;
 import com.example.models.Location;
 import com.example.repository.ItemRepository;
+import com.example.repository.ReportRepository;
 import org.springframework.stereotype.Service;
 import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +21,7 @@ public class ItemServiceImplementation implements ItemService {
     private final ItemRepository itemRepository;
     private final UserService userService;
     private final LocationService locationService;
+    private final ReportRepository reportRepository;
 
     @Override
     public Item createNewItem(Item item, Long userId) throws Exception {
@@ -49,7 +51,17 @@ public class ItemServiceImplementation implements ItemService {
         if(item.getUser().getUser_id() != user.getUser_id()){
             throw  new Exception("Cannot delete another users post");
         }
-        itemRepository.delete(item);
+        
+        // Check if the post has been reported
+        long reportCount = reportRepository.countByPostId(itemId);
+        if (reportCount > 0) {
+            throw new Exception("This post has been reported and cannot be deleted. Please contact an administrator.");
+        }
+        
+        // Soft delete: Set deleted flag to true instead of hard delete
+        item.setDeleted(true);
+        itemRepository.save(item);
+        
         return "Post deleted successfully";
     }
 
@@ -81,6 +93,15 @@ public class ItemServiceImplementation implements ItemService {
                 throw new Exception("Item is deleted and not available");
             }
             return foundItem;
+        }
+        throw new Exception("item not exist with itemid " + itemId);
+    }
+        // Admin için deleted post'ları da bulabilen fonksiyon
+    @Override
+    public Item findItemByIdForAdmin(Long itemId) throws Exception {
+        Optional<Item> item = itemRepository.findById(itemId);
+        if(item.isPresent()) {
+            return item.get(); // Admin için deleted kontrolü yapmıyoruz
         }
         throw new Exception("item not exist with itemid " + itemId);
     }

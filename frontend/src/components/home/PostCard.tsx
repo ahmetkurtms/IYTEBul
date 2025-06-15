@@ -3,7 +3,7 @@ import { enUS } from 'date-fns/locale';
 import { FiFlag, FiMoreVertical, FiTag, FiMapPin } from 'react-icons/fi';
 import { FaPlug, FaTshirt, FaWallet, FaGem, FaBoxOpen } from 'react-icons/fa';
 import { useState, useRef, useEffect } from 'react';
-
+ 
 interface Post {
   id: number;
   title: string;
@@ -19,7 +19,7 @@ interface Post {
   imageContentType?: string;
   userProfilePhoto?: string;
 }
-
+ 
 interface PostCardProps {
   post: Post;
   searchQuery: string;
@@ -32,12 +32,12 @@ interface PostCardProps {
   viewMode?: 'quad' | 'double' | 'single';
   isHighlighted?: boolean;
 }
-
-export default function PostCard({ 
-  post, 
-  searchQuery, 
-  onSendMessage, 
-  onReportPost, 
+ 
+export default function PostCard({
+  post,
+  searchQuery,
+  onSendMessage,
+  onReportPost,
   highlightText,
   showMessageForm = false,
   onToggleMessageForm,
@@ -48,7 +48,7 @@ export default function PostCard({
   const [showMenu, setShowMenu] = useState(false);
   const [messageText, setMessageText] = useState('');
   const menuRef = useRef<HTMLDivElement>(null);
-
+ 
   // Close menu when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent | TouchEvent) {
@@ -56,7 +56,7 @@ export default function PostCard({
         setShowMenu(false);
       }
     }
-
+ 
     document.addEventListener('mousedown', handleClickOutside);
     document.addEventListener('touchstart', handleClickOutside);
     return () => {
@@ -64,12 +64,12 @@ export default function PostCard({
       document.removeEventListener('touchstart', handleClickOutside);
     };
   }, []);
-
+ 
   const handleReportClick = () => {
     onReportPost(post.id, post.title);
     setShowMenu(false);
   };
-
+ 
   const handleSendMessageClick = () => {
     if (onToggleMessageForm) {
       onToggleMessageForm(post.id);
@@ -77,7 +77,7 @@ export default function PostCard({
       onSendMessage(post.userId, post.userName);
     }
   };
-
+ 
   const handleSendMessageText = () => {
     if (messageText.trim() && onSendMessageText) {
       onSendMessageText(post.userId, post.userName, messageText.trim(), post.id);
@@ -87,19 +87,19 @@ export default function PostCard({
       }
     }
   };
-
+ 
   const handleCancelMessage = () => {
     setMessageText('');
     if (onToggleMessageForm) {
       onToggleMessageForm(post.id);
     }
   };
-
+ 
   // Limit title to 30 characters
   const truncatedTitle = post.title && post.title.length > 31 ? post.title.substring(0, 31) : (post.title || 'Untitled');
-
+ 
   return (
-    <div 
+    <div
       data-post-id={post.id}
       className={`bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow relative h-full flex flex-col ${
         isHighlighted ? 'ring-4 ring-blue-500 ring-opacity-50 shadow-2xl transform scale-105 transition-all duration-1000' : ''
@@ -115,7 +115,7 @@ export default function PostCard({
           <FiFlag className="w-4 h-4 text-red-600" />
         </button>
       </div>
-
+ 
       {/* Post İçeriği */}
       <div className="p-3 sm:p-4 flex flex-col h-full">
         {/* User Info Section with Lost/Found badge below time */}
@@ -137,14 +137,14 @@ export default function PostCard({
             </span>
           </div>
         </div>
-        
+       
         {/* Title Section - Limited to 30 characters */}
         <div className="mb-2 sm:mb-3 min-h-[32px] sm:min-h-[40px]">
           <h3 className="text-sm sm:text-lg lg:text-xl font-semibold text-gray-800" title={post.title || 'Untitled'}>
             {highlightText(truncatedTitle, searchQuery)}
           </h3>
         </div>
-        
+       
         {/* Image Section - Instagram-like 4:3 aspect ratio with auto crop */}
         <div className="mb-2 sm:mb-3 flex justify-center items-center bg-white rounded-lg border border-black overflow-hidden post-image">
           {post.imageBase64 ? (
@@ -168,7 +168,7 @@ export default function PostCard({
             />
           )}
         </div>
-        
+       
         {/* Description Section - Responsive */}
         <div className="mb-2 sm:mb-3 flex-grow min-h-[40px] sm:min-h-[60px]">
           {post.description && post.description.trim() !== '' ? (
@@ -177,11 +177,11 @@ export default function PostCard({
             <div className="w-full min-h-[20px]"></div>
           )}
         </div>
-        
+       
         {/* Tags Section - Responsive Layout with icons */}
         <div className="mb-3 sm:mb-4">
           <div className="flex flex-wrap gap-1">
-            <button 
+            <button
               className="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded-full flex items-center gap-1 transition-all duration-200 hover:max-w-none group"
               title={`Category: ${post.category}`}
               onClick={(e) => {
@@ -204,7 +204,7 @@ export default function PostCard({
             </span>
           </div>
         </div>
-
+ 
         {/* Message Button Section - Always at Bottom */}
         <div className="mt-auto">
           {!showMessageForm ? (
@@ -247,4 +247,5 @@ export default function PostCard({
       </div>
     </div>
   );
-} 
+}
+ 

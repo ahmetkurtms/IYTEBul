@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation"
 import Image from "next/image"
 import Navbar from "@/components/ui/Navbar"
 import { messageApi } from "@/lib/messageApi"
-import { FaCamera, FaMapMarkerAlt, FaCalendarAlt, FaPhone, FaEnvelope, FaEdit, FaCheck, FaTimes, FaTrash, FaEye, FaIdCard, FaPlug, FaTshirt, FaWallet, FaBoxOpen, FaGem } from "react-icons/fa"
+import { FaCamera, FaMapMarkerAlt, FaCalendarAlt, FaPhone, FaEnvelope, FaEdit, FaCheck, FaTimes, FaTrash, FaEye, FaIdCard, FaPlug, FaTshirt, FaWallet, FaBoxOpen, FaGem, FaUser, FaCog, FaFileAlt, FaUserTimes } from "react-icons/fa"
+import ConfirmationModal from '@/components/ConfirmationModal'
 
 
 
@@ -60,6 +61,7 @@ export default function ProfilePage() {
   const [blockedUsers, setBlockedUsers] = useState<BlockedUser[]>([])
   const [loadingBlockedUsers, setLoadingBlockedUsers] = useState(false)
   const [unblockingUserId, setUnblockingUserId] = useState<number | null>(null)
+  const [showReportedPostModal, setShowReportedPostModal] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
 
@@ -236,8 +238,20 @@ export default function ProfilePage() {
         router.push("/auth")
       } else {
         const errorData = await response.text()
-        console.error("Failed to delete post:", response.status, errorData)
-        setError("Failed to delete post. Please try again later.")
+        
+        // Check if the error is about reported post
+        if (errorData.includes("reported") || errorData.includes("administrator")) {
+          setShowDeleteConfirm(false)
+          setPostToDelete(null)
+          if (showModal) {
+            closeModal()
+          }
+          setShowReportedPostModal(true)
+          return; // Return early to prevent setting error and console.error
+        } else {
+          console.error("Failed to delete post:", response.status, errorData)
+          setError("Failed to delete post. Please try again later.")
+        }
       }
     } catch (error) {
       console.error("Error while deleting post:", error)
@@ -1312,6 +1326,15 @@ export default function ProfilePage() {
           </div>
         </div>
       )}
+
+      {/* Reported Post Info Modal */}
+      <ConfirmationModal
+        isOpen={showReportedPostModal}
+        onClose={() => setShowReportedPostModal(false)}
+        title="Cannot Delete Post"
+        message="This post has been reported and cannot be deleted. Please contact an administrator for assistance."
+        type="info-only"
+      />
     </div>
   )
 }

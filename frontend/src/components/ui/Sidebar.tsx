@@ -64,6 +64,7 @@ export function Sidebar({ className, ...props }: SidebarProps) {
 
       const conversations = await messageApi.getConversations();
       const totalUnread = conversations.reduce((total, conv) => total + conv.unreadCount, 0);
+      console.log('Sidebar unreadMessageCount:', totalUnread);
       setUnreadMessageCount(totalUnread);
     } catch (error) {
       console.error('Failed to fetch unread message count in sidebar:', error);
@@ -185,7 +186,7 @@ function SidebarNavItem({ icon: Icon, label, href, unreadCount }: SidebarNavItem
         <span>{label}</span>
       </div>
       {/* Notification Badge for Messages */}
-      {unreadCount && unreadCount > 0 && (
+      {unreadCount !== undefined && unreadCount !== null && unreadCount > 0 && (
         <div className="bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold animate-pulse">
           {unreadCount > 99 ? '99+' : unreadCount}
         </div>

@@ -210,6 +210,7 @@ public class AdminController {
                     postMap.put("userEmail", post.getUser().getUniMail());
                     postMap.put("imageBase64", post.getImage());
                     postMap.put("reportCount", reportRepository.countByPostId(post.getItem_id()));
+                    postMap.put("isDeleted", post.getDeleted() != null ? post.getDeleted() : false);
                     return postMap;
                 })
                 .collect(Collectors.toList());
@@ -223,12 +224,18 @@ public class AdminController {
     @DeleteMapping("/posts/{postId}")
     public ResponseEntity<ApiResponse> deletePost(@PathVariable Long postId, @RequestHeader("Authorization") String jwt) {
         try {
-            User admin = validateAdmin(jwt);
+            System.out.println("=== ADMIN DELETE POST START ===");
+            System.out.println("Post ID: " + postId);
             
-            Item post = itemService.findItemById(postId);
+            User admin = validateAdmin(jwt);
+            System.out.println("Admin validated: " + admin.getNickname());
+            
+            Item post = itemService.findItemByIdForAdmin(postId);
+            System.out.println("Post found: " + post.getTitle());
             
             // Update all reports for this post to ACTION_TAKEN status
             List<Report> reports = reportRepository.findByPostId(postId);
+            System.out.println("Found " + reports.size() + " reports for this post");
             for (Report report : reports) {
                 report.setStatus(Report.ReportStatus.ACTION_TAKEN);
                 report.setReviewedAt(LocalDateTime.now());
@@ -236,13 +243,17 @@ public class AdminController {
                 reportRepository.save(report);
             }
             
-            // Delete the post
-            itemRepository.delete(post);
+            // Soft delete: Set deleted flag to true instead of hard delete
+            post.setDeleted(true);
+            itemRepository.save(post);
+            System.out.println("Post deleted successfully");
             
             return ResponseEntity.ok(new ApiResponse("Post deleted successfully", true));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body(new ApiResponse(e.getMessage(), false));
+            System.err.println("Error deleting post: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ApiResponse("Failed to delete post: " + e.getMessage(), false));
         }
     }
 

@@ -527,6 +527,49 @@ export default function Home() {
     }
   }, [searchParams]);
 
+  // Refresh posts when window gains focus (e.g., returning from admin panel)
+  useEffect(() => {
+    const handleFocus = () => {
+      // Refresh posts when user returns to this tab/window
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const fetchPosts = async () => {
+        try {
+          const params = new URLSearchParams();
+          params.append('sortOrder', sortOrder);
+          if (postType !== 'all') params.append('type', postType.toUpperCase());
+          if (selectedCategories.length > 0) params.append('category', selectedCategories.join(','));
+          if (selectedLocations.length > 0) params.append('location', selectedLocations.join(','));
+          if (searchQuery.trim()) params.append('search', searchQuery.trim());
+          if (dateStart.trim()) params.append('dateStart', dateStart.trim());
+          if (dateEnd.trim()) params.append('dateEnd', dateEnd.trim());
+          
+          const response = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL}/api/v1/posts?${params.toString()}`,
+            {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+              },
+            }
+          );
+          
+          if (response.ok) {
+            const data = await response.json();
+            setPosts(data);
+          }
+        } catch (error) {
+          console.error('Error refreshing posts:', error);
+        }
+      };
+
+      fetchPosts();
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [sortOrder, postType, selectedCategories, selectedLocations, searchQuery, dateStart, dateEnd]);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-100 via-gray-50 to-slate-200">
       {/* Hamburger Menu Icon */}

@@ -53,6 +53,7 @@ interface Post {
   userEmail: string;
   imageBase64?: string;
   reportCount: number;
+  isDeleted?: boolean;
 }
 
 interface Report {
@@ -770,7 +771,7 @@ export default function AdminPanel() {
                 }`}
               >
                 <FiAlertTriangle className="w-5 h-5" />
-                <span>Reports ({reports.filter(r => r.status === 'PENDING').length})</span>
+                <span>Reports ({filteredReports.length})</span>
               </button>
             </div>
 
@@ -914,11 +915,11 @@ export default function AdminPanel() {
               {activeTab === 'posts' && (
                 <div className="space-y-4">
                   {filteredPosts.map((post) => (
-                    <div key={post.id} className="bg-gray-50 rounded-lg p-4">
+                    <div key={post.id} className={`rounded-lg p-4 ${post.isDeleted ? 'bg-gray-200 opacity-75' : 'bg-gray-50'}`}>
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center space-x-2 mb-2">
-                            <h3 className="font-semibold text-gray-900">{post.title}</h3>
+                            <h3 className={`font-semibold ${post.isDeleted ? 'text-gray-600' : 'text-gray-900'}`}>{post.title}</h3>
                             <span className={`px-2 py-1 text-xs rounded-full ${
                               post.type === 'LOST' 
                                 ? 'bg-red-100 text-red-800' 
@@ -926,6 +927,11 @@ export default function AdminPanel() {
                             }`}>
                               {post.type}
                             </span>
+                            {post.isDeleted && (
+                              <span className="px-2 py-1 bg-gray-400 text-white text-xs rounded-full font-medium">
+                                DELETED
+                              </span>
+                            )}
                             {post.reportCount > 0 && (
                               <span className="px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded-full">
                                 {post.reportCount} reports
@@ -951,13 +957,15 @@ export default function AdminPanel() {
                           >
                             <FiEye className="w-4 h-4" />
                           </button>
-                          <button
-                            onClick={() => handleDeletePost(post.id)}
-                            className="p-2 rounded-lg bg-red-100 text-red-600 hover:bg-red-200 transition-colors cursor-pointer"
-                            title="Delete Post"
-                          >
-                            <FiTrash2 className="w-4 h-4" />
-                          </button>
+                          {!post.isDeleted && (
+                            <button
+                              onClick={() => handleDeletePost(post.id)}
+                              className="p-2 rounded-lg bg-red-100 text-red-600 hover:bg-red-200 transition-colors cursor-pointer"
+                              title="Delete Post"
+                            >
+                              <FiTrash2 className="w-4 h-4" />
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1180,16 +1188,18 @@ export default function AdminPanel() {
                   </div>
 
                   <div className="flex space-x-3 pt-4">
-                    <button
-                      onClick={() => {
-                        handleDeletePost(selectedPost.id);
-                        closePostModal();
-                      }}
-                      className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center cursor-pointer"
-                    >
-                      <FiTrash2 className="w-4 h-4 mr-2" />
-                      Delete Post
-                    </button>
+                    {!selectedPost.isDeleted && (
+                      <button
+                        onClick={() => {
+                          handleDeletePost(selectedPost.id);
+                          closePostModal();
+                        }}
+                        className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center cursor-pointer"
+                      >
+                        <FiTrash2 className="w-4 h-4 mr-2" />
+                        Delete Post
+                      </button>
+                    )}
                     <button
                       onClick={closePostModal}
                       className="flex-1 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors cursor-pointer"
