@@ -68,7 +68,7 @@ export default function Home() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [viewMode, setViewMode] = useState<'quad' | 'double' | 'single'>('double');
+  const [viewMode, setViewMode] = useState<'quad' | 'double' | 'single'>('quad');
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
   const [postType, setPostType] = useState<'all' | 'lost' | 'found'>('all');
   const [searchQuery, setSearchQuery] = useState('');
