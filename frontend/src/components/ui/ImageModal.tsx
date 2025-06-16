@@ -144,15 +144,11 @@ export default function ImageModal({
             alt={altText}
             className={`object-contain transition-opacity duration-300 ${
               imageLoaded ? 'opacity-100' : 'opacity-0'
-            }`}
-            style={{
-              minWidth: '600px',
-              minHeight: '400px',
-              maxWidth: 'min(90vw, 1000px)',
-              maxHeight: 'min(90vh, 800px)',
-              width: 'auto',
-              height: 'auto'
-            }}
+            } 
+            /* Mobile styles */
+            max-w-[90vw] max-h-[80vh] min-w-[280px] min-h-[200px]
+            /* Desktop styles */
+            md:min-w-[600px] md:min-h-[400px] md:max-w-[1000px] md:max-h-[800px]`}
             onLoad={() => setImageLoaded(true)}
             onError={() => setImageLoaded(true)}
           />
