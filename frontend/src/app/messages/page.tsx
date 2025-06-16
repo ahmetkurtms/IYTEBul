@@ -1055,105 +1055,35 @@ export default function Messages() {
   // Handle deleting a specific message for current user only
   const handleDeleteMessageForSelf = async (messageId: number) => {
     try {
-      console.log('Deleting message for self:', messageId);
-      
       await messageApi.deleteMessageForSelf(messageId);
-      
-      // Frontend'te de tüm reply'ları bul ve kaldır
-      const findAllRepliesToDelete = (msgId: number, allMessages: typeof messages): number[] => {
-        const directReplies = allMessages.filter(msg => msg.replyToMessageId === msgId);
-        let allReplies: number[] = directReplies.map(msg => msg.id);
-        
-        // Recursive olarak nested reply'ları da bul
-        directReplies.forEach(reply => {
-          const nestedReplies = findAllRepliesToDelete(reply.id, allMessages);
-          allReplies = [...allReplies, ...nestedReplies];
-        });
-        
-        return allReplies;
-      };
-      
-      const repliesToDelete = findAllRepliesToDelete(messageId, messages);
-      const allMessagesToDelete = [messageId, ...repliesToDelete];
-      
-      // Local state'ten kaldır
-      setMessages(prev => prev.filter(msg => !allMessagesToDelete.includes(msg.id)));
-      
-      // Reply state'i temizle
-      if (replyToMessage && allMessagesToDelete.includes(replyToMessage.id)) {
-        setReplyToMessage(null);
-        setNewMessage('');
-      }
-      
-      // Conversations'ı yenile
-      await refreshConversations();
-      
-      const deletedCount = allMessagesToDelete.length;
-      showNotification('success', 
-        deletedCount === 1 
-          ? 'Message deleted for you' 
-          : `Message and ${deletedCount - 1} replies deleted for you`
-      );
-      
+      setMessages(messages.filter(msg => msg.id !== messageId));
+      setDeleteMenuMessageId(null);
+      setShowDeleteConfirmModal(null);
     } catch (error) {
       console.error('Error deleting message for self:', error);
-      showNotification('error', 'Failed to delete message');
     }
   };
 
   // Handle deleting a specific message for everyone
   const handleDeleteMessageForEveryone = async (messageId: number) => {
     try {
-      console.log('Deleting message for everyone:', messageId);
-      
       await messageApi.deleteMessageForEveryone(messageId);
-      
-      // Frontend'te de tüm reply'ları bul ve kaldır
-      const findAllRepliesToDelete = (msgId: number, allMessages: typeof messages): number[] => {
-        const directReplies = allMessages.filter(msg => msg.replyToMessageId === msgId);
-        let allReplies: number[] = directReplies.map(msg => msg.id);
-        
-        // Recursive olarak nested reply'ları da bul
-        directReplies.forEach(reply => {
-          const nestedReplies = findAllRepliesToDelete(reply.id, allMessages);
-          allReplies = [...allReplies, ...nestedReplies];
-        });
-        
-        return allReplies;
-      };
-      
-      const repliesToDelete = findAllRepliesToDelete(messageId, messages);
-      const allMessagesToDelete = [messageId, ...repliesToDelete];
-      
-      // Local state'ten kaldır
-      setMessages(prev => prev.filter(msg => !allMessagesToDelete.includes(msg.id)));
-      
-      // Reply state'i temizle
-      if (replyToMessage && allMessagesToDelete.includes(replyToMessage.id)) {
-        setReplyToMessage(null);
-        setNewMessage('');
-      }
-      
-      // Conversations'ı yenile
-      await refreshConversations();
-      
-      const deletedCount = allMessagesToDelete.length;
-      showNotification('success', 
-        deletedCount === 1 
-          ? 'Message deleted for everyone' 
-          : `Message and ${deletedCount - 1} replies deleted for everyone`
-      );
-      
+      setMessages(messages.filter(msg => msg.id !== messageId));
+      setDeleteMenuMessageId(null);
+      setShowDeleteConfirmModal(null);
     } catch (error) {
       console.error('Error deleting message for everyone:', error);
-      showNotification('error', 'Failed to delete message for everyone');
     }
   };
 
   // Handle delete button click - show delete menu
   const handleDeleteButtonClick = (messageId: number, event: React.MouseEvent) => {
     event.stopPropagation();
-    setDeleteMenuMessageId(deleteMenuMessageId === messageId ? null : messageId);
+    setDeleteMenuMessageId(messageId);
+    // Mobilde de silme seçeneklerini göster
+    setShowDeleteConfirmModal({ type: 'self', messageId });
+    // Mobilde silme menüsünü göster
+    setMobileMenuMessageId(messageId);
   };
 
   // Handle replying to a message
@@ -1577,95 +1507,66 @@ export default function Messages() {
                       onTouchMove={(e) => handleTouchMove(e, message.id)}
                       onTouchEnd={(e) => handleTouchEnd(e, message.id)}
                     >
-                      {/* Action buttons - always visible on mobile, hover on desktop */}
-                      <div className={`flex items-center space-x-1 ${isCurrentUser ? 'order-1 mr-2' : 'order-2 ml-2'}`}>
-                        {/* Mobile menu button - only visible on mobile */}
-                        <div className="md:hidden mobile-menu-container relative">
-                          <button
-                            onClick={() => setMobileMenuMessageId(mobileMenuMessageId === message.id ? null : message.id)}
-                            className="p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors cursor-pointer"
-                            title="Message options"
-                          >
-                            <FiChevronUp className={`w-3 h-3 text-gray-600 transition-transform ${mobileMenuMessageId === message.id ? 'rotate-180' : ''}`} />
-                          </button>
-                          
-                          {/* Mobile action buttons dropdown */}
-                          {mobileMenuMessageId === message.id && (
-                            <div className={`absolute ${isCurrentUser ? 'right-0' : 'left-0'} top-full mt-1 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20 flex space-x-1 p-2`}>
-                              <button
-                                onClick={() => {
-                                  handleReplyToMessage(message);
-                                  setMobileMenuMessageId(null);
-                                }}
-                                className="p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors cursor-pointer"
-                                title="Reply"
-                              >
-                                <FiCornerUpLeft className="w-3 h-3 text-gray-600" />
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  handleDeleteButtonClick(message.id, e);
-                                  setMobileMenuMessageId(null);
-                                }}
-                                className="p-1.5 rounded-full bg-red-100 hover:bg-red-200 transition-colors cursor-pointer"
-                                title="Delete"
-                              >
-                                <FiTrash2 className="w-3 h-3 text-red-600" />
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                        
-                        {/* Desktop action buttons - only visible on desktop with hover */}
-                        <div className={`hidden md:flex items-center space-x-1 md:opacity-0 md:group-hover:opacity-100`}>
-                          <button
-                            onClick={() => handleReplyToMessage(message)}
-                            className="p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors cursor-pointer"
-                            title="Reply"
-                          >
-                            <FiCornerUpLeft className="w-3 h-3 text-gray-600" />
-                          </button>
-                          <div className="relative">
+                      {/* Mobil aksiyon menüsü */}
+                      <div className="md:hidden mobile-menu-container relative">
+                        <button
+                          onClick={() => setMobileMenuMessageId(mobileMenuMessageId === message.id ? null : message.id)}
+                          className="p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors cursor-pointer"
+                          title="Message options"
+                        >
+                          <FiChevronUp className={`w-3 h-3 text-gray-600 transition-transform ${mobileMenuMessageId === message.id ? 'rotate-180' : ''}`} />
+                        </button>
+                        {/* Reply ve Delete ikonları */}
+                        {mobileMenuMessageId === message.id && (
+                          <div className={`absolute ${isCurrentUser ? 'right-0' : 'left-0'} top-full mt-1 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20 flex flex-row space-x-1 p-2 min-w-[80px]`}>
                             <button
-                              onClick={(e) => handleDeleteButtonClick(message.id, e)}
+                              onClick={() => {
+                                handleReplyToMessage(message);
+                                setMobileMenuMessageId(null);
+                              }}
+                              className="p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors cursor-pointer"
+                              title="Reply"
+                            >
+                              <FiCornerUpLeft className="w-3 h-3 text-gray-600" />
+                            </button>
+                            <button
+                              onClick={() => setDeleteMenuMessageId(message.id)}
                               className="p-1.5 rounded-full bg-red-100 hover:bg-red-200 transition-colors cursor-pointer"
                               title="Delete"
                             >
                               <FiTrash2 className="w-3 h-3 text-red-600" />
                             </button>
-                            
-                            {/* Delete options dropdown */}
-                            {deleteMenuMessageId === message.id && (
-                              <div 
-                                ref={deleteMenuRef}
-                                className="absolute top-full left-0 mt-1 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20 min-w-[160px]"
+                          </div>
+                        )}
+                        {/* Silme seçenekleri menüsü */}
+                        {deleteMenuMessageId === message.id && (
+                          <div className={`absolute ${isCurrentUser ? 'right-0' : 'left-0'} top-full mt-12 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-30 flex flex-col space-y-1 p-2 min-w-[160px]`}>
+                            <button
+                              onClick={() => {
+                                setShowDeleteConfirmModal({ type: 'self', messageId: message.id });
+                                setDeleteMenuMessageId(null);
+                                setMobileMenuMessageId(null);
+                              }}
+                              className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 transition-colors flex items-center space-x-2 cursor-pointer"
+                            >
+                              <span role="img" aria-label="Delete">🗑️</span>
+                              <span>Delete for me</span>
+                            </button>
+                            {message.senderId === currentUser?.id && (
+                              <button
+                                onClick={() => {
+                                  setShowDeleteConfirmModal({ type: 'everyone', messageId: message.id });
+                                  setDeleteMenuMessageId(null);
+                                  setMobileMenuMessageId(null);
+                                }}
+                                className="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center space-x-2 cursor-pointer"
                               >
-                                <button
-                                  onClick={() => {
-                                    setShowDeleteConfirmModal({ type: 'self', messageId: message.id });
-                                    setDeleteMenuMessageId(null);
-                                  }}
-                                  className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 transition-colors flex items-center space-x-2 cursor-pointer"
-                                >
-                                  <span>🗑️</span>
-                                  <span>Delete for me</span>
-                                </button>
-                                {message.senderId === currentUser?.id && (
-                                  <button
-                                    onClick={() => {
-                                      setShowDeleteConfirmModal({ type: 'everyone', messageId: message.id });
-                                      setDeleteMenuMessageId(null);
-                                    }}
-                                    className="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center space-x-2 cursor-pointer"
-                                  >
-                                    <span>❌</span>
-                                    <span>Delete for everyone</span>
-                                  </button>
-                                )}
-                              </div>
+                                <span role="img" aria-label="Delete for everyone">❌</span>
+                                <span>Delete for everyone</span>
+                              </button>
                             )}
                           </div>
-                        </div>
+                        )}
                       </div>
                       
                       <div
