@@ -133,7 +133,7 @@ export default function ImageModal({
         onTouchEnd={handleTouchEnd}
       >
         {/* Image with loading state */}
-        <div className="relative max-w-[90vw] max-h-[90vh] flex items-center justify-center">
+        <div className="relative flex items-center justify-center">
           {!imageLoaded && (
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
@@ -142,9 +142,17 @@ export default function ImageModal({
           <img
             src={imageUrls[currentIndex]}
             alt={altText}
-            className={`max-w-full max-h-full object-contain transition-opacity duration-300 ${
+            className={`object-contain transition-opacity duration-300 ${
               imageLoaded ? 'opacity-100' : 'opacity-0'
             }`}
+            style={{
+              minWidth: '600px',
+              minHeight: '400px',
+              maxWidth: 'min(90vw, 1000px)',
+              maxHeight: 'min(90vh, 800px)',
+              width: 'auto',
+              height: 'auto'
+            }}
             onLoad={() => setImageLoaded(true)}
             onError={() => setImageLoaded(true)}
           />
